@@ -168,6 +168,33 @@ public class RepositoryTests
     }
 
     [Test]
+    public async Task One_default_build_per_champion_and_role()
+    {
+        var mid1 = await _repo.SaveBuildAsync(new Build { ChampionId = "Ahri", Name = "Mid A", Role = Position.Middle });
+        var mid2 = await _repo.SaveBuildAsync(new Build { ChampionId = "Ahri", Name = "Mid B", Role = Position.Middle });
+        var any = await _repo.SaveBuildAsync(new Build { ChampionId = "Ahri", Name = "Any", Role = null });
+        var lux = await _repo.SaveBuildAsync(new Build { ChampionId = "Lux", Name = "Lux mid", Role = Position.Middle });
+        await _repo.SetDefaultBuildAsync(mid1, true);
+        await _repo.SetDefaultBuildAsync(any, true);
+        await _repo.SetDefaultBuildAsync(lux, true);
+        await _repo.SetDefaultBuildAsync(mid2, true);
+
+        var ahri = (await _repo.GetBuildsAsync("Ahri")).ToDictionary(b => b.Id);
+        Assert.That(ahri[mid1].IsDefault, Is.False, "replaced by Mid B");
+        Assert.That(ahri[mid2].IsDefault, Is.True);
+        Assert.That(ahri[any].IsDefault, Is.True, "the any-role default is separate");
+        Assert.That((await _repo.GetBuildsAsync("Lux")).Single().IsDefault, Is.True, "other champions are untouched");
+
+        await _repo.SetDefaultBuildAsync(mid2, false);
+        Assert.That((await _repo.GetBuildsAsync("Ahri")).Count(b => b.IsDefault), Is.EqualTo(1));
+        Assert.That(await _repo.GetAllBuildsAsync(), Has.Count.EqualTo(4));
+
+        var backup = await _repo.ExportAsync("16.23.1");
+        await _repo.ImportAsync(backup);
+        Assert.That((await _repo.GetBuildsAsync("Ahri")).Single(b => b.IsDefault).Name, Is.EqualTo("Any"), "kept through backup and restore");
+    }
+
+    [Test]
     public async Task Matchups_are_kept_per_role()
     {
         var any = await _repo.SetMatchupAsync("Pantheon", "Darius", MatchupKind.GoodAgainst, "general");

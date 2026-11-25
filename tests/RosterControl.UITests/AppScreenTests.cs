@@ -235,6 +235,7 @@ public class AppScreenTests
                 UiTestHost.Settle(1);
             }
             Assert.That(Dnd.IsDragging, Is.True, "drag should have started: " + string.Join(" | ", Dnd.Diagnostics));
+            Assert.That(tile.IsSet(InputElement.CursorProperty) && window.IsSet(InputElement.CursorProperty), Is.True, "the cursor is hidden while dragging");
             Capture("02-drag-in-progress");
         }
         finally
@@ -243,6 +244,7 @@ public class AppScreenTests
             UiTestHost.Settle(20);
         }
 
+        Assert.That(window.IsSet(InputElement.CursorProperty), Is.False, "the cursor is restored after the drop");
         var group = Vm.Rosters!.Groups.First(g => g.Name == "Middle");
         Assert.That(group.Entries.Select(e => e.ChampionId), Does.Contain("Akali"));
         var stored = UiTestHost.Run(() => Repo.GetGroupsAsync());
@@ -557,5 +559,100 @@ public class AppScreenTests
         Assert.That(copy.SkillOrder, Is.Empty, "skill order is champion-specific");
         Assert.That(copy.Runes.PrimaryPerks, Is.EqualTo(source.Model.Runes.PrimaryPerks));
         Assert.That(Vm.UndoLast(), Is.False, "the Open action of the copy toast is not an undo");
+    }
+
+    // ── Builds, notes and search ───────────────────────────────────────────────────────────────────
+
+    [AvaloniaTest, Order(21)]
+    public void Notes_show_formatting_and_checkboxes_tick_without_editing()
+    {
+        var window = Window();
+        Vm.OpenChampion("Ahri", ChampionTab.Notes);
+        UiTestHost.Settle(30);
+        var page = (ChampionDetailViewModel)Vm.CurrentPage!;
+        page.Notes = "**Laning**\n- Look for picks with charm from fog\n- Hold R to dodge key abilities\n  - Zed R, Malzahar R\n\n**Checklist**\n[x] Buy control ward\n[ ] Ward river at 2:45\n\nRoam bot after first back.";
+        UiTestHost.Settle(10);
+        var editor = window.GetVisualDescendants().OfType<NotesEditor>().First(e => e.IsEffectivelyVisible);
+        Assert.That(editor.IsEditing, Is.False, "shows the formatted view");
+        Capture("07b-notes-formatted");
+
+        var unticked = window.GetVisualDescendants().OfType<Button>().First(b => b.IsEffectivelyVisible && Equals(b.Tag, "notecheck") && Equals(ToolTip.GetTip(b), "Mark as done"));
+        var point = unticked.TranslatePoint(new Point(unticked.Bounds.Width / 2, unticked.Bounds.Height / 2), window)!.Value;
+        window.MouseDown(point, MouseButton.Left);
+        window.MouseUp(point, MouseButton.Left);
+        UiTestHost.Settle(5);
+        Assert.That(page.Notes, Does.Contain("[x] Ward river at 2:45"));
+        Assert.That(editor.IsEditing, Is.False, "ticking doesn't open the editor");
+    }
+
+    [AvaloniaTest, Order(22)]
+    public void Default_build_opens_first_and_builds_reorder_by_dragging()
+    {
+        Window();
+        Vm.OpenChampion("Ahri", ChampionTab.Builds);
+        UiTestHost.Settle(30);
+        var page = (ChampionDetailViewModel)Vm.CurrentPage!;
+        var assassins = page.Builds.First(b => b.Name == "vs Assassins");
+        Assert.That(page.SelectedBuild!.Name, Is.EqualTo("Standard"), "no default yet: the first build");
+        UiTestHost.Run(() => page.ToggleDefaultCommand.ExecuteAsync(assassins));
+        Assert.That(assassins.IsDefault, Is.True);
+
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+        Vm.Rosters!.Groups.First(g => g.Name == "Middle").Entries.First(e => e.ChampionId == "Ahri").OpenCommand.Execute(null);
+        UiTestHost.Settle(30);
+        page = (ChampionDetailViewModel)Vm.CurrentPage!;
+        Assert.That(page.SelectedBuild!.Name, Is.EqualTo("vs Assassins"), "the default build opens first");
+        page.SelectedTab = (int)ChampionTab.Builds;
+        Capture("03b-default-build");
+
+        var first = page.Builds[0];
+        page.BuildDrop.Drop(page.Builds[1].DragData, first, after: false, copy: false);
+        UiTestHost.Settle(10);
+        Assert.That(page.Builds.Select(b => b.Name), Is.EqualTo(new[] { "vs Assassins", "Standard" }));
+        var stored = UiTestHost.Run(() => Repo.GetBuildsAsync("Ahri"));
+        Assert.That(stored.Select(b => b.Name), Is.EqualTo(new[] { "vs Assassins", "Standard" }), "order saved");
+        Assert.That(stored.Single(b => b.IsDefault).Name, Is.EqualTo("vs Assassins"));
+    }
+
+    [AvaloniaTest, Order(23)]
+    public void Share_code_copies_and_pastes_a_build()
+    {
+        Window();
+        Vm.OpenChampion("Ahri", ChampionTab.Builds);
+        UiTestHost.Settle(30);
+        var page = (ChampionDetailViewModel)Vm.CurrentPage!;
+        var source = page.Builds.First(b => b.Name == "Standard");
+        UiTestHost.Run(() => page.CopyShareCodeCommand.ExecuteAsync(source));
+        UiTestHost.Settle(3);
+        Assert.That(Vm.Toasts.Select(t => t.Message), Has.Some.StartsWith("Build code for \"Standard\" copied"));
+        var count = page.Builds.Count;
+        UiTestHost.Run(() => page.PasteShareCodeCommand.ExecuteAsync(null));
+        UiTestHost.Settle(5);
+        Assert.That(page.Builds, Has.Count.EqualTo(count + 1));
+        var pasted = page.Builds.Last();
+        Assert.That(pasted.Name, Is.EqualTo("Standard"));
+        Assert.That(pasted.Model.Runes.PrimaryPerks, Is.EqualTo(source.Model.Runes.PrimaryPerks));
+        Assert.That(pasted.Model.Items.Blocks.SelectMany(b => b.Items), Is.EqualTo(source.Model.Items.Blocks.SelectMany(b => b.Items)));
+        Assert.That(pasted.IsDefault, Is.False);
+        Assert.That(page.SelectedBuild, Is.SameAs(pasted));
+    }
+
+    [AvaloniaTest, Order(24)]
+    public void Quick_search_finds_text_in_notes()
+    {
+        var window = Window();
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+        Vm.Palette.Open();
+        Vm.Palette.Query = "charm";
+        for (var i = 0; i < 100 && !Vm.Palette.Results.Any(r => r.Subtitle.Contains("notes")); i++) UiTestHost.Settle(2);
+        var hit = Vm.Palette.Results.FirstOrDefault(r => r.Subtitle == "Ahri · champion notes");
+        Assert.That(hit, Is.Not.Null, string.Join(" | ", Vm.Palette.Results.Select(r => r.Title + " / " + r.Subtitle)));
+        Assert.That(hit!.Title, Does.Contain("charm"));
+        Capture("12b-search-notes");
+        Vm.Palette.ExecuteCommand.Execute(hit);
+        UiTestHost.Settle(30);
+        var page = (ChampionDetailViewModel)Vm.CurrentPage!;
+        Assert.That(page.Champion.Id, Is.EqualTo("Ahri"));
+        Assert.That(page.IsNotesTab, Is.True);
     }
 }

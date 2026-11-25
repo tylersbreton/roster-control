@@ -65,6 +65,8 @@ public sealed class Build
     public string Name { get; set; } = "New build";
     public Position? Role { get; set; }
     public int SortOrder { get; set; }
+    /// <summary>The go-to build for its <see cref="Role"/> (at most one per champion and role; null role = any role).</summary>
+    public bool IsDefault { get; set; }
     /// <summary>Data Dragon version current when the build was last edited (used to draw items removed since).</summary>
     public string? GameVersion { get; set; }
     public RunePageData Runes { get; set; } = new();

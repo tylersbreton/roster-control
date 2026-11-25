@@ -31,6 +31,9 @@ namespace RosterControl.Data.Migrations
                     b.Property<string>("GameVersion")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Items")
                         .IsRequired()
                         .HasColumnType("TEXT")

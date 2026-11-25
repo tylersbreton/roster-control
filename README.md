@@ -54,6 +54,10 @@ It never restarts on its own, and your data is untouched by updates.
     a "max order" summary and one-click fill (R at 6/11/16).
   - notes and a role tag.
   - **copy to another champion** (runes, items, spells and notes; the skill order is champion-specific).
+  - **share codes** — *Copy share code* puts a short `RC1:…` code on the clipboard to paste in Discord or anywhere;
+    a friend copies it (the whole message is fine) and clicks *Paste build code* on the Builds tab or in Ctrl+K.
+  - a **default build per role** (★): opening the champion from that role's group selects it first.
+  - drag builds in the list to **reorder** them.
 - **Matchups** — *Good against* / *Weak against* lists per champion with a note per matchup (drag champions in, flip,
   reorder). A matchup applies to **all roles or one role** (Pantheon vs Darius can differ top vs support); a
   role-specific matchup overrides the all-roles one for that role. Matchups recorded on the other champion are shown
@@ -63,17 +67,21 @@ It never restarts on its own, and your data is untouched by updates.
 - **Suggested bans** — the champions that counter the most of your champions in scope (Mains weigh most; champions you
   have answers to rank lower), with the reasons and notes on hover.
 - **Champions library** — every champion with roster/build/matchup badges; filter by role, class, your tags.
-- **Notes & tags** per champion.
+- **Notes & tags** per champion. Champion, build and matchup notes support light formatting: `- bullets`,
+  `[ ] checkboxes` (tick them without editing) and `**bold**`; Enter continues a list and **Ctrl+B** toggles bold.
 - **Full screen** — F11 or the ⤢ caption button; leave with **Esc**, **F11** or *Exit full screen* in the title bar
   (or hover the top edge for the window's own controls).
 - **Backup** — export/import all data as JSON; an automatic backup is written daily (last 10 kept).
 - **Quick search** — **Ctrl+K** (or the search box in the title bar) finds champions (with the groups they're in),
-  pages and actions; recently opened champions come first.
+  pages and actions; recently opened champions come first. From three letters it also searches the text of your
+  champion, build and matchup notes and jumps to the note.
 - **Undo** — deleting a build, group, item block, placement or matchup shows an *Undo* toast (also **Ctrl+Z**).
 - **Step through a list** — a champion opened from a group, the pool or the library shows *‹ 2 / 5 ›* in its header;
   **Ctrl+←/→** moves to the previous / next champion.
 - **Remembers where you were** — filters, searches, the last champion tab, editor tab, matchup role, shop filters and
-  window zoom are kept between sessions. **Enter** in a search box opens or adds the first result.
+  window zoom are kept between sessions, as are the window's size, position, maximised state and the sidebar. If the
+  monitor it was on is gone, the window opens centred on the main screen. **Enter** in a search box opens or adds the
+  first result.
 - **Zoom** — 80–150 % (**Ctrl+=**, **Ctrl+-**, **Ctrl+0** or *Settings → Display*).
 
 ### Keyboard shortcuts
@@ -90,6 +98,7 @@ It never restarts on its own, and your data is untouched by updates.
 | 1–5, 0, Delete | Rate, clear or remove the hovered roster card |
 | Ctrl+Tab | Next tab on a champion page |
 | Ctrl+← / Ctrl+→ | Previous / next champion in the list it was opened from |
+| Ctrl+B, Enter, Esc (in notes) | Bold, continue a list, finish editing |
 
 ## Data storage
 

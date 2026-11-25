@@ -125,7 +125,7 @@ public static class Dnd
     private static bool IsInteractive(object? source, Control owner)
     {
         for (var v = source as Visual; v is not null && !ReferenceEquals(v, owner); v = v.GetVisualParent())
-            if (v is Button or ToggleButton or TextBox or StarRating or ComboBox or Slider) return true;
+            if (v is Button or ToggleButton or TextBox or StarRating or ComboBox or Slider or NotesEditor) return true;
         return false;
     }
 
@@ -236,6 +236,7 @@ public static class Dnd
     {
         s.Active = true;
         e.Pointer.Capture(s.Source);
+        HideCursor(s);
         Layers.TryGetValue(s.Root, out var layer);
         s.Layer = layer;
         s.Root.AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
@@ -357,8 +358,9 @@ public static class Dnd
 
         if (s.Ghost is not null)
         {
-            Canvas.SetLeft(s.Ghost, layerPos.X + 14);
-            Canvas.SetTop(s.Ghost, layerPos.Y + 12);
+            // The cursor is hidden while dragging: the champion icon itself sits under the pointer.
+            Canvas.SetLeft(s.Ghost, layerPos.X - GhostAnchor.X);
+            Canvas.SetTop(s.Ghost, layerPos.Y - GhostAnchor.Y);
             s.Ghost.Opacity = target is null ? 0.7 : 1;
         }
         if (s.HintText is not null)
@@ -414,6 +416,35 @@ public static class Dnd
         s.TargetElement?.Classes.Remove("dnd-over");
         foreach (var c in s.Highlighted) c.Classes.Remove("dnd-can-drop");
         if (ReferenceEquals(s.Pointer.Captured, s.Source)) s.Pointer.Capture(null);
+        RestoreCursor(s);
+    }
+
+    /// <summary>Centre of the ghost's champion icon (padding 6 + half of the 36 px image).</summary>
+    private static readonly Point GhostAnchor = new(6 + 18, 6 + 18);
+
+    private static readonly Cursor NoCursor = new(StandardCursorType.None);
+
+    /// <summary>
+    /// The visible cursor comes from the element under the pointer, which during a drag is the captured source; the
+    /// window is set too in case capture is lost. Original values are restored afterwards.
+    /// </summary>
+    private static void HideCursor(Session s)
+    {
+        foreach (var element in new InputElement[] { s.Source, s.Root })
+        {
+            s.SavedCursors.Add((element, element.IsSet(InputElement.CursorProperty), element.Cursor));
+            element.Cursor = NoCursor;
+        }
+    }
+
+    private static void RestoreCursor(Session s)
+    {
+        foreach (var (element, wasSet, cursor) in s.SavedCursors)
+        {
+            if (wasSet) element.Cursor = cursor;
+            else element.ClearValue(InputElement.CursorProperty);
+        }
+        s.SavedCursors.Clear();
     }
 
     private sealed class Session(Control source, IDragPayload? payload, Point start, IPointer pointer, TopLevel root)
@@ -436,6 +467,7 @@ public static class Dnd
         public object? RelativeItem { get; set; }
         public bool After { get; set; }
         public List<Control> Highlighted { get; } = [];
+        public List<(InputElement Element, bool WasSet, Cursor? Cursor)> SavedCursors { get; } = [];
         public DispatcherTimer? ScrollTimer { get; set; }
     }
 }

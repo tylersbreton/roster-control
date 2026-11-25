@@ -273,6 +273,32 @@ public sealed class RosterRepository
         return copy.Id;
     }, ct);
 
+    /// <summary>All builds of all champions (for searching notes).</summary>
+    public async Task<IReadOnlyList<Build>> GetAllBuildsAsync(CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        return await db.Builds.AsNoTracking().ToListAsync(ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Marks a build as the default for its role (clearing any other default of the same champion and role), or
+    /// clears it. Doesn't touch the build's patch or edit time.
+    /// </summary>
+    public Task SetDefaultBuildAsync(int buildId, bool isDefault, CancellationToken ct = default) => WriteAsync(async db =>
+    {
+        var build = await db.Builds.FirstOrDefaultAsync(b => b.Id == buildId, ct).ConfigureAwait(false);
+        if (build is null) return 0;
+        if (isDefault)
+        {
+            var championId = build.ChampionId;
+            var role = build.Role;
+            await db.Builds.Where(b => b.ChampionId == championId && b.Role == role && b.Id != buildId && b.IsDefault)
+                .ExecuteUpdateAsync(s => s.SetProperty(b => b.IsDefault, false), ct).ConfigureAwait(false);
+        }
+        build.IsDefault = isDefault;
+        return await db.SaveChangesAsync(ct).ConfigureAwait(false);
+    }, ct);
+
     public Task DeleteBuildAsync(int buildId, CancellationToken ct = default) => WriteAsync(async db =>
         await db.Builds.Where(b => b.Id == buildId).ExecuteDeleteAsync(ct).ConfigureAwait(false), ct);
 
@@ -387,6 +413,7 @@ public sealed class RosterRepository
         Name = b.Name,
         Role = b.Role,
         SortOrder = b.SortOrder,
+        IsDefault = b.IsDefault,
         GameVersion = b.GameVersion,
         Runes = (b.Runes ?? new RunePageData()).Clone(),
         Items = (b.Items ?? new ItemSetData()).Clone(),

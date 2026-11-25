@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using RosterControl.Core.GameData;
+using RosterControl.Core.Rules;
 
 namespace RosterControl.Desktop.ViewModels;
 
@@ -9,7 +10,11 @@ namespace RosterControl.Desktop.ViewModels;
 public sealed partial class CommandPaletteViewModel : ObservableObject
 {
     private const int MaxChampions = 7;
+    private const int MaxNotes = 6;
+    private const int MinNoteQuery = 3;
     private readonly MainWindowViewModel _main;
+    private IReadOnlyList<NoteEntry> _notes = [];
+    private int _notesVersion;
 
     public CommandPaletteViewModel(MainWindowViewModel main) => _main = main;
 
@@ -39,6 +44,35 @@ public sealed partial class CommandPaletteViewModel : ObservableObject
         Query = "";
         Refresh();
         IsOpen = true;
+        _ = LoadNotesAsync();
+    }
+
+    /// <summary>Champion, build and matchup notes, loaded each time the palette opens (they change while editing).</summary>
+    private async Task LoadNotesAsync()
+    {
+        var version = ++_notesVersion;
+        try
+        {
+            await _main.Saves.FlushAsync();
+            var repo = _main.Repository;
+            var profiles = await repo.GetProfilesAsync();
+            var builds = await repo.GetAllBuildsAsync();
+            var matchups = await repo.GetMatchupsAsync();
+            var entries = new List<NoteEntry>();
+            entries.AddRange(profiles.Where(p => !string.IsNullOrWhiteSpace(p.Notes))
+                .Select(p => new NoteEntry(p.ChampionId, NoteKind.Champion, p.Notes, null, null)));
+            entries.AddRange(builds.Where(b => !string.IsNullOrWhiteSpace(b.Notes))
+                .Select(b => new NoteEntry(b.ChampionId, NoteKind.Build, b.Notes, b.Name, b.Id)));
+            entries.AddRange(matchups.Where(m => !string.IsNullOrWhiteSpace(m.Note))
+                .Select(m => new NoteEntry(m.ChampionId, NoteKind.Matchup, m.Note, m.OpponentId, null)));
+            if (version != _notesVersion) return;
+            _notes = entries;
+            if (IsOpen && Query.Trim().Length >= MinNoteQuery) Refresh();
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Could not load notes for search");
+        }
     }
 
     [RelayCommand]
@@ -79,6 +113,7 @@ public sealed partial class CommandPaletteViewModel : ObservableObject
                 .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
                 .Take(MaxChampions);
             foreach (var c in champions) Results.Add(ChampionItem(game, c, null));
+            foreach (var item in NoteResults(game, Query.Trim())) Results.Add(item);
             foreach (var item in Actions().Where(a => ChampionInfo.Normalize(a.Title + " " + a.Subtitle).Contains(query, StringComparison.Ordinal)))
                 Results.Add(item);
         }
@@ -94,6 +129,31 @@ public sealed partial class CommandPaletteViewModel : ObservableObject
         var subtitle = groups.Count > 0 ? "In " + string.Join(", ", groups) : champion.Title;
         if (prefix is not null) subtitle = prefix + " · " + subtitle;
         return new PaletteItem(champion.Name, subtitle, AssetUrls.ChampionSquare(game.Version, champion.ImageFile), null, () => _main.OpenChampion(champion.Id));
+    }
+
+    private IEnumerable<PaletteItem> NoteResults(GameDataSnapshot game, string query)
+    {
+        if (query.Length < MinNoteQuery) yield break;
+        var count = 0;
+        foreach (var note in _notes)
+        {
+            if (NoteFormat.Snippet(note.Text, query) is not { } snippet) continue;
+            if (game.Champion(note.ChampionId) is not { } champion) continue;
+            var icon = AssetUrls.ChampionSquare(game.Version, champion.ImageFile);
+            var (where, run) = note.Kind switch
+            {
+                NoteKind.Build => ($"{champion.Name} · {note.Context} build notes", (Action)(() =>
+                {
+                    _main.Preferences.Set("build.editorTab", 3); // the build's Notes tab
+                    _main.OpenChampion(champion.Id, ChampionTab.Builds, buildId: note.BuildId);
+                })),
+                NoteKind.Matchup => ($"{champion.Name} vs {game.Champion(note.Context ?? "")?.Name ?? note.Context} · matchup note",
+                    () => _main.OpenChampion(champion.Id, ChampionTab.Matchups)),
+                _ => ($"{champion.Name} · champion notes", (Action)(() => _main.OpenChampion(champion.Id, ChampionTab.Notes))),
+            };
+            yield return new PaletteItem(snippet, where, icon, null, run);
+            if (++count >= MaxNotes) yield break;
+        }
     }
 
     private IEnumerable<PaletteItem> Actions()
@@ -113,6 +173,14 @@ public sealed partial class CommandPaletteViewModel : ObservableObject
         });
         yield return new PaletteItem("Check for a new patch", "Action · game data", null, "refresh-cw", () => _ = _main.ReloadGameDataAsync(force: false));
         yield return new PaletteItem("Export backup…", "Action · Settings", null, "download", () => _main.Settings?.ExportCommand.Execute(null));
+        yield return new PaletteItem("Paste build code", "Action · add a shared build from the clipboard", null, "clipboard-paste", async () =>
+        {
+            if (await _main.ImportSharedBuildAsync(null) is { } build)
+            {
+                _main.OpenChampion(build.ChampionId, ChampionTab.Builds, buildId: build.Id);
+                _main.ShowToast($"Added build \"{build.Name}\"", ToastKind.Success);
+            }
+        });
         yield return new PaletteItem("Support development", "GitHub Sponsors", null, "heart", () => SettingsViewModel.OpenUrl(SettingsViewModel.SponsorUrl));
         yield return new PaletteItem("Zoom in", "Action · Ctrl+=", null, "plus", () => _main.ZoomInCommand.Execute(null));
         yield return new PaletteItem("Zoom out", "Action · Ctrl+-", null, "minus", () => _main.ZoomOutCommand.Execute(null));
@@ -133,3 +201,13 @@ public sealed partial class PaletteItem(string title, string subtitle, string? i
     [ObservableProperty]
     private bool _isSelected;
 }
+
+internal enum NoteKind
+{
+    Champion,
+    Build,
+    Matchup,
+}
+
+/// <param name="Context">Build name, or the opponent's id for a matchup.</param>
+internal sealed record NoteEntry(string ChampionId, NoteKind Kind, string Text, string? Context, int? BuildId);

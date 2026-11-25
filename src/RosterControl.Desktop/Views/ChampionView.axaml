@@ -148,21 +148,30 @@
         <Grid RowDefinitions="Auto,*">
           <Grid ColumnDefinitions="*,Auto" Margin="14,12,10,8">
             <TextBlock Text="SAVED BUILDS" Classes="overline" VerticalAlignment="Center" />
-            <Button Grid.Column="1" Classes="ghost small" Command="{Binding AddBuildCommand}" ToolTip.Tip="New build">
-              <StackPanel Orientation="Horizontal" Spacing="5">
-                <c:LucideIcon Kind="plus" Width="14" Height="14" Foreground="{StaticResource Brush.Gold}" />
-                <TextBlock Text="New" FontSize="12" Foreground="{StaticResource Brush.Gold}" FontWeight="SemiBold" />
-              </StackPanel>
-            </Button>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+              <Button Classes="ghost icon" Width="28" Height="28" Command="{Binding PasteShareCodeCommand}" ToolTip.Tip="Paste build code: add a build someone shared with you (copy their RC1: code first)">
+                <c:LucideIcon Kind="clipboard-paste" Width="14" Height="14" />
+              </Button>
+              <Button Classes="ghost small" Command="{Binding AddBuildCommand}" ToolTip.Tip="New build (Ctrl+N)">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                  <c:LucideIcon Kind="plus" Width="14" Height="14" Foreground="{StaticResource Brush.Gold}" />
+                  <TextBlock Text="New" FontSize="12" Foreground="{StaticResource Brush.Gold}" FontWeight="SemiBold" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
           </Grid>
-          <ScrollViewer Grid.Row="1">
+          <ScrollViewer Grid.Row="1" c:Dnd.Target="{Binding BuildDrop}">
             <ItemsControl Margin="8,0,8,8" ItemsSource="{Binding Builds}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:BuildViewModel">
                   <Border Classes="tile" Classes.selectedbuild="{Binding IsSelected}" Padding="10,9" Margin="0,0,0,4" BorderThickness="1" BorderBrush="Transparent"
+                          c:Dnd.Payload="{Binding DragData}" c:Dnd.Item="{Binding}"
                           c:Dnd.ClickCommand="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).SelectBuildCommand}">
                     <Border.ContextMenu>
                       <ContextMenu>
+                        <MenuItem Header="{Binding DefaultMenuText}" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).ToggleDefaultCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="star" /></MenuItem.Icon></MenuItem>
+                        <MenuItem Header="Copy share code" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).CopyShareCodeCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="share-2" /></MenuItem.Icon></MenuItem>
+                        <Separator />
                         <MenuItem Header="Duplicate" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).DuplicateBuildCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="copy" /></MenuItem.Icon></MenuItem>
                         <MenuItem Header="Move up" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).MoveBuildUpCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="chevron-up" /></MenuItem.Icon></MenuItem>
                         <MenuItem Header="Move down" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).MoveBuildDownCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="chevron-down" /></MenuItem.Icon></MenuItem>
@@ -182,7 +191,13 @@
                           <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                           <TextBlock Text="{Binding RuneSummary}" Classes="caption" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
-                        <c:AssetImage Grid.Column="2" Source="{Binding RoleIconUrl}" Width="16" Height="16" CornerRadius="0" ShowPlaceholder="False" IsVisible="{Binding HasRole}" VerticalAlignment="Top" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5" VerticalAlignment="Top">
+                          <Button Classes="plain" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).ToggleDefaultCommand}" CommandParameter="{Binding}"
+                                  ToolTip.Tip="{Binding DefaultTip}" IsVisible="{Binding IsDefault}">
+                            <c:LucideIcon Kind="star" Width="14" Height="14" Foreground="{StaticResource Brush.Gold}" Fill="{StaticResource Brush.Gold}" />
+                          </Button>
+                          <c:AssetImage Source="{Binding RoleIconUrl}" Width="16" Height="16" CornerRadius="0" ShowPlaceholder="False" IsVisible="{Binding HasRole}" />
+                        </StackPanel>
                       </Grid>
                       <StackPanel Orientation="Horizontal" Spacing="3">
                         <ItemsControl ItemsSource="{Binding SummarySpells}">
@@ -241,7 +256,7 @@
             <TextBlock Text="CHAMPION NOTES" Classes="overline" />
             <TextBlock Text="Power spikes, combos, wave management, reminders — anything you want to remember. Saved automatically." Classes="caption" />
           </StackPanel>
-          <TextBox Grid.Row="1" Text="{Binding Notes}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" PlaceholderText="Write your notes for this champion…" Padding="12,10" />
+          <c:NotesEditor Grid.Row="1" Text="{Binding Notes}" PlaceholderText="Write your notes for this champion… (- bullets, [ ] checkboxes, **bold**)" />
         </Grid>
       </Border>
       <Border Grid.Column="2" Classes="card" Padding="16,14" VerticalAlignment="Top">

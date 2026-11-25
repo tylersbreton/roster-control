@@ -15,9 +15,13 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
     private bool _loaded;
     private bool _profileLoading;
 
-    public ChampionDetailViewModel(IShell shell, ChampionInfo champion, ChampionTab tab, ChampionSequence? sequence = null)
+    private int? _initialBuildId;
+
+    public ChampionDetailViewModel(IShell shell, ChampionInfo champion, ChampionTab tab, ChampionSequence? sequence = null, int? initialBuildId = null)
     {
         _shell = shell;
+        _initialBuildId = initialBuildId;
+        BuildDrop = new BuildListDropTarget(this);
         Champion = champion;
         _selectedTab = (int)tab;
         Sequence = sequence;
@@ -183,8 +187,9 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
 
         var builds = await _shell.Repository.GetBuildsAsync(Champion.Id);
         Builds.Clear();
-        foreach (var b in builds) Builds.Add(new BuildViewModel(_shell, b));
-        SelectedBuild = Builds.FirstOrDefault();
+        foreach (var b in builds) Builds.Add(Track(new BuildViewModel(_shell, b)));
+        SelectedBuild = (_initialBuildId is { } id ? Builds.FirstOrDefault(b => b.Model.Id == id) : null) ?? PickInitialBuild();
+        _initialBuildId = null;
         NotifyBuilds();
 
         await Matchups.LoadAsync();
@@ -246,7 +251,7 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
             Items = ItemSetData.CreateDefault(),
         };
         build.Id = await _shell.Repository.SaveBuildAsync(build);
-        var vm = new BuildViewModel(_shell, build);
+        var vm = Track(new BuildViewModel(_shell, build));
         Builds.Add(vm);
         SelectedBuild = vm;
         NotifyBuilds();
@@ -259,7 +264,7 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
         await _shell.Saves.FlushAsync();
         var copy = build.Model.CloneAsNew(build.Name + " (copy)");
         copy.Id = await _shell.Repository.SaveBuildAsync(copy);
-        var vm = new BuildViewModel(_shell, copy);
+        var vm = Track(new BuildViewModel(_shell, copy));
         Builds.Insert(Builds.IndexOf(build) + 1, vm);
         await _shell.Repository.ReorderBuildsAsync(Builds.Select(b => b.Model.Id).ToList());
         SelectedBuild = vm;
@@ -280,10 +285,11 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
         _shell.MarkDirty();
         var snapshot = build.Model.CloneAsNew(build.Name);
         snapshot.GameVersion = build.Model.GameVersion;
+        snapshot.IsDefault = build.Model.IsDefault;
         _shell.ShowToast($"Deleted build \"{build.Name}\"", ToastKind.Info, "Undo", async () =>
         {
             snapshot.Id = await _shell.Repository.SaveBuildAsync(snapshot);
-            var vm = new BuildViewModel(_shell, snapshot);
+            var vm = Track(new BuildViewModel(_shell, snapshot));
             Builds.Insert(Math.Clamp(index, 0, Builds.Count), vm);
             await _shell.Repository.ReorderBuildsAsync(Builds.Select(b => b.Model.Id).ToList());
             SelectedBuild = vm;
@@ -312,6 +318,116 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
 
     [RelayCommand]
     private void SelectBuild(BuildViewModel build) => SelectedBuild = build;
+
+    /// <summary>Selects a build by id (e.g. from a notes search result).</summary>
+    public void SelectBuildById(int buildId)
+    {
+        if (!_loaded) _initialBuildId = buildId;
+        else if (Builds.FirstOrDefault(b => b.Model.Id == buildId) is { } build) SelectedBuild = build;
+    }
+
+    // ── Default build per role ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>The role the champion was opened for: the group it was opened from, or its only placement.</summary>
+    private Position? ContextRole => Sequence?.Role ?? (Placements.Count == 1 ? Placements[0].Role : null);
+
+    /// <summary>Default for the context role, then the any-role default, then the first build for that role, then the first.</summary>
+    internal BuildViewModel? PickInitialBuild()
+    {
+        var role = ContextRole;
+        var defaults = Builds.Where(b => b.IsDefault).ToList();
+        return (role is not null ? defaults.FirstOrDefault(b => b.Role == role) : null)
+               ?? defaults.FirstOrDefault(b => b.Role is null)
+               ?? (role is not null ? Builds.FirstOrDefault(b => b.Role == role) : null)
+               ?? (role is null ? defaults.FirstOrDefault() : null)
+               ?? Builds.FirstOrDefault();
+    }
+
+    [RelayCommand]
+    private async Task ToggleDefaultAsync(BuildViewModel build)
+    {
+        var make = !build.IsDefault;
+        await _shell.Saves.FlushAsync();
+        if (make)
+            foreach (var other in Builds.Where(b => !ReferenceEquals(b, build) && b.IsDefault && b.Role == build.Role))
+                other.SetDefault(false);
+        build.SetDefault(make);
+        await _shell.Repository.SetDefaultBuildAsync(build.Model.Id, make);
+        _shell.MarkDirty();
+    }
+
+    /// <summary>A default build moved to another role takes over as that role's default.</summary>
+    private BuildViewModel Track(BuildViewModel build)
+    {
+        build.PropertyChanged += async (_, e) =>
+        {
+            if (e.PropertyName != nameof(BuildViewModel.Role) || !build.IsDefault) return;
+            foreach (var other in Builds.Where(b => !ReferenceEquals(b, build) && b.IsDefault && b.Role == build.Role))
+                other.SetDefault(false);
+            await _shell.Saves.FlushAsync();
+            await _shell.Repository.SetDefaultBuildAsync(build.Model.Id, true);
+        };
+        return build;
+    }
+
+    // ── Reorder by dragging ────────────────────────────────────────────────────────────────────────
+
+    public BuildListDropTarget BuildDrop { get; }
+
+    internal async Task MoveBuildAsync(BuildViewModel build, BuildViewModel? relativeTo, bool after)
+    {
+        var from = Builds.IndexOf(build);
+        if (from < 0) return;
+        int to;
+        if (relativeTo is null) to = Builds.Count - 1; // dropped below the list: move to the end
+        else
+        {
+            var insertAt = Builds.IndexOf(relativeTo) + (after ? 1 : 0);
+            to = insertAt > from ? insertAt - 1 : insertAt; // removing the build shifts the later ones up
+        }
+        to = Math.Clamp(to, 0, Builds.Count - 1);
+        if (to == from) return;
+        Builds.Move(from, to);
+        await _shell.Repository.ReorderBuildsAsync(Builds.Select(b => b.Model.Id).ToList());
+    }
+
+    // ── Share codes ────────────────────────────────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private async Task CopyShareCodeAsync(BuildViewModel? build)
+    {
+        build ??= SelectedBuild;
+        if (build is null) return;
+        await _shell.Saves.FlushAsync();
+        var code = Core.Rules.BuildShareCode.Encode(build.Model);
+        var text = $"{Champion.Name} · {build.Name} — Roster Control build: {code}";
+        if (await _shell.CopyTextAsync(text))
+            _shell.ShowToast($"Build code for \"{build.Name}\" copied. Share it anywhere; others add it with Paste build code.", ToastKind.Success);
+        else
+            _shell.ShowToast("Couldn't access the clipboard.", ToastKind.Error);
+    }
+
+    [RelayCommand]
+    private async Task PasteShareCodeAsync()
+    {
+        var build = await _shell.ImportSharedBuildAsync(Champion.Id);
+        if (build is null) return;
+        if (string.Equals(build.ChampionId, Champion.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            var vm = Track(new BuildViewModel(_shell, build));
+            Builds.Add(vm);
+            SelectedBuild = vm;
+            SelectedTab = (int)ChampionTab.Builds;
+            NotifyBuilds();
+            _shell.ShowToast($"Added build \"{build.Name}\"", ToastKind.Success);
+        }
+        else
+        {
+            var name = _shell.Game.Champion(build.ChampionId)?.Name ?? build.ChampionId;
+            _shell.ShowToast($"Added \"{build.Name}\" to {name}", ToastKind.Success, "Open",
+                () => { _shell.OpenChampion(build.ChampionId, ChampionTab.Builds, buildId: build.Id); return Task.CompletedTask; });
+        }
+    }
 
     private void NotifyBuilds()
     {
@@ -345,6 +461,18 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
         var tags = UserTags.ToList();
         _shell.Saves.Schedule(("profile", Champion.Id), () => _shell.Repository.SaveProfileAsync(Champion.Id, notes, tags));
         _shell.MarkDirty();
+    }
+}
+
+/// <summary>The build list: accepts this champion's builds dragged to a new position.</summary>
+public sealed class BuildListDropTarget(ChampionDetailViewModel owner) : IDropTarget
+{
+    public bool CanAccept(IDragPayload payload) => payload is BuildDragData d && owner.Builds.Contains(d.Build);
+    public string? Describe(IDragPayload payload, bool copy) => "Move here";
+
+    public void Drop(IDragPayload payload, object? relativeTo, bool after, bool copy)
+    {
+        if (payload is BuildDragData d) _ = owner.MoveBuildAsync(d.Build, relativeTo as BuildViewModel, after);
     }
 }
 

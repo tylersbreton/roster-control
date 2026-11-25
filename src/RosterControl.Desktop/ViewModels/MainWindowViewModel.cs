@@ -340,14 +340,14 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
         if (page is IPage p) await p.OnNavigatedToAsync();
     }
 
-    public void OpenChampion(string championId, ChampionTab? tab = null, ChampionSequence? sequence = null) =>
-        _ = OpenChampionAsync(championId, tab, sequence, replace: false);
+    public void OpenChampion(string championId, ChampionTab? tab = null, ChampionSequence? sequence = null, int? buildId = null) =>
+        _ = OpenChampionAsync(championId, tab, sequence, replace: false, buildId);
 
     /// <summary>Previous/next within a sequence: replaces the current champion page (Back still returns to the list).</summary>
     public void ShowChampionInSequence(string championId, ChampionTab tab, ChampionSequence sequence) =>
         _ = OpenChampionAsync(championId, tab, sequence, replace: true);
 
-    private async Task OpenChampionAsync(string championId, ChampionTab? tab, ChampionSequence? sequence, bool replace)
+    private async Task OpenChampionAsync(string championId, ChampionTab? tab, ChampionSequence? sequence, bool replace, int? buildId = null)
     {
         if (_game?.Champion(championId) is not { } champion) return;
         await _saves.FlushAsync();
@@ -356,7 +356,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
             if (CurrentPage is not null) _history.Push((CurrentSection, CurrentPage));
         }
         CanGoBack = _history.Count > 0;
-        var page = new ChampionDetailViewModel(this, champion, tab ?? _preferences.Get(ChampionTabKey, ChampionTab.Builds), sequence);
+        var page = new ChampionDetailViewModel(this, champion, tab ?? _preferences.Get(ChampionTabKey, ChampionTab.Builds), sequence, buildId);
         page.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(ChampionDetailViewModel.SelectedTab)) _preferences.Set(ChampionTabKey, (ChampionTab)page.SelectedTab);
@@ -445,6 +445,61 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
     }
 
     // ── Dialogs & toasts ───────────────────────────────────────────────────────────────────────────
+
+    public async Task<bool> CopyTextAsync(string text)
+    {
+        if (_topLevel?.Invoke()?.Clipboard is not { } clipboard) return false;
+        try
+        {
+            await Avalonia.Input.Platform.ClipboardExtensions.SetTextAsync(clipboard, text);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Clipboard write failed");
+            return false;
+        }
+    }
+
+    private async Task<string?> ReadTextAsync()
+    {
+        if (_topLevel?.Invoke()?.Clipboard is not { } clipboard) return null;
+        try
+        {
+            return await Avalonia.Input.Platform.ClipboardExtensions.TryGetTextAsync(clipboard);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Clipboard read failed");
+            return null;
+        }
+    }
+
+    public async Task<Core.Model.Build?> ImportSharedBuildAsync(string? targetChampionId)
+    {
+        var text = await ReadTextAsync();
+        if (!Core.Rules.BuildShareCode.TryDecode(text, out var build, out var error))
+        {
+            ShowToast(string.IsNullOrWhiteSpace(text) ? "Copy a build code (it starts with RC1:) first, then paste it here." : error!, ToastKind.Warning);
+            return null;
+        }
+        if (_game?.Champion(build.ChampionId) is not { } champion)
+        {
+            ShowToast($"That build is for a champion that isn't in patch {_game?.Version} yet.", ToastKind.Warning);
+            return null;
+        }
+        build.ChampionId = champion.Id;
+        if (targetChampionId is not null && !string.Equals(targetChampionId, champion.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            var here = _game.Champion(targetChampionId)?.Name ?? targetChampionId;
+            if (!await ConfirmAsync($"Add to {champion.Name}?", $"This code is a {champion.Name} build, not a {here} build. It will be added to {champion.Name}'s builds.", $"Add to {champion.Name}", danger: false))
+                return null;
+        }
+        build.GameVersion ??= _game.Version;
+        build.Id = await _repository.SaveBuildAsync(build);
+        MarkDirty();
+        return build;
+    }
 
     public async Task<bool> ConfirmAsync(string title, string message, string confirmText, bool danger = true)
     {

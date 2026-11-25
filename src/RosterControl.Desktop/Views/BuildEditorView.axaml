@@ -23,6 +23,10 @@
           </ComboBox>
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+          <Button Classes="ghost icon" ToolTip.Tip="Copy share code (paste it in Discord; friends add it with Paste build code)"
+                  Command="{Binding $parent[v:ChampionView].((vm:ChampionDetailViewModel)DataContext).CopyShareCodeCommand}" CommandParameter="{Binding}">
+            <c:LucideIcon Kind="share-2" />
+          </Button>
           <Button Classes="ghost icon" ToolTip.Tip="Copy this build to another champion">
             <c:LucideIcon Kind="layers" />
             <Button.Flyout>
@@ -83,8 +87,8 @@
         <v:RunePageView DataContext="{Binding Runes}" IsVisible="{Binding $parent[v:BuildEditorView].((vm:BuildViewModel)DataContext).IsRunesTab}" />
         <v:ItemSetView DataContext="{Binding Items}" IsVisible="{Binding $parent[v:BuildEditorView].((vm:BuildViewModel)DataContext).IsItemsTab}" />
         <v:SpellsSkillsView DataContext="{Binding SpellsSkills}" IsVisible="{Binding $parent[v:BuildEditorView].((vm:BuildViewModel)DataContext).IsSpellsTab}" />
-        <TextBox Text="{Binding Notes}" IsVisible="{Binding IsNotesTab}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" Padding="12,10"
-                 PlaceholderText="Notes for this build: when to take it, power spikes, what to build against what…" />
+        <c:NotesEditor Text="{Binding Notes}" IsVisible="{Binding IsNotesTab}"
+                       PlaceholderText="Notes for this build: when to take it, power spikes, what to build against what… (- bullets, [ ] checkboxes, **bold**)" />
       </Panel>
     </Grid>
   </Border>

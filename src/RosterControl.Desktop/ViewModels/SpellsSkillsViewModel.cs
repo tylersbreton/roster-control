@@ -293,6 +293,8 @@ public sealed partial class BuildViewModel : ObservableObject
         _name = model.Name;
         _role = model.Role;
         _notes = model.Notes;
+        _isDefault = model.IsDefault;
+        DragData = new BuildDragData(this);
         SavedOnPatch = model.GameVersion is { } v && v != shell.Game.Version ? v : null;
         _editorTab = Math.Clamp(shell.Preferences.Get("build.editorTab", 0), 0, 3);
         _loading = false;
@@ -301,6 +303,23 @@ public sealed partial class BuildViewModel : ObservableObject
 
     public Build Model { get; }
     public GameDataSnapshot Game => _shell.Game;
+    public BuildDragData DragData { get; }
+
+    /// <summary>The go-to build for its role: opened first when the champion is opened from that role's group.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DefaultTip), nameof(DefaultMenuText))]
+    private bool _isDefault;
+
+    private string RoleName => Role is { } r ? r.DisplayName() : "any role";
+    public string DefaultTip => IsDefault ? $"Default build for {RoleName}" : "";
+    public string DefaultMenuText => IsDefault ? "Remove as default" : $"Set as default for {RoleName}";
+
+    /// <summary>Changes the flag without counting as an edit (the patch the build was saved on is kept).</summary>
+    internal void SetDefault(bool value)
+    {
+        Model.IsDefault = value;
+        IsDefault = value;
+    }
     public IReadOnlyList<RoleChoice> RoleChoices { get; } =
         new[] { new RoleChoice(null, "Any role") }.Concat(PositionInfo.All.Select(p => new RoleChoice(p, p.DisplayName()))).ToList();
 
@@ -408,6 +427,8 @@ public sealed partial class BuildViewModel : ObservableObject
     partial void OnRoleChanged(Position? value)
     {
         Model.Role = value;
+        OnPropertyChanged(nameof(DefaultTip));
+        OnPropertyChanged(nameof(DefaultMenuText));
         OnPropertyChanged(nameof(SelectedRole));
         OnPropertyChanged(nameof(RoleIconUrl));
         OnPropertyChanged(nameof(HasRole));
@@ -448,6 +469,14 @@ public sealed partial class BuildViewModel : ObservableObject
         var order = SkillOrderRules.MaxOrder(Model.SkillOrder);
         SkillSummary = order.Count == 0 ? "" : string.Join(" › ", order);
     }
+}
+
+/// <summary>A build being dragged to reorder the build list.</summary>
+public sealed class BuildDragData(BuildViewModel build) : Controls.IDragPayload
+{
+    public BuildViewModel Build { get; } = build;
+    public string? ImageUrl => Build.KeystoneIconUrl;
+    public string Label => Build.Name;
 }
 
 public sealed record RoleChoice(Position? Role, string Label)

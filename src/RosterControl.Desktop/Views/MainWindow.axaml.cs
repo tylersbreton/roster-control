@@ -74,6 +74,9 @@ public partial class MainWindow : Window
     {
         _preferences = preferences;
         RestorePlacement();
+        // Remember the last normal (not maximised / full screen) bounds, so closing while maximised keeps them.
+        PositionChanged += (_, _) => TrackNormalBounds();
+        SizeChanged += (_, _) => TrackNormalBounds();
         TitleBar.PointerPressed += (_, e) =>
         {
             if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed || e.Source is Button) return;
@@ -202,13 +205,35 @@ public partial class MainWindow : Window
 
     private sealed record Placement(int X, int Y, double Width, double Height, bool Maximized);
 
+    private Placement? _normal;
+
+    private void TrackNormalBounds()
+    {
+        if (WindowState == WindowState.Normal && IsVisible && Width > 0 && Height > 0)
+            _normal = new Placement(Position.X, Position.Y, Width, Height, false);
+    }
+
     private void RestorePlacement()
     {
         var p = _preferences?.Get<Placement?>(PlacementKey, null);
-        if (p is null) return;
-        var rect = new PixelRect(p.X, p.Y, (int)p.Width, (int)p.Height);
-        var onScreen = Screens.All.Any(s => s.WorkingArea.Intersects(rect));
-        if (!onScreen) return;
+        if (p is null || p.Width < 200 || p.Height < 150) return;
+        // Only restore where the title bar is reachable (a monitor may have been unplugged or rearranged).
+        var titleBar = new PixelRect(p.X, p.Y, Math.Max(1, (int)p.Width), 40);
+        var reachable = Screens.All.Any(s =>
+        {
+            var visible = s.WorkingArea.Intersect(titleBar);
+            return visible.Width >= 120 && visible.Height >= 20;
+        });
+        if (!reachable)
+        {
+            // Keep the size and maximised state, centred on the main screen.
+            Width = Math.Max(MinWidth, p.Width);
+            Height = Math.Max(MinHeight, p.Height);
+            WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            if (p.Maximized) WindowState = WindowState.Maximized;
+            return;
+        }
+        _normal = p with { Maximized = false };
         WindowStartupLocation = WindowStartupLocation.Manual;
         Position = new PixelPoint(p.X, p.Y);
         Width = Math.Max(MinWidth, p.Width);
@@ -223,10 +248,9 @@ public partial class MainWindow : Window
             // Never reopen in full screen; when maximised keep the last normal size so un-maximising restores it.
             var state = WindowState == WindowState.FullScreen ? _stateBeforeFullScreen : WindowState;
             var maximized = state == WindowState.Maximized;
-            var previous = _preferences.Get<Placement?>(PlacementKey, null);
-            var placement = (maximized || WindowState == WindowState.FullScreen) && previous is not null
-                ? previous with { Maximized = maximized }
-                : new Placement(Position.X, Position.Y, Width, Height, maximized);
+            var placement = WindowState == WindowState.Normal
+                ? new Placement(Position.X, Position.Y, Width, Height, false)
+                : (_normal ?? _preferences.Get<Placement?>(PlacementKey, null) ?? new Placement(Position.X, Position.Y, Width, Height, false)) with { Maximized = maximized };
             _preferences.Set(PlacementKey, placement);
         }
         base.OnClosing(e);

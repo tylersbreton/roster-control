@@ -407,7 +407,7 @@ public sealed partial class RosterGroupViewModel : ObservableObject, IDropTarget
         });
     }
 
-    public ChampionSequence Sequence => new(Entries.Select(e => e.ChampionId).ToList(), Name);
+    public ChampionSequence Sequence => new(Entries.Select(e => e.ChampionId).ToList(), Name, Role);
 
     // ── Drop target ────────────────────────────────────────────────────────────────────────────────
 

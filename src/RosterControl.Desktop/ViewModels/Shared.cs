@@ -37,7 +37,8 @@ public interface IShell
 
     /// <param name="tab">Tab to show; null = the tab used last.</param>
     /// <param name="sequence">The list the champion was opened from, for previous/next navigation.</param>
-    void OpenChampion(string championId, ChampionTab? tab = null, ChampionSequence? sequence = null);
+    /// <param name="buildId">Build to select (e.g. one just added); null = the default build.</param>
+    void OpenChampion(string championId, ChampionTab? tab = null, ChampionSequence? sequence = null, int? buildId = null);
 
     /// <summary>Previous/next within a sequence: replaces the current champion page.</summary>
     void ShowChampionInSequence(string championId, ChampionTab tab, ChampionSequence sequence);
@@ -46,6 +47,14 @@ public interface IShell
     void ShowToast(string message, ToastKind kind = ToastKind.Info, string? actionText = null, Func<Task>? action = null);
 
     Task<bool> ConfirmAsync(string title, string message, string confirmText, bool danger = true);
+
+    Task<bool> CopyTextAsync(string text);
+
+    /// <summary>
+    /// Reads a build share code from the clipboard and saves it. When it's for a different champion than
+    /// <paramref name="targetChampionId"/>, asks first. Returns the saved build, or null (with a toast saying why).
+    /// </summary>
+    Task<Build?> ImportSharedBuildAsync(string? targetChampionId);
     Task NavigateAsync(Section section, bool pushHistory = false);
     /// <summary>Roster/builds/matchups changed: pages refresh their derived data when next shown.</summary>
     void MarkDirty();
@@ -65,7 +74,8 @@ public interface IKeyboardPage
 }
 
 /// <summary>An ordered list of champions (a roster group, a filtered grid…) for previous/next on the champion page.</summary>
-public sealed record ChampionSequence(IReadOnlyList<string> ChampionIds, string Label);
+/// <param name="Role">The group's role, if any: the champion page opens that role's default build.</param>
+public sealed record ChampionSequence(IReadOnlyList<string> ChampionIds, string Label, Position? Role = null);
 
 /// <summary>Small helpers for remembering UI state in preferences.</summary>
 public static class UiState
