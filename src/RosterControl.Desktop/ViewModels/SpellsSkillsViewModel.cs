@@ -294,6 +294,7 @@ public sealed partial class BuildViewModel : ObservableObject
         _role = model.Role;
         _notes = model.Notes;
         SavedOnPatch = model.GameVersion is { } v && v != shell.Game.Version ? v : null;
+        _editorTab = Math.Clamp(shell.Preferences.Get("build.editorTab", 0), 0, 3);
         _loading = false;
         RefreshSummary();
     }
@@ -309,7 +310,7 @@ public sealed partial class BuildViewModel : ObservableObject
         get
         {
             if (_items is not null) return _items;
-            _items = new ItemSetViewModel(Game, Model.Items, Model.GameVersion, () => { RefreshSummary(); Changed(); });
+            _items = new ItemSetViewModel(Game, Model.Items, Model.GameVersion, () => { RefreshSummary(); Changed(); }, _shell);
             var items = _items;
             if (SavedOnPatch is { } patch) _ = LoadPatchBaselineAsync(items, patch);
             return items;
@@ -356,6 +357,8 @@ public sealed partial class BuildViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsRunesTab), nameof(IsItemsTab), nameof(IsSpellsTab), nameof(IsNotesTab))]
     private int _editorTab;
+
+    partial void OnEditorTabChanged(int value) => _shell.Preferences.Set("build.editorTab", value);
 
     public bool IsRunesTab { get => EditorTab == 0; set { if (value) EditorTab = 0; } }
     public bool IsItemsTab { get => EditorTab == 1; set { if (value) EditorTab = 1; } }

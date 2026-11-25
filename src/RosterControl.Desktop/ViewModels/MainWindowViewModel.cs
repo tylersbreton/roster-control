@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -22,9 +24,13 @@ public enum Section
     Champion,
 }
 
-/// <summary>Application shell: loading, navigation, dialogs and toasts.</summary>
+/// <summary>Application shell: loading, navigation, keyboard shortcuts, search palette, dialogs and toasts.</summary>
 public sealed partial class MainWindowViewModel : ObservableObject, IShell
 {
+    private const string ChampionTabKey = "ui.championTab";
+    private const string ScaleKey = "ui.scale";
+    public static readonly IReadOnlyList<double> ScaleSteps = [0.8, 0.9, 1.0, 1.1, 1.25, 1.4, 1.5];
+
     private readonly IGameDataService _gameData;
     private readonly RosterRepository _repository;
     private readonly SaveCoordinator _saves;
@@ -33,6 +39,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
     private readonly IAppPaths _paths;
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly Stack<(Section Section, object Page)> _history = new();
+    private readonly List<string> _recentChampions = [];
     private GameDataSnapshot? _game;
     private Func<TopLevel?>? _topLevel;
 
@@ -50,7 +57,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
         _saves.SavingChanged += (_, saving) => Dispatcher.UIThread.Post(() => IsSaving = saving);
         _updates.Changed += (_, _) => Dispatcher.UIThread.Post(OnUpdateStateChanged);
         _sidebarCollapsed = preferences.Get("ui.sidebarCollapsed", false);
+        _uiScale = Math.Clamp(preferences.Get(ScaleKey, 1.0), ScaleSteps[0], ScaleSteps[^1]);
+        _recentChampions.AddRange(preferences.Get<List<string>>("ui.recentChampions", []).Take(6));
+        Palette = new CommandPaletteViewModel(this);
     }
+
+    /// <summary>Raised when every page is rebuilt (patch update, import) so cached views can be dropped.</summary>
+    public event EventHandler? PagesReset;
 
     // ── App updates (GitHub releases) ──────────────────────────────────────────────────────────────
 
@@ -100,6 +113,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
     public SaveCoordinator Saves => _saves;
     public IGameDataService GameData => _gameData;
     public PreferencesStore Preferences => _preferences;
+    public CommandPaletteViewModel Palette { get; }
+    public IReadOnlyList<string> RecentChampions => _recentChampions;
 
     public void MarkDirty()
     {
@@ -140,6 +155,14 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
     [ObservableProperty]
     private string _pageTitle = "";
 
+    /// <summary>Interface zoom (separate from Windows display scaling).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ScaleTransform), nameof(ScaleText))]
+    private double _uiScale;
+
+    public ITransform ScaleTransform => new ScaleTransform(UiScale, UiScale);
+    public string ScaleText => $"{UiScale * 100:0}%";
+
     public ObservableCollection<ToastViewModel> Toasts { get; } = [];
 
     public bool HasError => LoadError is not null;
@@ -149,6 +172,17 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
     public bool IsCountersSection => CurrentSection == Section.Counters;
     public bool IsSettingsSection => CurrentSection == Section.Settings;
     public string PatchText => _game is null ? "" : $"Patch data {_game.Version}";
+
+    partial void OnUiScaleChanged(double value) => _preferences.Set(ScaleKey, value);
+
+    [RelayCommand]
+    private void ZoomIn() => UiScale = ScaleSteps.FirstOrDefault(s => s > UiScale + 0.001, ScaleSteps[^1]);
+
+    [RelayCommand]
+    private void ZoomOut() => UiScale = ScaleSteps.LastOrDefault(s => s < UiScale - 0.001, ScaleSteps[0]);
+
+    [RelayCommand]
+    private void ResetZoom() => UiScale = 1.0;
 
     /// <summary>A newer patch published while the app is running (offered as an "Update" button, never forced mid-edit).</summary>
     [ObservableProperty]
@@ -175,6 +209,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
     {
         if (_game is null || IsLoading) return;
         var newer = await _gameData.CheckForNewPatchAsync(CancellationToken.None);
+        Settings?.RefreshGameDataStatus();
         if (newer is null || newer == NewPatchVersion) return;
         _logger.LogInformation("New patch {Version} available", newer);
         NewPatchVersion = newer;
@@ -205,7 +240,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
             LoadingText = "Opening your rosters…";
             await _repository.InitializeAsync();
             var progress = new Progress<string>(t => LoadingText = t);
-            _game = await _gameData.LoadAsync(false, progress, CancellationToken.None);
+            // Fast start: open with cached game data and check for a new patch in the background.
+            var cached = await _gameData.LoadCachedAsync(progress, CancellationToken.None);
+            _game = cached ?? await _gameData.LoadAsync(false, progress, CancellationToken.None);
             OnPropertyChanged(nameof(PatchText));
             CreatePages();
             IsLoading = false;
@@ -214,6 +251,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
             foreach (var warning in _gameData.Status?.Warnings ?? []) ShowToast(warning, ToastKind.Warning);
             if (_game.NewChampionIds.Count > 0)
                 ShowToast($"New this patch: {string.Join(", ", _game.NewChampionIds.Select(id => _game.Champion(id)?.Name ?? id))}", ToastKind.Success);
+            if (cached is not null) DispatcherTimer.RunOnce(() => _ = CheckForNewPatchAsync(), TimeSpan.FromSeconds(1.5));
             StartPatchWatcher();
             StartUpdateChecks();
         }
@@ -235,9 +273,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
         Settings = new SettingsViewModel(this, _paths, _backups);
         _history.Clear();
         CanGoBack = false;
+        PagesReset?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Re-downloads game data (Settings → Refresh) and rebuilds every page.</summary>
+    /// <summary>Re-downloads game data (Settings → Refresh, or a new patch) and rebuilds every page.</summary>
     public async Task ReloadGameDataAsync(bool force)
     {
         await _saves.FlushAsync();
@@ -260,7 +299,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
         {
             _logger.LogError(ex, "Refresh failed");
             IsLoading = false;
-            ShowToast(ex is GameDataUnavailableException ? ex.Message : "Refresh failed: " + ex.Message, ToastKind.Error);
+            ShowToast(ex is GameDataUnavailableException ? ex.Message : "Refresh failed: " + NetworkErrors.Describe(ex, "Data Dragon"), ToastKind.Error);
         }
     }
 
@@ -301,18 +340,34 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
         if (page is IPage p) await p.OnNavigatedToAsync();
     }
 
-    public void OpenChampion(string championId, ChampionTab tab = ChampionTab.Builds) => _ = OpenChampionAsync(championId, tab);
+    public void OpenChampion(string championId, ChampionTab? tab = null, ChampionSequence? sequence = null) =>
+        _ = OpenChampionAsync(championId, tab, sequence, replace: false);
 
-    private async Task OpenChampionAsync(string championId, ChampionTab tab)
+    /// <summary>Previous/next within a sequence: replaces the current champion page (Back still returns to the list).</summary>
+    public void ShowChampionInSequence(string championId, ChampionTab tab, ChampionSequence sequence) =>
+        _ = OpenChampionAsync(championId, tab, sequence, replace: true);
+
+    private async Task OpenChampionAsync(string championId, ChampionTab? tab, ChampionSequence? sequence, bool replace)
     {
         if (_game?.Champion(championId) is not { } champion) return;
         await _saves.FlushAsync();
-        if (CurrentPage is not null) _history.Push((CurrentSection, CurrentPage));
+        if (!replace || CurrentSection != Section.Champion)
+        {
+            if (CurrentPage is not null) _history.Push((CurrentSection, CurrentPage));
+        }
         CanGoBack = _history.Count > 0;
-        var page = new ChampionDetailViewModel(this, champion, tab);
+        var page = new ChampionDetailViewModel(this, champion, tab ?? _preferences.Get(ChampionTabKey, ChampionTab.Builds), sequence);
+        page.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ChampionDetailViewModel.SelectedTab)) _preferences.Set(ChampionTabKey, (ChampionTab)page.SelectedTab);
+        };
         CurrentSection = Section.Champion;
         CurrentPage = page;
         PageTitle = champion.Name;
+        _recentChampions.RemoveAll(id => string.Equals(id, champion.Id, StringComparison.OrdinalIgnoreCase));
+        _recentChampions.Insert(0, champion.Id);
+        if (_recentChampions.Count > 6) _recentChampions.RemoveRange(6, _recentChampions.Count - 6);
+        _preferences.Set("ui.recentChampions", _recentChampions);
         await page.OnNavigatedToAsync();
     }
 
@@ -332,6 +387,63 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
     [RelayCommand]
     private void ToggleSidebar() => SidebarCollapsed = !SidebarCollapsed;
 
+    [RelayCommand]
+    private void OpenPalette()
+    {
+        if (!IsLoading) Palette.Open();
+    }
+
+    // ── Keyboard shortcuts ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>Global shortcuts. <paramref name="typing"/> is true while a text box has focus.</summary>
+    public bool HandleShortcut(Key key, KeyModifiers modifiers, bool typing)
+    {
+        if (IsLoading || Dialog is not null) return false;
+        var ctrl = modifiers.HasFlag(KeyModifiers.Control);
+        var shift = modifiers.HasFlag(KeyModifiers.Shift);
+        if (ctrl && key is Key.K or Key.P)
+        {
+            Palette.Open();
+            return true;
+        }
+        if (Palette.IsOpen) return false;
+        if (ctrl && !shift)
+        {
+            switch (key)
+            {
+                case Key.D1 or Key.NumPad1:
+                    _ = NavigateAsync(Section.Rosters);
+                    return true;
+                case Key.D2 or Key.NumPad2:
+                    _ = NavigateAsync(Section.Champions);
+                    return true;
+                case Key.D3 or Key.NumPad3:
+                    _ = NavigateAsync(Section.Counters);
+                    return true;
+                case Key.D4 or Key.NumPad4:
+                    _ = NavigateAsync(Section.Settings);
+                    return true;
+                case Key.OemPlus or Key.Add:
+                    ZoomIn();
+                    return true;
+                case Key.OemMinus or Key.Subtract:
+                    ZoomOut();
+                    return true;
+                case Key.D0 or Key.NumPad0:
+                    ResetZoom();
+                    return true;
+                case Key.Z when !typing:
+                    return UndoLast();
+            }
+        }
+        if (modifiers == KeyModifiers.Alt && key == Key.Left)
+        {
+            GoBackCommand.Execute(null);
+            return true;
+        }
+        return CurrentPage is IKeyboardPage page && page.HandleKey(key, modifiers, typing);
+    }
+
     // ── Dialogs & toasts ───────────────────────────────────────────────────────────────────────────
 
     public async Task<bool> ConfirmAsync(string title, string message, string confirmText, bool danger = true)
@@ -348,19 +460,45 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
         }
     }
 
-    public void ShowToast(string message, ToastKind kind = ToastKind.Info)
+    public void ShowToast(string message, ToastKind kind = ToastKind.Info, string? actionText = null, Func<Task>? action = null)
     {
         Dispatcher.UIThread.Post(() =>
         {
-            var toast = new ToastViewModel(message, kind);
+            var toast = new ToastViewModel(message, kind, actionText, action);
             Toasts.Add(toast);
             while (Toasts.Count > 3) Toasts.RemoveAt(0);
-            DispatcherTimer.RunOnce(() => Toasts.Remove(toast), TimeSpan.FromSeconds(kind is ToastKind.Error or ToastKind.Warning ? 6 : 3.2));
+            var seconds = action is not null ? 8 : kind is ToastKind.Error or ToastKind.Warning ? 6 : 3.2;
+            DispatcherTimer.RunOnce(() => Toasts.Remove(toast), TimeSpan.FromSeconds(seconds));
         });
     }
 
     [RelayCommand]
     private void DismissToast(ToastViewModel toast) => Toasts.Remove(toast);
+
+    [RelayCommand]
+    private async Task RunToastActionAsync(ToastViewModel toast)
+    {
+        Toasts.Remove(toast);
+        if (toast.Action is null) return;
+        try
+        {
+            await toast.Action();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Toast action failed");
+            ShowToast("That couldn't be undone: " + ex.Message, ToastKind.Error);
+        }
+    }
+
+    /// <summary>Ctrl+Z: runs the newest Undo toast (other toast actions, such as Open, are left alone).</summary>
+    public bool UndoLast()
+    {
+        var toast = Toasts.LastOrDefault(t => t.HasAction && t.ActionText == "Undo");
+        if (toast is null) return false;
+        RunToastActionCommand.Execute(toast);
+        return true;
+    }
 
     public async Task<string?> PickSaveFileAsync(string title, string suggestedName)
     {

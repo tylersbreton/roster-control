@@ -453,6 +453,14 @@
       </Transitions>
     </Setter>
   </Style>
+  <Style Selector="Border.rostercard">
+    <Setter Property="Padding" Value="6,6,8,6" />
+    <Setter Property="Margin" Value="0,0,0,6" />
+  </Style>
+  <Style Selector="Border.rostercard.compact">
+    <Setter Property="Padding" Value="5,4,7,4" />
+    <Setter Property="Margin" Value="0,0,0,4" />
+  </Style>
   <Style Selector="Border.rostercard:pointerover">
     <Setter Property="Background" Value="{StaticResource Brush.SurfaceHover}" />
     <Setter Property="BorderBrush" Value="#3A4A5E" />
@@ -469,6 +477,24 @@
   </Style>
   <Style Selector="Border.rostercard:pointerover c|LucideIcon.hoveronlyicon">
     <Setter Property="Opacity" Value="1" />
+  </Style>
+
+  <!-- Search palette rows and the title bar search box -->
+  <Style Selector="Border.paletteitem">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Border.paletteitem:pointerover">
+    <Setter Property="Background" Value="{StaticResource Brush.SurfaceHover}" />
+  </Style>
+  <Style Selector="Border.paletteitem.selected">
+    <Setter Property="Background" Value="#26C8AA6E" />
+  </Style>
+  <Style Selector="Button.titlesearch">
+    <Setter Property="Background" Value="#B30C131D" />
+    <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}" />
+    <Setter Property="Padding" Value="10,5" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
   </Style>
 
   <!-- Item icons: gold hextech frame -->

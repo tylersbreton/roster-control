@@ -18,6 +18,21 @@ public partial class RostersView : UserControl
     {
         InitializeComponent();
         GroupsScroller.SizeChanged += (_, _) => UpdateColumnWidth();
+        HeaderGrid.SizeChanged += (_, _) => UpdateHeaderExtras();
+    }
+
+    private double _extrasWidth;
+
+    /// <summary>Shows the priority legend only when it fits next to the title and buttons.</summary>
+    private void UpdateHeaderExtras()
+    {
+        if (HeaderExtras.IsVisible)
+        {
+            HeaderExtras.Measure(Size.Infinity);
+            _extrasWidth = Math.Max(_extrasWidth, HeaderExtras.DesiredSize.Width);
+        }
+        var available = HeaderGrid.Bounds.Width - HeaderTitle.DesiredSize.Width - HeaderActions.DesiredSize.Width - 8;
+        HeaderExtras.IsVisible = _extrasWidth <= available;
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -40,6 +55,67 @@ public partial class RostersView : UserControl
         if (available <= 0) return;
         var width = Math.Floor((available - ColumnGap * (count - 1) - 1) / count);
         _vm.ColumnWidth = Math.Clamp(width, MinColumnWidth, MaxColumnWidth);
+    }
+
+    // ── Right-click menus (built when opened, one entry per roster group) ─────────────────────────
+
+    private void OnPoolTileMenuOpening(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (sender is not ContextMenu menu || menu.DataContext is not ChampionTileViewModel tile || _vm is not { } vm) return;
+        var items = new List<Control>
+        {
+            MenuItem("Open", "book-open", () => vm.OpenChampionCommand.Execute(tile)),
+            new Separator(),
+        };
+        foreach (var group in vm.Groups)
+        {
+            var contains = group.Entries.Any(x => x.ChampionId == tile.Id);
+            var item = MenuItem(contains ? $"Already in {group.Name}" : $"Add to {group.Name}", "plus", () => vm.AddToGroup(tile.Champion, group));
+            item.IsEnabled = !contains;
+            items.Add(item);
+        }
+        menu.ItemsSource = items;
+    }
+
+    private void OnCardMenuOpening(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (sender is not ContextMenu menu || menu.DataContext is not RosterEntryViewModel entry || _vm is not { } vm) return;
+        // Remove the submenus added last time, then rebuild them for the current groups.
+        foreach (var old in menu.Items.OfType<Control>().Where(c => Equals(c.Tag, "dynamic")).ToList()) menu.Items.Remove(old);
+        var others = vm.Groups.Where(g => !ReferenceEquals(g, entry.Group)).ToList();
+        if (others.Count == 0) return;
+        var move = new MenuItem { Header = "Move to", Tag = "dynamic", Icon = Icon("move") };
+        var copy = new MenuItem { Header = "Copy to", Tag = "dynamic", Icon = Icon("copy") };
+        foreach (var group in others)
+        {
+            move.Items.Add(MenuItem(group.Name, null, () => vm.MoveOrCopy(entry, group, copy: false)));
+            copy.Items.Add(MenuItem(group.Name, null, () => vm.MoveOrCopy(entry, group, copy: true)));
+        }
+        var index = Math.Max(0, menu.Items.Count - 2); // just above "Remove from group"
+        menu.Items.Insert(index, new Separator { Tag = "dynamic" });
+        menu.Items.Insert(index, copy);
+        menu.Items.Insert(index, move);
+    }
+
+    private static MenuItem MenuItem(string header, string? icon, Action action) => new()
+    {
+        Header = header,
+        Icon = icon is null ? null : Icon(icon),
+        Command = new CommunityToolkit.Mvvm.Input.RelayCommand(action),
+    };
+
+    private static Controls.LucideIcon Icon(string kind) => new() { Kind = kind };
+
+    // ── Hover tracking for keyboard shortcuts (1–5 rate, Delete removes) ──────────────────────────
+
+    private void OnCardPointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (_vm is not null && (sender as Control)?.DataContext is RosterEntryViewModel entry) _vm.HoveredEntry = entry;
+    }
+
+    private void OnCardPointerExited(object? sender, PointerEventArgs e)
+    {
+        if (_vm is not null && (sender as Control)?.DataContext is RosterEntryViewModel entry && ReferenceEquals(_vm.HoveredEntry, entry)) _vm.HoveredEntry = null;
     }
 
     private void OnGroupNameDoubleTapped(object? sender, TappedEventArgs e)

@@ -16,17 +16,65 @@ public sealed partial class ItemSetViewModel : ObservableObject, IDropTarget
     private readonly ItemSetData _data;
     private readonly Action _changed;
     private readonly string _buildVersion;
+    private readonly IShell? _shell;
 
-    public ItemSetViewModel(GameDataSnapshot game, ItemSetData data, string? buildVersion, Action changed)
+    public ItemSetViewModel(GameDataSnapshot game, ItemSetData data, string? buildVersion, Action changed, IShell? shell = null)
     {
         _game = game;
         _data = data;
         _changed = changed;
+        _shell = shell;
         _buildVersion = buildVersion ?? game.Version;
         if (data.Blocks.Count == 0) data.Blocks.AddRange(ItemSetData.CreateDefault().Blocks);
         foreach (var b in data.Blocks) Blocks.Add(new ItemBlockViewModel(this, b.Name, b.Items));
         SelectedBlock = Blocks.FirstOrDefault(b => b.Items.Count == 0) ?? Blocks.FirstOrDefault();
-        Shop = new ItemShopViewModel(game, this);
+        Shop = new ItemShopViewModel(game, this, shell?.Preferences);
+    }
+
+    // ── Whole-set actions (with Undo) ─────────────────────────────────────────────────────────────
+
+    private List<(string Name, List<string> Items)> Snapshot() => Blocks.Select(b => (b.Name, b.Items.Select(i => i.ItemId).ToList())).ToList();
+
+    private void Restore(List<(string Name, List<string> Items)> snapshot)
+    {
+        Blocks.Clear();
+        foreach (var (name, items) in snapshot) Blocks.Add(new ItemBlockViewModel(this, name, items));
+        SelectedBlock = Blocks.FirstOrDefault();
+        Commit();
+    }
+
+    private void OfferUndo(string message, List<(string Name, List<string> Items)> snapshot) =>
+        _shell?.ShowToast(message, ToastKind.Info, "Undo", () =>
+        {
+            Restore(snapshot);
+            return Task.CompletedTask;
+        });
+
+    [RelayCommand]
+    private void ClearAll()
+    {
+        if (ItemCount == 0) return;
+        var snapshot = Snapshot();
+        foreach (var b in Blocks) b.Items.Clear();
+        Commit();
+        OfferUndo("Cleared all items", snapshot);
+    }
+
+    [RelayCommand]
+    private void ResetBlocks()
+    {
+        var snapshot = Snapshot();
+        Restore(ItemSetData.CreateDefault().Blocks.Select(b => (b.Name, new List<string>())).ToList());
+        OfferUndo("Item set reset to the default blocks", snapshot);
+    }
+
+    [RelayCommand]
+    private void DuplicateBlock(ItemBlockViewModel block)
+    {
+        var copy = new ItemBlockViewModel(this, block.Name + " (copy)", block.Items.Select(i => i.ItemId));
+        Blocks.Insert(Blocks.IndexOf(block) + 1, copy);
+        SelectedBlock = copy;
+        Commit();
     }
 
     public GameDataSnapshot Game => _game;
@@ -135,10 +183,12 @@ public sealed partial class ItemSetViewModel : ObservableObject, IDropTarget
     [RelayCommand]
     private void RemoveBlock(ItemBlockViewModel block)
     {
+        var snapshot = Snapshot();
         var index = Blocks.IndexOf(block);
         Blocks.Remove(block);
         if (ReferenceEquals(SelectedBlock, block)) SelectedBlock = Blocks.ElementAtOrDefault(Math.Max(0, index - 1));
         Commit();
+        if (block.Items.Count > 0) OfferUndo($"Deleted block \"{block.Name}\"", snapshot);
     }
 
     [RelayCommand]
@@ -337,12 +387,36 @@ public sealed partial class ItemShopViewModel : ObservableObject
     private readonly ItemSetViewModel _owner;
     private readonly IReadOnlyList<ShopItemViewModel> _all;
 
-    public ItemShopViewModel(GameDataSnapshot game, ItemSetViewModel owner)
+    private readonly Data.PreferencesStore? _prefs;
+    private bool _restoring;
+
+    private sealed record ShopState(List<string> Categories, bool Aram);
+
+    public ItemShopViewModel(GameDataSnapshot game, ItemSetViewModel owner, Data.PreferencesStore? prefs = null)
     {
         _owner = owner;
+        _prefs = prefs;
         _all = game.ShopItems.Select(i => new ShopItemViewModel(i, game)).ToList();
         Categories = ItemCatalog.StatCategories.Select(c => new CategoryOptionViewModel(c, Refilter)).ToList();
+        // Stat filters and Rift/ARAM are remembered between builds and sessions.
+        if (prefs?.Get<ShopState?>("shop.filters", null) is { } state)
+        {
+            _restoring = true;
+            foreach (var c in Categories) c.IsChecked = state.Categories.Contains(c.Category.Key);
+            IsAram = state.Aram;
+            _restoring = false;
+        }
         Refilter();
+    }
+
+    /// <summary>Enter in the shop search: add the first matching item to the selected block.</summary>
+    [RelayCommand]
+    private void AddFirst()
+    {
+        var first = Sections.SelectMany(s => s.Items).FirstOrDefault();
+        if (first is null) return;
+        _owner.AddToSelected(first);
+        Search = "";
     }
 
     public IReadOnlyList<CategoryOptionViewModel> Categories { get; }
@@ -384,11 +458,14 @@ public sealed partial class ItemShopViewModel : ObservableObject
 
     private void Refilter()
     {
+        if (_restoring) return;
         var keys = Categories.Where(c => c.IsChecked).Select(c => c.Category.Key).ToList();
+        _prefs?.Set("shop.filters", new ShopState(keys, IsAram));
         var matching = ItemCatalog.Filter(_all.Select(a => a.Item), Search, keys, IsAram ? ItemMap.Aram : ItemMap.SummonersRift)
             .Select(i => i.Id).ToHashSet();
+        var byId = _all.ToDictionary(a => a.Item.Id);
         Sections = ItemCatalog.GroupByTier(_all.Where(a => matching.Contains(a.Item.Id)).Select(a => a.Item))
-            .Select(g => new ShopSectionViewModel(g.Tier.DisplayName(), g.Items.Select(i => _all.First(a => a.Item.Id == i.Id)).ToList()))
+            .Select(g => new ShopSectionViewModel(g.Tier.DisplayName(), g.Items.Select(i => byId[i.Id]).ToList()))
             .ToList();
         IsEmpty = Sections.Count == 0;
         OnPropertyChanged(nameof(HasFilters));

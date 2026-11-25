@@ -17,6 +17,17 @@ public sealed partial class LibraryViewModel : ObservableObject, IPage
         _shell = shell;
         Browser = new ChampionBrowserViewModel(shell.Game);
         Browser.ExtraFilter = Filter;
+        Browser.ExtraFiltersActive = () => OnlyRoster || OnlyWithBuilds || SelectedTag != "Any tag";
+        Browser.ResetExtraFilters = () =>
+        {
+            OnlyRoster = false;
+            OnlyWithBuilds = false;
+            SelectedTag = "Any tag";
+        };
+        _onlyRoster = shell.Preferences.Get("library.onlyRoster", false);
+        _onlyWithBuilds = shell.Preferences.Get("library.onlyWithBuilds", false);
+        _selectedTag = shell.Preferences.Get("library.tag", "Any tag");
+        Browser.Remember(shell.Preferences, "library.browser");
     }
 
     public string Title => "Champions";
@@ -36,9 +47,30 @@ public sealed partial class LibraryViewModel : ObservableObject, IPage
 
     public bool HasTags => TagOptions.Count > 1;
 
-    partial void OnOnlyRosterChanged(bool value) => Browser.Refilter();
-    partial void OnOnlyWithBuildsChanged(bool value) => Browser.Refilter();
-    partial void OnSelectedTagChanged(string value) => Browser.Refilter();
+    partial void OnOnlyRosterChanged(bool value)
+    {
+        _shell.Preferences.Set("library.onlyRoster", value);
+        Browser.Refilter();
+    }
+
+    partial void OnOnlyWithBuildsChanged(bool value)
+    {
+        _shell.Preferences.Set("library.onlyWithBuilds", value);
+        Browser.Refilter();
+    }
+
+    partial void OnSelectedTagChanged(string value)
+    {
+        if (value is not null) _shell.Preferences.Set("library.tag", value);
+        Browser.Refilter();
+    }
+
+    /// <summary>Enter in the search box: open the best match.</summary>
+    [RelayCommand]
+    private void OpenFirst()
+    {
+        if (Browser.FirstTile is { } tile) Open(tile);
+    }
     partial void OnTagOptionsChanged(IReadOnlyList<string> value) => OnPropertyChanged(nameof(HasTags));
 
     private bool Filter(ChampionTileViewModel t) =>
@@ -68,7 +100,7 @@ public sealed partial class LibraryViewModel : ObservableObject, IPage
     }
 
     [RelayCommand]
-    private void Open(ChampionTileViewModel tile) => _shell.OpenChampion(tile.Id);
+    private void Open(ChampionTileViewModel tile) => _shell.OpenChampion(tile.Id, null, Browser.Sequence("Champions"));
 }
 
 public sealed partial class SettingsViewModel : ObservableObject, IPage
@@ -116,6 +148,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPage
 
     public string AppVersion => _main.Updates.CurrentVersion;
     public string ReleasesUrl => Services.AppUpdateService.RepositoryUrl + "/releases";
+    public const string SponsorUrl = "https://github.com/sponsors/tylersbreton";
     public bool UpdatesSupported => _main.Updates.IsSupported;
     public bool IsUpdateReady => _main.Updates.State == Services.AppUpdateState.ReadyToRestart;
     public bool CanCheckForUpdates => UpdatesSupported && _main.Updates.State is not (Services.AppUpdateState.Checking or Services.AppUpdateState.Downloading or Services.AppUpdateState.ReadyToRestart);
@@ -133,7 +166,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPage
                 Services.AppUpdateState.Downloading => $"Downloading version {u.AvailableVersion}… {u.DownloadProgress}%",
                 Services.AppUpdateState.ReadyToRestart => $"Version {u.AvailableVersion} is downloaded and ready. Restart to update — your data is kept.",
                 Services.AppUpdateState.UpToDate => "You have the latest version" + checkedAt + ".",
-                Services.AppUpdateState.Failed => "Couldn't check for updates" + checkedAt + ". It will try again later.",
+                Services.AppUpdateState.Failed => $"Couldn't check for updates{checkedAt}: {u.LastError} It will try again later.",
                 _ => "Checks for updates at startup and every 4 hours.",
             };
         }
@@ -150,25 +183,108 @@ public sealed partial class SettingsViewModel : ObservableObject, IPage
     private Task CheckForUpdatesAsync() => _main.Updates.CheckAndDownloadAsync();
 
     [RelayCommand]
-    private void OpenReleases()
+    private void OpenReleases() => OpenUrl(ReleasesUrl);
+
+    [RelayCommand]
+    private void OpenSponsor() => OpenUrl(SponsorUrl);
+
+    public static void OpenUrl(string url)
     {
         try
         {
-            Process.Start(new ProcessStartInfo { FileName = ReleasesUrl, UseShellExecute = true });
+            Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
         }
         catch (Exception ex)
         {
-            Serilog.Log.Warning(ex, "Could not open {Url}", ReleasesUrl);
+            Serilog.Log.Warning(ex, "Could not open {Url}", url);
         }
+    }
+
+    public void RefreshGameDataStatus()
+    {
+        var status = _main.GameData.Status;
+        GameVersion = status?.Version ?? "—";
+        var check = _main.GameData.LastPatchCheck is { } t ? $"Patch list checked online at {t:t}." : "Not checked online yet this session.";
+        GameDataStatus = status is null ? "" : status.Source switch
+        {
+            GameDataSource.Online => $"Up to date. {check}",
+            GameDataSource.StartupCache => $"Opened from the local cache for a fast start. {check}",
+            _ => $"Offline: using the local cache. {check}",
+        };
+        Warnings = status?.Warnings ?? [];
+    }
+
+    // ── Display ────────────────────────────────────────────────────────────────────────────────────
+
+    public IReadOnlyList<ScaleOption> ScaleOptions { get; } = MainWindowViewModel.ScaleSteps.Select(s => new ScaleOption(s)).ToList();
+
+    public ScaleOption SelectedScale
+    {
+        get => ScaleOptions.OrderBy(o => Math.Abs(o.Scale - _main.UiScale)).First();
+        set
+        {
+            if (value is null) return;
+            _main.UiScale = value.Scale;
+            OnPropertyChanged();
+        }
+    }
+
+    // ── Cache ──────────────────────────────────────────────────────────────────────────────────────
+
+    [ObservableProperty]
+    private string _cacheText = "Calculating…";
+
+    private async Task RefreshCacheSizeAsync()
+    {
+        var cache = _paths.CacheDirectory;
+        var (images, data) = await Task.Run(() => (FolderSize(Path.Combine(cache, "images")), FolderSize(Path.Combine(cache, "data"))));
+        CacheText = $"Images {FormatSize(images)} · Game data {FormatSize(data)} (old patches are removed automatically)";
+    }
+
+    private static long FolderSize(string path)
+    {
+        try
+        {
+            return Directory.Exists(path) ? new DirectoryInfo(path).EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length) : 0;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return 0;
+        }
+    }
+
+    private static string FormatSize(long bytes) => bytes switch
+    {
+        >= 1024L * 1024 * 1024 => $"{bytes / (1024.0 * 1024 * 1024):0.0} GB",
+        >= 1024L * 1024 => $"{bytes / (1024.0 * 1024):0} MB",
+        _ => $"{bytes / 1024.0:0} KB",
+    };
+
+    [RelayCommand]
+    private async Task ClearImageCacheAsync()
+    {
+        if (!await _main.ConfirmAsync("Clear cached images?", "Champion, item and rune images will be downloaded again as you use the app. Your rosters and builds are not affected.", "Clear images", danger: false))
+            return;
+        var folder = Path.Combine(_paths.CacheDirectory, "images");
+        await Task.Run(() =>
+        {
+            if (!Directory.Exists(folder)) return;
+            foreach (var dir in Directory.EnumerateDirectories(folder))
+            {
+                try { Directory.Delete(dir, recursive: true); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Serilog.Log.Debug("Could not delete {Dir}: {Message}", dir, ex.Message); }
+            }
+        });
+        await RefreshCacheSizeAsync();
+        _main.ShowToast("Image cache cleared", ToastKind.Success);
     }
 
     public Task OnNavigatedToAsync()
     {
         RefreshUpdateStatus();
-        var status = _main.GameData.Status;
-        GameVersion = status?.Version ?? "—";
-        GameDataStatus = status is null ? "" : $"{(status.Source == GameDataSource.Online ? "Checked online" : "Loaded from cache (offline)")} at {status.LoadedAt:t}";
-        Warnings = status?.Warnings ?? [];
+        RefreshGameDataStatus();
+        OnPropertyChanged(nameof(SelectedScale));
+        _ = RefreshCacheSizeAsync();
         var latest = Directory.Exists(_paths.BackupDirectory)
             ? Directory.EnumerateFiles(_paths.BackupDirectory, "*.json").Select(f => new FileInfo(f)).OrderByDescending(f => f.LastWriteTime).FirstOrDefault()
             : null;
@@ -264,4 +380,10 @@ public sealed partial class SettingsViewModel : ObservableObject, IPage
             await OnNavigatedToAsync();
         }
     }
+}
+
+public sealed record ScaleOption(double Scale)
+{
+    public string Label => Scale == 1.0 ? "100% (default)" : $"{Scale * 100:0}%";
+    public override string ToString() => Label;
 }

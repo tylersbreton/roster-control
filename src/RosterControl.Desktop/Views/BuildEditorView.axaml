@@ -23,6 +23,31 @@
           </ComboBox>
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+          <Button Classes="ghost icon" ToolTip.Tip="Copy this build to another champion">
+            <c:LucideIcon Kind="layers" />
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedRight">
+                <StackPanel Width="280" Spacing="8" DataContext="{Binding $parent[v:ChampionView].DataContext}" x:DataType="vm:ChampionDetailViewModel">
+                  <TextBlock Text="COPY TO ANOTHER CHAMPION" Classes="overline" />
+                  <TextBlock Text="Copies runes, items, spells and notes (not the skill order)." Classes="caption" TextWrapping="Wrap" />
+                  <TextBox Classes="search" Text="{Binding CopyQuery}" PlaceholderText="Champion name…" />
+                  <ItemsControl ItemsSource="{Binding CopyTargets}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:CopyTarget">
+                        <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="6,4"
+                                Command="{Binding $parent[ItemsControl].((vm:ChampionDetailViewModel)DataContext).CopyBuildToCommand}" CommandParameter="{Binding}">
+                          <StackPanel Orientation="Horizontal" Spacing="8">
+                            <c:AssetImage Source="{Binding IconUrl}" Width="24" Height="24" CornerRadius="4" Zoom="1.1" />
+                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Foreground="{StaticResource Brush.TextPrimary}" />
+                          </StackPanel>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
           <Button Classes="ghost icon" ToolTip.Tip="Duplicate build"
                   Command="{Binding $parent[v:ChampionView].((vm:ChampionDetailViewModel)DataContext).DuplicateBuildCommand}" CommandParameter="{Binding}">
             <c:LucideIcon Kind="copy" />

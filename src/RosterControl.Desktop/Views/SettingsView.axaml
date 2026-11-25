@@ -8,7 +8,7 @@
     <StackPanel Spacing="12" MaxWidth="900" HorizontalAlignment="Left" Margin="2,2,0,0">
       <StackPanel Spacing="3" Margin="0,0,0,4">
         <TextBlock Text="SETTINGS" Classes="heading" />
-        <TextBlock Text="Your data, game data and backups." Classes="caption" />
+        <TextBlock Text="Your data, game data, display and backups." Classes="caption" />
       </StackPanel>
 
       <!-- Data storage -->
@@ -30,6 +30,23 @@
                 <TextBlock Text="Open data folder" FontSize="12" />
               </StackPanel>
             </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- Display -->
+      <Border Classes="card" Padding="18,16">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Brush.GoldSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
+            <c:LucideIcon Kind="monitor" Width="18" Height="18" Foreground="{StaticResource Brush.Gold}" />
+          </Border>
+          <StackPanel Grid.Column="1" Spacing="8">
+            <TextBlock Text="Display" Classes="title" />
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <TextBlock Text="Zoom" Classes="secondary" VerticalAlignment="Center" />
+              <ComboBox ItemsSource="{Binding ScaleOptions}" SelectedItem="{Binding SelectedScale}" MinWidth="150" />
+              <TextBlock Text="Ctrl+= / Ctrl+- / Ctrl+0" Classes="caption" VerticalAlignment="Center" />
+            </StackPanel>
           </StackPanel>
         </Grid>
       </Border>
@@ -57,13 +74,25 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <TextBlock Classes="caption" TextWrapping="Wrap" Text="Champions, items, runes and spells come from Riot's Data Dragon; stat shards and rune page art from Community Dragon; champion positions from Meraki Analytics (all public and keyless). The patch list is checked at every start and every 2 hours; patch data and icons are cached per patch (the newest 3 patches are kept), stat shards refresh when the patch changes, positions refresh when a new champion appears, and splash/rune art is re-checked weekly. Builds saved on an older patch flag items that changed since." />
-            <Button HorizontalAlignment="Left" Command="{Binding RefreshGameDataCommand}" Classes="small">
-              <StackPanel Orientation="Horizontal" Spacing="6">
-                <c:LucideIcon Kind="refresh-cw" Width="13" Height="13" />
-                <TextBlock Text="Check for a new patch now" FontSize="12" />
-              </StackPanel>
-            </Button>
+            <TextBlock Classes="caption" TextWrapping="Wrap" Text="Champions, items, runes and spells come from Riot's Data Dragon; stat shards and rune page art from Community Dragon; champion positions from Meraki Analytics (all public and keyless). The app opens from the local cache, then checks for a new patch in the background (and every 2 hours). Patch data and icons are cached per patch (the newest 3 are kept); splash and rune art is re-checked weekly. Builds saved on an older patch flag items that changed since." />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <c:LucideIcon Kind="hard-drive" Width="13" Height="13" Foreground="{StaticResource Brush.TextMuted}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding CacheText}" Classes="caption" VerticalAlignment="Center" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Command="{Binding RefreshGameDataCommand}" Classes="small">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <c:LucideIcon Kind="refresh-cw" Width="13" Height="13" />
+                  <TextBlock Text="Check for a new patch now" FontSize="12" />
+                </StackPanel>
+              </Button>
+              <Button Command="{Binding ClearImageCacheCommand}" Classes="small">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <c:LucideIcon Kind="trash-2" Width="13" Height="13" />
+                  <TextBlock Text="Clear cached images" FontSize="12" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
           </StackPanel>
         </Grid>
       </Border>
@@ -139,6 +168,42 @@
         </Grid>
       </Border>
 
+      <!-- Keyboard -->
+      <Border Classes="card" Padding="18,16">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Brush.TealSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
+            <c:LucideIcon Kind="keyboard" Width="18" Height="18" Foreground="{StaticResource Brush.Teal}" />
+          </Border>
+          <StackPanel Grid.Column="1" Spacing="8">
+            <TextBlock Text="Keyboard shortcuts" Classes="title" />
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
+              <TextBlock Grid.Row="0" Text="Ctrl+K" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="0" Grid.Column="1" Text="Search champions, pages and actions" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="1" Text="Ctrl+1 … 4" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="Rosters · Champions · Counter picks · Settings" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="2" Text="Alt+←" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="2" Grid.Column="1" Text="Back" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="3" Text="Ctrl+Z" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="3" Grid.Column="1" Text="Undo the last removal" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="4" Text="Ctrl+= / Ctrl+- / Ctrl+0" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="4" Grid.Column="1" Text="Zoom in · out · reset" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="5" Text="F11 · Esc" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="5" Grid.Column="1" Text="Full screen · leave full screen" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="6" Text="Ctrl+N" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="6" Grid.Column="1" Text="New group (Rosters) · new build (champion)" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="7" Text="1–5 · 0 · Delete" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="7" Grid.Column="1" Text="Rate, clear or remove the hovered roster card" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="8" Text="Ctrl+Tab" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="8" Grid.Column="1" Text="Next tab on a champion page" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="9" Text="Ctrl+← / Ctrl+→" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="9" Grid.Column="1" Text="Previous / next champion in the list you opened it from" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="10" Text="Enter in a search box" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="10" Grid.Column="1" Text="Open / add the first result" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
+            </Grid>
+          </StackPanel>
+        </Grid>
+      </Border>
+
       <!-- About -->
       <Border Classes="card" Padding="18,16">
         <StackPanel Spacing="8">
@@ -149,6 +214,15 @@
           <TextBlock Classes="caption" TextWrapping="Wrap" LineHeight="16"
                      Text="Roster Control isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc." />
           <TextBlock Classes="caption" TextWrapping="Wrap" Text="Built with .NET, Avalonia, EF Core + SQLite, Serilog and Lucide icons." />
+          <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
+            <Button Classes="small" Command="{Binding OpenSponsorCommand}" ToolTip.Tip="Opens GitHub Sponsors in your browser">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <c:LucideIcon Kind="heart" Width="13" Height="13" Foreground="#E5677D" />
+                <TextBlock Text="Support development" FontSize="12" />
+              </StackPanel>
+            </Button>
+            <TextBlock Text="Roster Control is free. If it helps you, a sponsorship keeps it going." Classes="caption" VerticalAlignment="Center" TextWrapping="Wrap" />
+          </StackPanel>
         </StackPanel>
       </Border>
     </StackPanel>

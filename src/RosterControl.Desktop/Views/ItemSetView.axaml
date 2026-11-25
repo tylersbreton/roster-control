@@ -21,12 +21,23 @@
             </Grid>
           </Border>
         </StackPanel>
-        <Button Grid.Column="1" Classes="small" Command="{Binding AddBlockCommand}" VerticalAlignment="Top" Margin="10,0,0,0">
-          <StackPanel Orientation="Horizontal" Spacing="6">
-            <c:LucideIcon Kind="plus" Width="13" Height="13" />
-            <TextBlock Text="Add block" FontSize="12" />
-          </StackPanel>
-        </Button>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top" Margin="10,0,0,0">
+          <Button Classes="small" Command="{Binding AddBlockCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <c:LucideIcon Kind="plus" Width="13" Height="13" />
+              <TextBlock Text="Add block" FontSize="12" />
+            </StackPanel>
+          </Button>
+          <Button Classes="ghost icon" Width="30" Height="30" ToolTip.Tip="Item set options">
+            <c:LucideIcon Kind="ellipsis" Width="15" Height="15" />
+            <Button.Flyout>
+              <MenuFlyout Placement="BottomEdgeAlignedRight">
+                <MenuItem Header="Clear all items" Command="{Binding ClearAllCommand}"><MenuItem.Icon><c:LucideIcon Kind="rotate-ccw" /></MenuItem.Icon></MenuItem>
+                <MenuItem Header="Reset to default blocks" Command="{Binding ResetBlocksCommand}"><MenuItem.Icon><c:LucideIcon Kind="list" /></MenuItem.Icon></MenuItem>
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+        </StackPanel>
       </Grid>
       <ScrollViewer Grid.Row="1">
         <ItemsControl ItemsSource="{Binding Blocks}">
@@ -48,6 +59,7 @@
                         <MenuFlyout Placement="BottomEdgeAlignedRight">
                           <MenuItem Header="Move up" Command="{Binding $parent[UserControl].((vm:ItemSetViewModel)DataContext).MoveBlockUpCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="chevron-up" /></MenuItem.Icon></MenuItem>
                           <MenuItem Header="Move down" Command="{Binding $parent[UserControl].((vm:ItemSetViewModel)DataContext).MoveBlockDownCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="chevron-down" /></MenuItem.Icon></MenuItem>
+                          <MenuItem Header="Duplicate block" Command="{Binding $parent[UserControl].((vm:ItemSetViewModel)DataContext).DuplicateBlockCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="copy" /></MenuItem.Icon></MenuItem>
                           <MenuItem Header="Clear items" Command="{Binding ClearCommand}"><MenuItem.Icon><c:LucideIcon Kind="rotate-ccw" /></MenuItem.Icon></MenuItem>
                           <Separator />
                           <MenuItem Header="Delete block" Command="{Binding $parent[UserControl].((vm:ItemSetViewModel)DataContext).RemoveBlockCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="trash-2" Foreground="{StaticResource Brush.Bad}" /></MenuItem.Icon></MenuItem>
@@ -109,7 +121,7 @@
     <Border Grid.Column="2" Classes="dropzone" c:Dnd.Target="{Binding}" CornerRadius="10" BorderThickness="1" BorderBrush="{StaticResource Brush.GoldDeep}" Background="#080D15">
       <Grid RowDefinitions="Auto,*" DataContext="{Binding Shop}" x:DataType="vm:ItemShopViewModel">
         <Grid ColumnDefinitions="*,Auto" Margin="12,12,12,10">
-          <TextBox Classes="search" PlaceholderText="Search items (e.g. ie, bork)…" Text="{Binding Search}" />
+          <TextBox Classes="search" PlaceholderText="Search items (e.g. ie, bork) · Enter adds" Text="{Binding Search}" c:InputHelpers.EnterCommand="{Binding AddFirstCommand}" />
           <Border Grid.Column="1" Classes="elevated" Padding="2" Margin="8,0,0,0" CornerRadius="7">
             <StackPanel Orientation="Horizontal">
               <RadioButton Classes="segment" Content="Rift" GroupName="shopMap" IsChecked="{Binding IsRift}" ToolTip.Tip="Summoner's Rift items" />
@@ -170,7 +182,12 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
               </ScrollViewer>
-              <TextBlock Text="No items match these filters." Classes="secondary" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsEmpty}" />
+              <StackPanel Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsEmpty}">
+                <TextBlock Text="No items match these filters." Classes="secondary" HorizontalAlignment="Center" />
+                <Button Classes="small" HorizontalAlignment="Center" Command="{Binding ClearFiltersCommand}">
+                  <TextBlock Text="Clear filters" FontSize="12" />
+                </Button>
+              </StackPanel>
             </Panel>
           </Border>
         </Grid>

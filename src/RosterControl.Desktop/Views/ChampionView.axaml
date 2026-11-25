@@ -14,6 +14,18 @@
         <c:AssetImage Source="{Binding SplashUrl}" FallbackSource="{Binding SplashFallbackUrl}" DecodeWidth="1600" CornerRadius="12" FocusY="0.28" />
         <Border Background="{StaticResource Brush.HeroSideFade}" CornerRadius="12" />
         <Border Background="{StaticResource Brush.HeroFade}" CornerRadius="12" />
+        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,14,18,0" CornerRadius="8" Background="#B30C131D"
+                BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" Padding="4,3" IsVisible="{Binding HasSequence}">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Button Classes="ghost icon" Width="26" Height="26" Command="{Binding PreviousCommand}" ToolTip.Tip="{Binding PreviousName, StringFormat='Previous: {0} (Ctrl+←)'}">
+              <c:LucideIcon Kind="chevron-left" Width="15" Height="15" />
+            </Button>
+            <TextBlock Text="{Binding SequenceText}" Classes="secondary num" FontSize="12" VerticalAlignment="Center" Margin="4,0" />
+            <Button Classes="ghost icon" Width="26" Height="26" Command="{Binding NextCommand}" ToolTip.Tip="{Binding NextName, StringFormat='Next: {0} (Ctrl+→)'}">
+              <c:LucideIcon Kind="chevron-right" Width="15" Height="15" />
+            </Button>
+          </StackPanel>
+        </Border>
         <Grid ColumnDefinitions="Auto,*,Auto" Margin="26,0,22,20" VerticalAlignment="Bottom">
           <Border Width="92" Height="92" CornerRadius="10" BorderBrush="{StaticResource Brush.GoldFrame}" BorderThickness="2" Padding="2" Background="#05080D" BoxShadow="{StaticResource Shadow.GoldGlow}">
             <c:AssetImage Source="{Binding PortraitUrl}" CornerRadius="7" Zoom="1.08" />

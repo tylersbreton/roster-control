@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using RosterControl.Data;
 using RosterControl.Desktop.ViewModels;
@@ -22,6 +24,50 @@ public partial class MainWindow : Window
         InitializeComponent();
         ExitFullScreenButton.Click += (_, _) => SetFullScreen(false);
         LayoutUpdated += (_, _) => UpdateCaptionArea();
+        // Tunnel: global shortcuts are seen before text boxes or lists consume the keys.
+        AddHandler(KeyDownEvent, OnShortcutKeyDown, RoutingStrategies.Tunnel);
+    }
+
+    private void OnShortcutKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        if (vm.Palette.IsOpen)
+        {
+            OnPaletteKeyDown(sender, e);
+            return;
+        }
+        if (e.Key is Key.F11 or Key.Escape) return; // handled in OnKeyDown (full screen, dialogs)
+        var typing = FocusManager?.GetFocusedElement() is TextBox;
+        if (vm.HandleShortcut(e.Key, e.KeyModifiers, typing)) e.Handled = true;
+    }
+
+    private void OnPaletteKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        switch (e.Key)
+        {
+            case Key.Down:
+                vm.Palette.MoveSelection(1);
+                e.Handled = true;
+                break;
+            case Key.Up:
+                vm.Palette.MoveSelection(-1);
+                e.Handled = true;
+                break;
+            case Key.Enter:
+                vm.Palette.ExecuteCommand.Execute(null);
+                e.Handled = true;
+                break;
+            case Key.Escape:
+                vm.Palette.Close();
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private void OnPaletteBackdropPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm) vm.Palette.Close();
     }
 
     public MainWindow(PreferencesStore preferences) : this()
@@ -40,7 +86,18 @@ public partial class MainWindow : Window
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        if (DataContext is MainWindowViewModel vm) vm.AttachTopLevel(() => this);
+        if (DataContext is not MainWindowViewModel vm) return;
+        vm.AttachTopLevel(() => this);
+        vm.PagesReset += (_, _) => Pages.Clear();
+        vm.Palette.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(CommandPaletteViewModel.IsOpen) && vm.Palette.IsOpen)
+                Dispatcher.UIThread.Post(() => PaletteBox.Focus(), DispatcherPriority.Input);
+        };
+        vm.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MainWindowViewModel.UiScale)) UpdateCaptionArea();
+        };
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -93,6 +150,8 @@ public partial class MainWindow : Window
                 if (button.TranslatePoint(new Point(0, 0), this) is { } p) left = Math.Min(left, p.X);
             }
             reserved = left == double.MaxValue ? CaptionFallbackWidth : Math.Max(0, Bounds.Width - left) + 10;
+            // The title bar sits inside the UI zoom; convert window pixels to title bar units.
+            if (DataContext is MainWindowViewModel { UiScale: > 0 } scaled) reserved /= scaled.UiScale;
             if (!_captionLogged && left != double.MaxValue)
             {
                 _captionLogged = true;

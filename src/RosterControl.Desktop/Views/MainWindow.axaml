@@ -32,6 +32,8 @@
       </Border.Background>
     </Border>
 
+    <LayoutTransformControl LayoutTransform="{Binding ScaleTransform}">
+    <Panel>
     <Grid RowDefinitions="44,*">
       <!-- ── Title bar (native caption buttons on the right) ─────────────────────────────── -->
       <Border Grid.Row="0" Name="TitleBar" Background="Transparent" WindowDecorationProperties.ElementRole="TitleBar">
@@ -51,6 +53,17 @@
             <Border Width="1" Height="16" Background="{StaticResource Brush.Border}" Margin="2,0,8,0" IsVisible="{Binding !IsLoading}" />
             <TextBlock Text="{Binding PageTitle}" Classes="secondary" FontWeight="SemiBold" VerticalAlignment="Center" IsHitTestVisible="False" />
           </StackPanel>
+
+          <Button Grid.Column="3" Classes="titlesearch" WindowDecorationProperties.ElementRole="User" HorizontalAlignment="Center" Width="300" Margin="12,0"
+                  Command="{Binding OpenPaletteCommand}" IsVisible="{Binding !IsLoading}" ToolTip.Tip="Search champions, pages and actions (Ctrl+K)">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <c:LucideIcon Kind="search" Width="14" Height="14" Foreground="{StaticResource Brush.TextMuted}" />
+              <TextBlock Grid.Column="1" Text="Search champions…" Classes="muted" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center" />
+              <Border Grid.Column="2" CornerRadius="4" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" Padding="5,0">
+                <TextBlock Text="Ctrl K" FontSize="10.5" Classes="muted" />
+              </Border>
+            </Grid>
+          </Button>
 
           <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="0,0,12,0">
             <Button Name="ExitFullScreenButton" Classes="small" WindowDecorationProperties.ElementRole="User" IsVisible="False" ToolTip.Tip="Exit full screen (Esc or F11)">
@@ -131,7 +144,7 @@
         </Border>
 
         <!-- ── Page ──────────────────────────────────────────────────────────────────────── -->
-        <ContentControl Grid.Column="1" Content="{Binding CurrentPage}" Margin="0,0,14,14" IsVisible="{Binding !IsLoading}" />
+        <c:PageHost Name="Pages" Grid.Column="1" Page="{Binding CurrentPage}" Margin="0,0,14,14" IsVisible="{Binding !IsLoading}" />
       </Grid>
 
       <!-- ── Loading / error ─────────────────────────────────────────────────────────────── -->
@@ -163,10 +176,14 @@
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="vm:ToastViewModel">
           <Border Background="#F2121C2A" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="8" Padding="12,10" BoxShadow="{StaticResource Shadow.Popup}">
-            <Grid ColumnDefinitions="Auto,*,Auto">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
               <c:LucideIcon Kind="{Binding IconKind}" Foreground="{Binding Accent}" VerticalAlignment="Top" Margin="0,1,10,0" />
               <TextBlock Grid.Column="1" Text="{Binding Message}" TextWrapping="Wrap" VerticalAlignment="Center" />
-              <Button Grid.Column="2" Classes="ghost icon" Width="22" Height="22" Margin="10,-2,-4,0" VerticalAlignment="Top"
+              <Button Grid.Column="2" Classes="small teal" Margin="10,-3,0,-3" VerticalAlignment="Center" IsVisible="{Binding HasAction}" ToolTip.Tip="Ctrl+Z"
+                      Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RunToastActionCommand}" CommandParameter="{Binding}">
+                <TextBlock Text="{Binding ActionText}" FontSize="12" Foreground="#CDFAFA" FontWeight="SemiBold" />
+              </Button>
+              <Button Grid.Column="3" Classes="ghost icon" Width="22" Height="22" Margin="6,-2,-4,0" VerticalAlignment="Top"
                       Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DismissToastCommand}" CommandParameter="{Binding}">
                 <c:LucideIcon Kind="x" Width="13" Height="13" />
               </Button>
@@ -191,6 +208,44 @@
         </StackPanel>
       </Border>
     </Panel>
+
+    <!-- ── Search palette (Ctrl+K) ───────────────────────────────────────────────────────── -->
+    <Panel IsVisible="{Binding Palette.IsOpen}">
+      <Border Background="#99030609" PointerPressed="OnPaletteBackdropPressed" />
+      <Border Classes="card" Width="560" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,90,0,0" Padding="0"
+              BorderBrush="{StaticResource Brush.GoldDark}" BoxShadow="{StaticResource Shadow.Popup}" DataContext="{Binding Palette}" x:DataType="vm:CommandPaletteViewModel">
+        <StackPanel>
+          <TextBox Name="PaletteBox" Classes="search" Text="{Binding Query}" PlaceholderText="Search champions, pages and actions…" Margin="12,12,12,8"
+                   FontSize="14" />
+          <ItemsControl ItemsSource="{Binding Results}" Margin="6,0,6,8" MaxHeight="420">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PaletteItem">
+                <Border Classes="paletteitem" Classes.selected="{Binding IsSelected}" CornerRadius="6" Padding="10,6"
+                        c:Dnd.ClickCommand="{Binding $parent[ItemsControl].((vm:CommandPaletteViewModel)DataContext).ExecuteCommand}">
+                  <Grid ColumnDefinitions="Auto,*">
+                    <Panel Width="28" Height="28" Margin="0,0,12,0">
+                      <c:AssetImage Source="{Binding IconUrl}" CornerRadius="5" Zoom="1.1" IsVisible="{Binding HasIconUrl}" />
+                      <Border CornerRadius="6" Background="{StaticResource Brush.SurfaceElevated}" IsVisible="{Binding HasIconKind}">
+                        <c:LucideIcon Kind="{Binding IconKind}" Width="15" Height="15" />
+                      </Border>
+                    </Panel>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Subtitle}" Classes="caption" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Text="Nothing matches." Classes="secondary" Margin="18,0,18,14" IsVisible="{Binding !HasResults}" />
+          <Border Classes="divider" />
+          <TextBlock Classes="caption" Margin="14,8,14,10" Text="↑ ↓ to choose · Enter to open · Esc to close" />
+        </StackPanel>
+      </Border>
+    </Panel>
+    </Panel>
+    </LayoutTransformControl>
 
     <!-- ── Drag & drop ghost layer (topmost, not hit-testable) ───────────────────────────── -->
     <Canvas c:Dnd.IsLayer="True" />

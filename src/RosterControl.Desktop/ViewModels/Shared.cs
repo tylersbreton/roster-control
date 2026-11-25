@@ -33,9 +33,20 @@ public interface IShell
     RosterRepository Repository { get; }
     SaveCoordinator Saves { get; }
     IGameDataService GameData { get; }
-    void OpenChampion(string championId, ChampionTab tab = ChampionTab.Builds);
-    void ShowToast(string message, ToastKind kind = ToastKind.Info);
+    PreferencesStore Preferences { get; }
+
+    /// <param name="tab">Tab to show; null = the tab used last.</param>
+    /// <param name="sequence">The list the champion was opened from, for previous/next navigation.</param>
+    void OpenChampion(string championId, ChampionTab? tab = null, ChampionSequence? sequence = null);
+
+    /// <summary>Previous/next within a sequence: replaces the current champion page.</summary>
+    void ShowChampionInSequence(string championId, ChampionTab tab, ChampionSequence sequence);
+
+    /// <param name="actionText">Optional button on the toast (e.g. "Undo"); Ctrl+Z runs the newest one.</param>
+    void ShowToast(string message, ToastKind kind = ToastKind.Info, string? actionText = null, Func<Task>? action = null);
+
     Task<bool> ConfirmAsync(string title, string message, string confirmText, bool danger = true);
+    Task NavigateAsync(Section section, bool pushHistory = false);
     /// <summary>Roster/builds/matchups changed: pages refresh their derived data when next shown.</summary>
     void MarkDirty();
 }
@@ -45,6 +56,22 @@ public interface IPage
 {
     string Title { get; }
     Task OnNavigatedToAsync();
+}
+
+/// <summary>Pages that react to keyboard shortcuts. <c>typing</c> is true while a text box has focus.</summary>
+public interface IKeyboardPage
+{
+    bool HandleKey(Avalonia.Input.Key key, Avalonia.Input.KeyModifiers modifiers, bool typing);
+}
+
+/// <summary>An ordered list of champions (a roster group, a filtered grid…) for previous/next on the champion page.</summary>
+public sealed record ChampionSequence(IReadOnlyList<string> ChampionIds, string Label);
+
+/// <summary>Small helpers for remembering UI state in preferences.</summary>
+public static class UiState
+{
+    public static T Load<T>(PreferencesStore prefs, string key, T fallback) => prefs.Get(key, fallback);
+    public static void Save<T>(PreferencesStore prefs, string key, T value) => prefs.Set(key, value);
 }
 
 public sealed record ChampionDragData(ChampionInfo Champion, string ImageUrl, object? Origin) : IDragPayload
@@ -173,6 +200,9 @@ public sealed partial class FilterOption : ObservableObject
 public sealed partial class ChampionBrowserViewModel : ObservableObject
 {
     private readonly IReadOnlyList<ChampionTileViewModel> _all;
+    private PreferencesStore? _prefs;
+    private string? _stateKey;
+    private bool _restoring;
 
     public ChampionBrowserViewModel(GameDataSnapshot game, IReadOnlyList<ChampionTileViewModel>? tiles = null)
     {
@@ -194,6 +224,10 @@ public sealed partial class ChampionBrowserViewModel : ObservableObject
     /// <summary>Additional filter supplied by the page (e.g. "only champions in my roster").</summary>
     public Func<ChampionTileViewModel, bool>? ExtraFilter { get; set; }
 
+    /// <summary>Reports whether the page's own filters are active, and resets them (for "Clear filters").</summary>
+    public Func<bool>? ExtraFiltersActive { get; set; }
+    public Action? ResetExtraFilters { get; set; }
+
     [ObservableProperty]
     private string _search = "";
 
@@ -207,32 +241,82 @@ public sealed partial class ChampionBrowserViewModel : ObservableObject
     private IReadOnlyList<ChampionTileViewModel> _tiles = [];
 
     public string CountText => Tiles.Count == _all.Count ? $"{_all.Count}" : $"{Tiles.Count} / {_all.Count}";
+    public bool IsEmpty => Tiles.Count == 0;
+    public bool HasActiveFilters => Search.Length > 0 || Role is not null || SelectedClass != ClassOptions[0] || (ExtraFiltersActive?.Invoke() ?? false);
+    public ChampionTileViewModel? FirstTile => Tiles.Count > 0 ? Tiles[0] : null;
 
-    partial void OnSearchChanged(string value) => Refilter();
-    partial void OnSelectedClassChanged(string value) => Refilter();
-    partial void OnRoleChanged(Position? value) => Refilter();
-    partial void OnTilesChanged(IReadOnlyList<ChampionTileViewModel> value) => OnPropertyChanged(nameof(CountText));
+    partial void OnSearchChanged(string value) => Changed();
+    partial void OnSelectedClassChanged(string value) => Changed();
+    partial void OnRoleChanged(Position? value)
+    {
+        foreach (var o in RoleOptions) o.IsSelected = Equals(o.Value as Position?, value);
+        Changed();
+    }
+
+    partial void OnTilesChanged(IReadOnlyList<ChampionTileViewModel> value)
+    {
+        OnPropertyChanged(nameof(CountText));
+        OnPropertyChanged(nameof(IsEmpty));
+        OnPropertyChanged(nameof(HasActiveFilters));
+        OnPropertyChanged(nameof(FirstTile));
+    }
+
+    private void Changed()
+    {
+        Refilter();
+        if (_restoring || _prefs is null || _stateKey is null) return;
+        _prefs.Set(_stateKey, new BrowserState(Search, Role, SelectedClass));
+    }
+
+    private sealed record BrowserState(string Search, Position? Role, string Class);
+
+    /// <summary>Restores the last search and filters, and keeps them saved under <paramref name="key"/>.</summary>
+    public void Remember(PreferencesStore prefs, string key)
+    {
+        _prefs = prefs;
+        _stateKey = key;
+        if (prefs.Get<BrowserState?>(key, null) is not { } state) return;
+        _restoring = true;
+        Search = state.Search ?? "";
+        Role = state.Role;
+        SelectedClass = ClassOptions.Contains(state.Class) ? state.Class : ClassOptions[0];
+        _restoring = false;
+        Refilter();
+    }
 
     [RelayCommand]
-    private void SelectRole(FilterOption option)
-    {
-        foreach (var o in RoleOptions) o.IsSelected = ReferenceEquals(o, option);
-        Role = option.Value as Position?;
-    }
+    private void SelectRole(FilterOption option) => Role = option.Value as Position?;
 
     [RelayCommand]
     private void ClearSearch() => Search = "";
 
+    [RelayCommand]
+    private void ClearFilters()
+    {
+        _restoring = true;
+        Search = "";
+        Role = null;
+        SelectedClass = ClassOptions[0];
+        ResetExtraFilters?.Invoke();
+        _restoring = false;
+        Changed();
+    }
+
     public ChampionTileViewModel? Find(string championId) => _all.FirstOrDefault(t => string.Equals(t.Id, championId, StringComparison.OrdinalIgnoreCase));
+
+    public ChampionSequence Sequence(string label) => new(Tiles.Select(t => t.Id).ToList(), label);
 
     public void Refilter()
     {
         var cls = SelectedClass == ClassOptions[0] ? null : SelectedClass;
+        // Best matches first when searching: names starting with the query, then the rest alphabetically.
+        var query = ChampionInfo.Normalize(Search);
         Tiles = _all.Where(t =>
                 t.Champion.Matches(Search)
                 && (Role is null || t.Champion.Positions.Contains(Role.Value))
                 && (cls is null || t.Champion.Tags.Contains(cls))
                 && (ExtraFilter?.Invoke(t) ?? true))
+            .OrderBy(t => query.Length > 0 && !ChampionInfo.Normalize(t.Name).StartsWith(query, StringComparison.Ordinal))
             .ToList();
     }
 }
@@ -265,14 +349,20 @@ public sealed partial class ConfirmDialogViewModel : ObservableObject
 
 public sealed partial class ToastViewModel : ObservableObject
 {
-    public ToastViewModel(string message, ToastKind kind)
+    public ToastViewModel(string message, ToastKind kind, string? actionText = null, Func<Task>? action = null)
     {
         Message = message;
         Kind = kind;
+        ActionText = actionText;
+        Action = action;
     }
 
     public string Message { get; }
     public ToastKind Kind { get; }
+    /// <summary>Optional action button (e.g. "Undo").</summary>
+    public string? ActionText { get; }
+    public Func<Task>? Action { get; }
+    public bool HasAction => Action is not null;
     public string IconKind => Kind switch
     {
         ToastKind.Success => "circle-check",

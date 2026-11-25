@@ -250,6 +250,30 @@ public class CachingTests
     }
 
     [Test]
+    public async Task Startup_from_cache_makes_no_network_requests()
+    {
+        ServeTwoPatches();
+        await Service().LoadAsync(false, null, CancellationToken.None);
+        var before = _http.Requests.Count;
+        var service = Service();
+        var game = await service.LoadCachedAsync(null, CancellationToken.None);
+        Assert.That(game, Is.Not.Null);
+        Assert.That(game!.Version, Is.EqualTo("16.24.1"), "newest cached patch");
+        Assert.That(game.ShardRows, Has.Count.EqualTo(3), "shards from the cache");
+        Assert.That(service.Status!.Source, Is.EqualTo(GameDataSource.StartupCache));
+        Assert.That(service.LastPatchCheck, Is.Null, "the patch list was not checked yet");
+        Assert.That(_http.Requests, Has.Count.EqualTo(before), "instant start: everything came from disk");
+    }
+
+    [Test]
+    public async Task Startup_from_cache_returns_null_on_first_run()
+    {
+        ServeTwoPatches();
+        Assert.That(await Service().LoadCachedAsync(null, CancellationToken.None), Is.Null);
+        Assert.That(_http.Requests, Is.Empty);
+    }
+
+    [Test]
     public async Task Offline_start_uses_the_cache_and_reports_it()
     {
         ServeTwoPatches();

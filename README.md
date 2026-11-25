@@ -37,9 +37,11 @@ It never restarts on its own, and your data is untouched by updates.
 
 - **Rosters** — groups shown as columns (one per role by default: Top, Jungle, Middle, Bottom, Support). Drag champions
   from the pool into a group; drag cards to reorder or to move them to another group (hold **Ctrl** to copy); drag a
-  card back onto the pool to remove it. Add, rename, recolour, re-role, sort, reorder and delete groups.
+  card back onto the pool to remove it. Or right-click: *Add to …* on a pool champion, *Move to / Copy to* on a card.
+  Add, rename, recolour, re-role, sort, reorder and delete groups. A **Compact** toggle fits more cards per column.
 - **Proficiency & priority per placement** — 1–5 stars and Main / Secondary / Pocket / Learning, separately for each
-  group (great Pantheon support, weak Pantheon top).
+  group (great Pantheon support, weak Pantheon top). Hover a card and press **1–5** to rate it (0 clears); click the
+  priority label to change it.
 - **Builds** — any number per champion (e.g. *Standard*, *vs AP*), each with:
   - a **rune page** laid out like the client: path icons, keystones, grayscale unselected runes, coloured selection rings,
     the client's rune-tree artwork, stat shards and full descriptions on hover. Selection rules match the client
@@ -51,6 +53,7 @@ It never restarts on its own, and your data is untouched by updates.
   - **summoner spells** (D/F slots) and an 18-level **skill order** grid with the champion's ability icons, rank limits,
     a "max order" summary and one-click fill (R at 6/11/16).
   - notes and a role tag.
+  - **copy to another champion** (runes, items, spells and notes; the skill order is champion-specific).
 - **Matchups** — *Good against* / *Weak against* lists per champion with a note per matchup (drag champions in, flip,
   reorder). A matchup applies to **all roles or one role** (Pantheon vs Darius can differ top vs support); a
   role-specific matchup overrides the all-roles one for that role. Matchups recorded on the other champion are shown
@@ -64,6 +67,29 @@ It never restarts on its own, and your data is untouched by updates.
 - **Full screen** — F11 or the ⤢ caption button; leave with **Esc**, **F11** or *Exit full screen* in the title bar
   (or hover the top edge for the window's own controls).
 - **Backup** — export/import all data as JSON; an automatic backup is written daily (last 10 kept).
+- **Quick search** — **Ctrl+K** (or the search box in the title bar) finds champions (with the groups they're in),
+  pages and actions; recently opened champions come first.
+- **Undo** — deleting a build, group, item block, placement or matchup shows an *Undo* toast (also **Ctrl+Z**).
+- **Step through a list** — a champion opened from a group, the pool or the library shows *‹ 2 / 5 ›* in its header;
+  **Ctrl+←/→** moves to the previous / next champion.
+- **Remembers where you were** — filters, searches, the last champion tab, editor tab, matchup role, shop filters and
+  window zoom are kept between sessions. **Enter** in a search box opens or adds the first result.
+- **Zoom** — 80–150 % (**Ctrl+=**, **Ctrl+-**, **Ctrl+0** or *Settings → Display*).
+
+### Keyboard shortcuts
+
+| Keys | Action |
+|---|---|
+| Ctrl+K / Ctrl+P | Quick search |
+| Ctrl+1 … Ctrl+4 | Rosters · Champions · Counter Picks · Settings |
+| Alt+← | Back |
+| Ctrl+Z | Undo the last removal |
+| Ctrl+= / Ctrl+- / Ctrl+0 | Zoom in / out / reset |
+| F11, Esc | Full screen, leave full screen |
+| Ctrl+N | New group (Rosters) or new build (champion page) |
+| 1–5, 0, Delete | Rate, clear or remove the hovered roster card |
+| Ctrl+Tab | Next tab on a champion page |
+| Ctrl+← / Ctrl+→ | Previous / next champion in the list it was opened from |
 
 ## Data storage
 
@@ -74,7 +100,7 @@ Everything is local to each copy of the app, in the `data` folder **of the folde
 |---|---|
 | `data\roster.db` | SQLite database (groups, placements, builds, matchups, notes, preferences) |
 | `data\backups\` | Automatic daily backups and safety backups taken before an import |
-| `data\cache\` | Downloaded game data and images (safe to delete; re-downloaded) |
+| `data\cache\` | Downloaded game data and images (safe to delete; re-downloaded). *Settings* shows its size and can clear the images. |
 | `data\logs\` | Daily rolling logs (10 days) |
 
 If the application folder isn't writable (e.g. under Program Files), `%LOCALAPPDATA%\RosterControl` is used instead.
@@ -87,7 +113,7 @@ Everything that can be cached is, but champions are occasionally added and items
 
 | Data | Policy |
 |---|---|
-| Patch list (`versions.json`) | Checked online at every start (8 s timeout, cached copy when offline) and every 2 hours while running (every 10 minutes after an offline start). A new patch shows an **Update** button in the title bar — it's never applied mid-edit. |
+| Patch list (`versions.json`) | The app opens instantly from the newest cached patch, then checks online in the background (8 s timeout) and every 2 hours while running (every 10 minutes after an offline start). The first run downloads everything. A new patch shows an **Update** button in the title bar — it's never applied mid-edit. |
 | Champions, items, runes, spells (per patch) | Immutable per patch → cached forever; a new patch is a new download. The newest 3 patches are kept, older ones pruned. |
 | Portraits, item and spell icons | URLs include the patch → cached per patch, pruned with it. |
 | Splash art, rune/shard/role icons (unversioned) | Re-validated after 7 days with ETag / If-Modified-Since (304 = keep); the cached copy is shown meanwhile. |
@@ -137,6 +163,11 @@ generated notes. Running copies pick it up automatically. Every push and pull re
 tests ([ci.yml](.github/workflows/ci.yml)).
 
 `.\tools\publish.ps1 -Version 1.0.0` still produces a plain (non-updating) portable build locally in `artifacts\publish`.
+
+## Support
+
+Roster Control is free and always will be. If it's useful to you, you can support development through
+[GitHub Sponsors](https://github.com/sponsors/tylersbreton) (or the ❤ **Sponsor** button at the top of the repository).
 
 ## Legal
 

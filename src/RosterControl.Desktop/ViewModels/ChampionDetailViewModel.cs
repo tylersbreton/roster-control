@@ -9,17 +9,19 @@ using RosterControl.Desktop.Controls;
 namespace RosterControl.Desktop.ViewModels;
 
 /// <summary>One champion: splash header, roster placements, builds, matchups, notes and tags.</summary>
-public sealed partial class ChampionDetailViewModel : ObservableObject, IPage
+public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, IKeyboardPage
 {
     private readonly IShell _shell;
     private bool _loaded;
     private bool _profileLoading;
 
-    public ChampionDetailViewModel(IShell shell, ChampionInfo champion, ChampionTab tab)
+    public ChampionDetailViewModel(IShell shell, ChampionInfo champion, ChampionTab tab, ChampionSequence? sequence = null)
     {
         _shell = shell;
         Champion = champion;
         _selectedTab = (int)tab;
+        Sequence = sequence;
+        SequenceIndex = sequence?.ChampionIds.ToList().FindIndex(id => string.Equals(id, champion.Id, StringComparison.OrdinalIgnoreCase)) ?? -1;
         PortraitUrl = AssetUrls.ChampionSquare(shell.Game.Version, champion.ImageFile);
         SplashUrl = AssetUrls.ChampionCentered(champion.Id);
         SplashFallbackUrl = AssetUrls.ChampionSplash(champion.Id);
@@ -37,6 +39,88 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage
     public string SplashUrl { get; }
     public string SplashFallbackUrl { get; }
     public MatchupsViewModel Matchups { get; }
+
+    // ── Previous / next within the list the champion was opened from ─────────────────────────────
+
+    public ChampionSequence? Sequence { get; }
+    public int SequenceIndex { get; }
+    public bool HasSequence => Sequence is { ChampionIds.Count: > 1 } && SequenceIndex >= 0;
+    public string SequenceText => HasSequence ? $"{SequenceIndex + 1} / {Sequence!.ChampionIds.Count} · {Sequence.Label}" : "";
+    public string? PreviousName => HasSequence ? _shell.Game.Champion(Sequence!.ChampionIds[(SequenceIndex - 1 + Sequence.ChampionIds.Count) % Sequence.ChampionIds.Count])?.Name : null;
+    public string? NextName => HasSequence ? _shell.Game.Champion(Sequence!.ChampionIds[(SequenceIndex + 1) % Sequence.ChampionIds.Count])?.Name : null;
+
+    [RelayCommand]
+    private void Previous() => Step(-1);
+
+    [RelayCommand]
+    private void Next() => Step(+1);
+
+    private void Step(int delta)
+    {
+        if (!HasSequence) return;
+        var ids = Sequence!.ChampionIds;
+        var id = ids[(SequenceIndex + delta + ids.Count) % ids.Count];
+        _shell.ShowChampionInSequence(id, (ChampionTab)SelectedTab, Sequence);
+    }
+
+    public bool HandleKey(Avalonia.Input.Key key, Avalonia.Input.KeyModifiers modifiers, bool typing)
+    {
+        var ctrl = modifiers.HasFlag(Avalonia.Input.KeyModifiers.Control);
+        var shift = modifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift);
+        if (ctrl && key == Avalonia.Input.Key.Tab)
+        {
+            SelectedTab = (SelectedTab + (shift ? 2 : 1)) % 3;
+            return true;
+        }
+        if (ctrl && !shift && key == Avalonia.Input.Key.N)
+        {
+            SelectedTab = (int)ChampionTab.Builds;
+            AddBuildCommand.Execute(null);
+            return true;
+        }
+        if (!typing && ctrl && key is Avalonia.Input.Key.Left or Avalonia.Input.Key.Right && HasSequence)
+        {
+            Step(key == Avalonia.Input.Key.Left ? -1 : 1);
+            return true;
+        }
+        return false;
+    }
+
+    // ── Copy a build to another champion ──────────────────────────────────────────────────────────
+
+    [ObservableProperty]
+    private string _copyQuery = "";
+
+    [ObservableProperty]
+    private IReadOnlyList<CopyTarget> _copyTargets = [];
+
+    partial void OnCopyQueryChanged(string value)
+    {
+        var query = ChampionInfo.Normalize(value);
+        CopyTargets = query.Length == 0
+            ? []
+            : _shell.Game.Champions.Where(c => c.Id != Champion.Id && c.Matches(value))
+                .OrderBy(c => !ChampionInfo.Normalize(c.Name).StartsWith(query, StringComparison.Ordinal))
+                .Take(8)
+                .Select(c => new CopyTarget(c, AssetUrls.ChampionSquare(_shell.Game.Version, c.ImageFile)))
+                .ToList();
+    }
+
+    /// <summary>Copies the selected build (runes, items, spells, notes; not the skill order) to another champion.</summary>
+    [RelayCommand]
+    private async Task CopyBuildToAsync(CopyTarget target)
+    {
+        if (SelectedBuild is not { } build) return;
+        await _shell.Saves.FlushAsync();
+        var copy = build.Model.CloneAsNew(build.Name);
+        copy.ChampionId = target.Champion.Id;
+        copy.SkillOrder = ""; // abilities differ between champions
+        await _shell.Repository.SaveBuildAsync(copy);
+        CopyQuery = "";
+        _shell.MarkDirty();
+        _shell.ShowToast($"Copied \"{build.Name}\" to {target.Champion.Name}", ToastKind.Success, "Open",
+            () => { _shell.OpenChampion(target.Champion.Id, ChampionTab.Builds); return Task.CompletedTask; });
+    }
 
     public ObservableCollection<PlacementViewModel> Placements { get; } = [];
     public ObservableCollection<GroupChoice> AvailableGroups { get; } = [];
@@ -139,7 +223,12 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage
         await _shell.Repository.DeleteEntryAsync(placement.EntryId);
         await LoadPlacementsAsync();
         _shell.MarkDirty();
-        _shell.ShowToast($"Removed {Champion.Name} from {placement.GroupName}");
+        _shell.ShowToast($"Removed {Champion.Name} from {placement.GroupName}", ToastKind.Info, "Undo", async () =>
+        {
+            await _shell.Repository.AddEntryAsync(placement.GroupId, Champion.Id, placement.Proficiency, placement.Priority);
+            await LoadPlacementsAsync();
+            _shell.MarkDirty();
+        });
     }
 
     // ── Builds ─────────────────────────────────────────────────────────────────────────────────────
@@ -181,8 +270,7 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage
     [RelayCommand]
     private async Task DeleteBuildAsync(BuildViewModel build)
     {
-        if (!await _shell.ConfirmAsync($"Delete \"{build.Name}\"?", "The rune page, item set, spells, skill order and notes of this build will be deleted.", "Delete build"))
-            return;
+        // No confirmation: the toast offers Undo (also Ctrl+Z).
         await _shell.Saves.FlushAsync();
         var index = Builds.IndexOf(build);
         await _shell.Repository.DeleteBuildAsync(build.Model.Id);
@@ -190,6 +278,18 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage
         SelectedBuild = Builds.ElementAtOrDefault(Math.Max(0, index - 1));
         NotifyBuilds();
         _shell.MarkDirty();
+        var snapshot = build.Model.CloneAsNew(build.Name);
+        snapshot.GameVersion = build.Model.GameVersion;
+        _shell.ShowToast($"Deleted build \"{build.Name}\"", ToastKind.Info, "Undo", async () =>
+        {
+            snapshot.Id = await _shell.Repository.SaveBuildAsync(snapshot);
+            var vm = new BuildViewModel(_shell, snapshot);
+            Builds.Insert(Math.Clamp(index, 0, Builds.Count), vm);
+            await _shell.Repository.ReorderBuildsAsync(Builds.Select(b => b.Model.Id).ToList());
+            SelectedBuild = vm;
+            NotifyBuilds();
+            _shell.MarkDirty();
+        });
     }
 
     [RelayCommand]
@@ -248,6 +348,11 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage
     }
 }
 
+public sealed record CopyTarget(ChampionInfo Champion, string IconUrl)
+{
+    public string Name => Champion.Name;
+}
+
 public sealed record GroupChoice(int Id, string Name, string ColorHex, Position? Role)
 {
     public IBrush Accent => Palette.Hex(ColorHex);
@@ -262,6 +367,7 @@ public sealed partial class PlacementViewModel : ObservableObject
     {
         _owner = owner;
         EntryId = entry.Id;
+        GroupId = group.Id;
         GroupName = group.Name;
         Role = group.Role;
         Accent = Palette.Hex(group.Color ?? Palette.RoleHex(group.Role));
@@ -272,6 +378,7 @@ public sealed partial class PlacementViewModel : ObservableObject
     }
 
     public int EntryId { get; }
+    public int GroupId { get; }
     public string GroupName { get; }
     public Position? Role { get; }
     public IBrush Accent { get; }

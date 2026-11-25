@@ -17,6 +17,8 @@ public enum GameDataSource
     Online,
     /// <summary>Loaded from the local cache because the network was unavailable.</summary>
     Cache,
+    /// <summary>Loaded from the cache for a fast start; the patch list is checked online in the background.</summary>
+    StartupCache,
 }
 
 public sealed record GameDataStatus(string Version, GameDataSource Source, DateTimeOffset LoadedAt, IReadOnlyList<string> Warnings);
@@ -26,6 +28,11 @@ public interface IGameDataService
 {
     GameDataSnapshot? Current { get; }
     GameDataStatus? Status { get; }
+    /// <summary>When the patch list was last fetched from Data Dragon successfully.</summary>
+    DateTimeOffset? LastPatchCheck { get; }
+
+    /// <summary>Loads the newest fully cached patch without network access (fast start). Null when nothing is cached.</summary>
+    Task<GameDataSnapshot?> LoadCachedAsync(IProgress<string>? progress, CancellationToken cancellationToken);
     /// <summary>
     /// Loads the newest patch (checking the patch list online). <paramref name="forceRefresh"/> also re-downloads the
     /// non-versioned documents (stat shards, champion positions) instead of using their cached copies.

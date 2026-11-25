@@ -9,7 +9,7 @@ using RosterControl.Desktop.Controls;
 namespace RosterControl.Desktop.ViewModels;
 
 /// <summary>The main page: champion pool on the left, roster groups as columns. Drag champions between them.</summary>
-public sealed partial class RostersViewModel : ObservableObject, IPage, IDropTarget
+public sealed partial class RostersViewModel : ObservableObject, IPage, IDropTarget, IKeyboardPage
 {
     private readonly IShell _shell;
     private bool _loaded;
@@ -19,6 +19,12 @@ public sealed partial class RostersViewModel : ObservableObject, IPage, IDropTar
         _shell = shell;
         Pool = new ChampionBrowserViewModel(shell.Game);
         Pool.ExtraFilter = t => !HideAssigned || !t.IsInRoster;
+        Pool.ExtraFiltersActive = () => HideAssigned;
+        Pool.ResetExtraFilters = () => HideAssigned = false;
+        _hideAssigned = shell.Preferences.Get("rosters.hideAssigned", false);
+        _compact = shell.Preferences.Get("rosters.compact", false);
+        _tipsDismissed = shell.Preferences.Get("rosters.tipsDismissed", false);
+        Pool.Remember(shell.Preferences, "rosters.pool");
     }
 
     public string Title => "Rosters";
@@ -38,9 +44,84 @@ public sealed partial class RostersViewModel : ObservableObject, IPage, IDropTar
     private string _summary = "";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowTips))]
     private bool _isEmpty;
 
-    partial void OnHideAssignedChanged(bool value) => Pool.Refilter();
+    /// <summary>Denser cards that fit more champions per column.</summary>
+    [ObservableProperty]
+    private bool _compact;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowTips))]
+    private bool _tipsDismissed;
+
+    /// <summary>First-run guidance, shown until dismissed or until the first champion is added.</summary>
+    public bool ShowTips => !TipsDismissed && IsEmpty;
+
+    /// <summary>The roster card under the mouse (keyboard shortcuts 0–5 and Delete act on it).</summary>
+    public RosterEntryViewModel? HoveredEntry { get; set; }
+
+    partial void OnHideAssignedChanged(bool value)
+    {
+        _shell.Preferences.Set("rosters.hideAssigned", value);
+        Pool.Refilter();
+    }
+
+    partial void OnCompactChanged(bool value) => _shell.Preferences.Set("rosters.compact", value);
+
+    [RelayCommand]
+    private void DismissTips()
+    {
+        TipsDismissed = true;
+        _shell.Preferences.Set("rosters.tipsDismissed", true);
+    }
+
+    [RelayCommand]
+    private void ToggleCompact() => Compact = !Compact;
+
+    /// <summary>Enter in the pool search: open the best match.</summary>
+    [RelayCommand]
+    private void OpenFirst()
+    {
+        if (Pool.FirstTile is { } tile) _shell.OpenChampion(tile.Id, null, Pool.Sequence("Champion pool"));
+    }
+
+    public bool HandleKey(Avalonia.Input.Key key, Avalonia.Input.KeyModifiers modifiers, bool typing)
+    {
+        if (typing) return false;
+        if (modifiers == Avalonia.Input.KeyModifiers.Control && key == Avalonia.Input.Key.N)
+        {
+            AddGroupCommand.Execute(null);
+            return true;
+        }
+        if (modifiers != Avalonia.Input.KeyModifiers.None || HoveredEntry is not { } entry) return false;
+        var digit = key switch
+        {
+            >= Avalonia.Input.Key.D0 and <= Avalonia.Input.Key.D5 => key - Avalonia.Input.Key.D0,
+            >= Avalonia.Input.Key.NumPad0 and <= Avalonia.Input.Key.NumPad5 => key - Avalonia.Input.Key.NumPad0,
+            _ => -1,
+        };
+        if (digit >= 0)
+        {
+            entry.Proficiency = digit;
+            return true;
+        }
+        if (key is Avalonia.Input.Key.Delete or Avalonia.Input.Key.Back)
+        {
+            HoveredEntry = null;
+            _ = entry.Group.RemoveAsync(entry);
+            return true;
+        }
+        return false;
+    }
+
+    // ── Right-click actions (same behaviour as dragging) ──────────────────────────────────────────
+
+    public void AddToGroup(ChampionInfo champion, RosterGroupViewModel group) =>
+        group.Drop(new ChampionDragData(champion, AssetUrls.ChampionSquare(Game.Version, champion.ImageFile), null), null, false, copy: false);
+
+    public void MoveOrCopy(RosterEntryViewModel entry, RosterGroupViewModel group, bool copy) =>
+        group.Drop(entry.DragData, null, false, copy);
 
     public async Task OnNavigatedToAsync()
     {
@@ -102,13 +183,15 @@ public sealed partial class RostersViewModel : ObservableObject, IPage, IDropTar
     [RelayCommand]
     private void OpenChampion(object? item)
     {
-        var id = item switch
+        switch (item)
         {
-            ChampionTileViewModel t => t.Id,
-            RosterEntryViewModel e => e.ChampionId,
-            _ => null,
-        };
-        if (id is not null) _shell.OpenChampion(id);
+            case ChampionTileViewModel t:
+                _shell.OpenChampion(t.Id, null, Pool.Sequence("Champion pool"));
+                break;
+            case RosterEntryViewModel e:
+                e.OpenCommand.Execute(null);
+                break;
+        }
     }
 
     [RelayCommand]
@@ -143,10 +226,23 @@ public sealed partial class RostersViewModel : ObservableObject, IPage, IDropTar
                 : $"The group's {count} champion placement{(count == 1 ? "" : "s")} will be removed. Builds, matchups and notes are kept.",
             "Delete group");
         if (!ok) return;
+        var index = Groups.IndexOf(group);
+        var snapshot = (group.Name, group.Role, group.ColorHex,
+            Entries: group.Entries.Select(e => (e.ChampionId, e.Proficiency, e.Priority)).ToList());
         await _shell.Repository.DeleteGroupAsync(group.Id);
         Groups.Remove(group);
         OnRosterChanged();
-        _shell.ShowToast($"Deleted \"{group.Name}\"");
+        _shell.ShowToast($"Deleted \"{group.Name}\"", ToastKind.Info, "Undo", async () =>
+        {
+            var restored = await _shell.Repository.AddGroupAsync(snapshot.Name, snapshot.Role, snapshot.ColorHex);
+            foreach (var (championId, proficiency, priority) in snapshot.Entries)
+                await _shell.Repository.AddEntryAsync(restored.Id, championId, proficiency, priority);
+            var ids = Groups.Select(g => g.Id).ToList();
+            ids.Insert(Math.Clamp(index, 0, ids.Count), restored.Id);
+            await _shell.Repository.ReorderGroupsAsync(ids);
+            await ReloadAsync();
+            _shell.ShowToast($"Restored \"{snapshot.Name}\"", ToastKind.Success);
+        });
     }
 
     // ── The pool is a drop target: dropping a roster card here removes it from its group ──────────
@@ -290,11 +386,28 @@ public sealed partial class RosterGroupViewModel : ObservableObject, IDropTarget
 
     internal async Task RemoveAsync(RosterEntryViewModel entry, bool toast = true)
     {
+        var index = Entries.IndexOf(entry);
+        if (index < 0) return;
         Entries.Remove(entry);
         await _owner.Shell.Repository.DeleteEntryAsync(entry.Id);
         _owner.OnRosterChanged();
-        if (toast) _owner.Shell.ShowToast($"Removed {entry.Name} from {Name}");
+        if (!toast) return;
+        var (champion, proficiency, priority) = (entry.Champion, entry.Proficiency, entry.Priority);
+        _owner.Shell.ShowToast($"Removed {entry.Name} from {Name}", ToastKind.Info, "Undo", async () =>
+        {
+            if (!_owner.Groups.Contains(this) || Entries.Any(e => e.ChampionId == champion.Id)) return;
+            var restored = await _owner.Shell.Repository.AddEntryAsync(Id, champion.Id, proficiency, priority);
+            Entries.Insert(Math.Clamp(index, 0, Entries.Count), new RosterEntryViewModel(this, restored, champion, _owner.Game.Version)
+            {
+                BuildCount = entry.BuildCount,
+                MatchupCount = entry.MatchupCount,
+            });
+            await SaveOrderAsync();
+            _owner.OnRosterChanged();
+        });
     }
+
+    public ChampionSequence Sequence => new(Entries.Select(e => e.ChampionId).ToList(), Name);
 
     // ── Drop target ────────────────────────────────────────────────────────────────────────────────
 
@@ -480,8 +593,8 @@ public sealed partial class RosterEntryViewModel : ObservableObject
     private Task RemoveAsync() => Group.RemoveAsync(this);
 
     [RelayCommand]
-    private void Open() => Group.Owner.Shell.OpenChampion(ChampionId);
+    private void Open() => Group.Owner.Shell.OpenChampion(ChampionId, null, Group.Sequence);
 
     [RelayCommand]
-    private void OpenMatchups() => Group.Owner.Shell.OpenChampion(ChampionId, ChampionTab.Matchups);
+    private void OpenMatchups() => Group.Owner.Shell.OpenChampion(ChampionId, ChampionTab.Matchups, Group.Sequence);
 }

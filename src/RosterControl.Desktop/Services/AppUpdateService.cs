@@ -103,7 +103,7 @@ public sealed class AppUpdateService
         {
             // Offline, GitHub rate limit, etc.: try again at the next check.
             _logger.LogWarning("Update check failed: {Message}", ex.Message);
-            LastError = ex.Message;
+            LastError = Integrations.NetworkErrors.Describe(ex, "GitHub");
             LastChecked = DateTimeOffset.Now;
             SetState(AppUpdateState.Failed);
         }

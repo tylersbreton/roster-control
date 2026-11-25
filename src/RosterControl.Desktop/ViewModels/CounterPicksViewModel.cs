@@ -20,6 +20,8 @@ public sealed partial class CounterPicksViewModel : ObservableObject, IPage, IDr
     {
         _shell = shell;
         Picker = new ChampionBrowserViewModel(shell.Game);
+        _includeOutsideRoster = shell.Preferences.Get("counters.includeOutside", true);
+        _showNeutral = shell.Preferences.Get("counters.showNeutral", false);
         for (var i = 0; i < 5; i++) Enemies.Add(new EnemySlotViewModel(this, i, shell.Game.Version));
     }
 
@@ -53,15 +55,41 @@ public sealed partial class CounterPicksViewModel : ObservableObject, IPage, IDr
     public bool HasRisky => Risky.Count > 0;
     public bool HasNeutral => Neutral.Count > 0;
 
-    partial void OnSelectedScopeChanged(ScopeOption? value) => Recompute();
-    partial void OnIncludeOutsideRosterChanged(bool value) => Recompute();
+    partial void OnSelectedScopeChanged(ScopeOption? value)
+    {
+        if (value is not null) _shell.Preferences.Set("counters.scope", value.GroupId);
+        Recompute();
+    }
+
+    partial void OnIncludeOutsideRosterChanged(bool value)
+    {
+        _shell.Preferences.Set("counters.includeOutside", value);
+        Recompute();
+    }
+
+    partial void OnShowNeutralChanged(bool value) => _shell.Preferences.Set("counters.showNeutral", value);
+
+    /// <summary>Enter in the enemy search: add the best match to the enemy team.</summary>
+    [RelayCommand]
+    private void AddFirstEnemy()
+    {
+        if (Picker.FirstTile is not { } tile) return;
+        SetEnemy(tile.Champion, null);
+        Picker.Search = "";
+    }
+
+    [RelayCommand]
+    private Task GoToChampions() => _shell.NavigateAsync(Section.Champions);
+
+    private ChampionSequence ResultSequence() =>
+        new(Strong.Concat(Risky).Concat(Neutral).Select(r => r.Champion.Id).Distinct(StringComparer.OrdinalIgnoreCase).ToList(), "Counter picks");
 
     public async Task OnNavigatedToAsync()
     {
         _groups = await _shell.Repository.GetGroupsAsync();
         _matchups = await _shell.Repository.GetMatchupsAsync();
         HasMatchupData = _matchups.Count > 0;
-        var previous = SelectedScope?.GroupId;
+        var previous = SelectedScope?.GroupId ?? _shell.Preferences.Get<int?>("counters.scope", null);
         Scopes.Clear();
         Scopes.Add(new ScopeOption(null, "All my groups", Palette.Gold, null));
         foreach (var g in _groups) Scopes.Add(new ScopeOption(g.Id, g.Name, g.Color ?? Palette.RoleHex(g.Role), g.Role));
@@ -80,7 +108,7 @@ public sealed partial class CounterPicksViewModel : ObservableObject, IPage, IDr
     }
 
     [RelayCommand]
-    private void OpenChampion(CounterResultViewModel result) => _shell.OpenChampion(result.Champion.Id, ChampionTab.Matchups);
+    private void OpenChampion(CounterResultViewModel result) => _shell.OpenChampion(result.Champion.Id, ChampionTab.Matchups, ResultSequence());
 
     internal void SetEnemy(ChampionInfo champion, EnemySlotViewModel? slot)
     {

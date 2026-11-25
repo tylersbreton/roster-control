@@ -35,6 +35,37 @@ public sealed class GameDataService : IGameDataService
 
     public GameDataSnapshot? Current { get; private set; }
     public GameDataStatus? Status { get; private set; }
+    public DateTimeOffset? LastPatchCheck { get; private set; }
+
+    /// <summary>
+    /// Fast start: loads the newest fully cached patch without touching the network (the caller then checks for a new
+    /// patch in the background). Returns null when nothing is cached yet.
+    /// </summary>
+    public async Task<GameDataSnapshot?> LoadCachedAsync(IProgress<string>? progress, CancellationToken cancellationToken)
+    {
+        var version = NewestCachedVersion();
+        if (version is null) return null;
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var warnings = new List<string>();
+            var snapshot = await LoadVersionAsync(version, _client.ReadCachedVersions(), false, warnings, progress, cancellationToken, preferCache: true).ConfigureAwait(false);
+            Current = snapshot;
+            Status = new GameDataStatus(snapshot.Version, GameDataSource.StartupCache, DateTimeOffset.Now, warnings);
+            _abilities.Clear();
+            _logger.LogInformation("Game data {Version} loaded from cache for a fast start", snapshot.Version);
+            return snapshot;
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or HttpRequestException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning("Cached game data unusable ({Message}); loading normally", ex.Message);
+            return null;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
 
     public async Task<GameDataSnapshot> LoadAsync(bool forceRefresh, IProgress<string>? progress, CancellationToken cancellationToken)
     {
@@ -45,12 +76,14 @@ public sealed class GameDataService : IGameDataService
             // (Community Dragon, Meraki) that are otherwise refreshed on a schedule or when the patch changes.
             var warnings = new List<string>();
             var source = GameDataSource.Online;
+            string? offlineReason = null;
 
             progress?.Report("Checking the latest patch…");
             IReadOnlyList<string> versions;
             try
             {
                 (versions, var fromCache) = await _client.GetVersionsAsync(cancellationToken).ConfigureAwait(false);
+                if (!fromCache) LastPatchCheck = DateTimeOffset.Now;
                 if (fromCache)
                 {
                     source = GameDataSource.Cache;
@@ -60,15 +93,16 @@ public sealed class GameDataService : IGameDataService
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException or JsonException && !cancellationToken.IsCancellationRequested)
             {
                 versions = [];
+                offlineReason = NetworkErrors.Describe(ex, "Data Dragon");
                 _logger.LogWarning("Patch list unavailable: {Message}", ex.Message);
             }
 
             var version = versions.FirstOrDefault() ?? NewestCachedVersion() ?? throw new GameDataUnavailableException(
-                "Could not reach Data Dragon and no game data is cached yet. Connect to the internet and try again.");
+                $"{offlineReason ?? "Data Dragon could not be reached."} Game data is downloaded once on first start, then cached.");
             if (versions.Count == 0)
             {
                 source = GameDataSource.Cache;
-                warnings.Add("Offline: using cached game data.");
+                warnings.Add($"Offline ({offlineReason ?? "Data Dragon unreachable"}); using cached game data.");
             }
 
             GameDataSnapshot snapshot;
@@ -81,7 +115,7 @@ public sealed class GameDataService : IGameDataService
                 // A new patch was announced but could not be downloaded: fall back to the newest complete cached patch.
                 var cached = NewestCachedVersion();
                 if (cached is null || cached == version)
-                    throw new GameDataUnavailableException("Could not download game data from Data Dragon. Check your connection and try again.", ex);
+                    throw new GameDataUnavailableException($"Could not download game data. {NetworkErrors.Describe(ex, "Data Dragon")}", ex);
                 _logger.LogWarning(ex, "Could not download {Version}; using cached {Cached}", version, cached);
                 warnings.Add($"Could not download patch {version}; using cached {cached}.");
                 source = GameDataSource.Cache;
@@ -103,7 +137,7 @@ public sealed class GameDataService : IGameDataService
     }
 
     private async Task<GameDataSnapshot> LoadVersionAsync(string version, IReadOnlyList<string> versions, bool forceRefresh, List<string> warnings,
-        IProgress<string>? progress, CancellationToken ct)
+        IProgress<string>? progress, CancellationToken ct, bool preferCache = false)
     {
         progress?.Report($"Loading champions (patch {version})…");
         using var champions = await _client.GetDataAsync(version, "champion.json", ct).ConfigureAwait(false);
@@ -119,22 +153,22 @@ public sealed class GameDataService : IGameDataService
         try
         {
             progress?.Report("Loading stat shards…");
-            var patchChanged = _client.ReadMarker("cdragon-patch") != version;
-            perkStyles = await _client.GetCommunityDragonAsync("perkstyles.json", forceRefresh || patchChanged, ct).ConfigureAwait(false);
-            perks = await _client.GetCommunityDragonAsync("perks.json", forceRefresh || patchChanged, ct).ConfigureAwait(false);
+            var patchChanged = !preferCache && _client.ReadMarker("cdragon-patch") != version;
+            perkStyles = await _client.GetCommunityDragonAsync("perkstyles.json", forceRefresh || patchChanged, ct, preferCache).ConfigureAwait(false);
+            perks = await _client.GetCommunityDragonAsync("perks.json", forceRefresh || patchChanged, ct, preferCache).ConfigureAwait(false);
             if (patchChanged) _client.WriteMarker("cdragon-patch", version);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException && !ct.IsCancellationRequested)
         {
             _logger.LogWarning("Community Dragon unavailable: {Message}", ex.Message);
-            warnings.Add("Stat shards unavailable (Community Dragon could not be reached).");
+            warnings.Add($"Stat shards unavailable: {NetworkErrors.Describe(ex, "Community Dragon")}");
         }
 
         progress?.Report("Loading champion positions…");
-        var positions = await _client.GetPositionsAsync(forceRefresh, championIds, ct).ConfigureAwait(false);
+        var positions = await _client.GetPositionsAsync(forceRefresh, championIds, ct, preferCache).ConfigureAwait(false);
         if (positions.Count == 0) warnings.Add("Champion positions unavailable; role filters are disabled.");
 
-        var newChampions = await NewChampionsAsync(version, versions, championIds, ct).ConfigureAwait(false);
+        var newChampions = await NewChampionsAsync(version, versions, championIds, ct, preferCache).ConfigureAwait(false);
 
         try
         {
@@ -161,11 +195,11 @@ public sealed class GameDataService : IGameDataService
         champions.RootElement.TryGetProperty("data", out var data) ? data.EnumerateObject().Select(p => p.Name).ToList() : [];
 
     /// <summary>Champions in this patch that weren't in the previous patch (for "NEW" badges).</summary>
-    private async Task<IReadOnlyCollection<string>> NewChampionsAsync(string version, IReadOnlyList<string> versions, IReadOnlyCollection<string> current, CancellationToken ct)
+    private async Task<IReadOnlyCollection<string>> NewChampionsAsync(string version, IReadOnlyList<string> versions, IReadOnlyCollection<string> current, CancellationToken ct, bool cachedOnly = false)
     {
         var index = versions.ToList().IndexOf(version);
         var previous = index >= 0 && index + 1 < versions.Count ? versions[index + 1] : null;
-        if (previous is null) return [];
+        if (previous is null || (cachedOnly && !_client.IsDataCached(previous, "champion.json"))) return [];
         try
         {
             using var doc = await _client.GetDataAsync(previous, "champion.json", ct).ConfigureAwait(false);
@@ -202,6 +236,7 @@ public sealed class GameDataService : IGameDataService
         try
         {
             var (versions, fromCache) = await _client.GetVersionsAsync(cancellationToken).ConfigureAwait(false);
+            if (!fromCache) LastPatchCheck = DateTimeOffset.Now;
             var newest = versions.FirstOrDefault();
             if (fromCache || newest is null || newest == Current.Version) return null;
             return IsNewer(newest, Current.Version) ? newest : null;

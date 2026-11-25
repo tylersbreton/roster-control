@@ -63,8 +63,31 @@ public sealed class GameDataClient
         GetCachedAsync(new Uri(DataDragonBase, $"cdn/{version}/data/{Locale}/{file}"), Path.Combine(_cacheRoot, version, Locale, file), maxAge: null, ct);
 
     /// <summary>Community Dragon game data (perks.json, perkstyles.json): stat shards and rune page art not in Data Dragon.</summary>
-    public Task<JsonDocument> GetCommunityDragonAsync(string file, bool forceRefresh, CancellationToken ct) =>
-        GetCachedAsync(new Uri(CommunityDragonBase, file), Path.Combine(_cacheRoot, "cdragon", file), forceRefresh ? TimeSpan.Zero : CommunityDragonMaxAge, ct);
+    /// <param name="preferCache">Use the cached copy whatever its age (fast start-up); only download when missing.</param>
+    public Task<JsonDocument> GetCommunityDragonAsync(string file, bool forceRefresh, CancellationToken ct, bool preferCache = false)
+    {
+        var path = Path.Combine(_cacheRoot, "cdragon", file);
+        var maxAge = forceRefresh ? TimeSpan.Zero : preferCache && File.Exists(path) ? (TimeSpan?)null : CommunityDragonMaxAge;
+        return GetCachedAsync(new Uri(CommunityDragonBase, file), path, maxAge, ct);
+    }
+
+    /// <summary>The patch list as last downloaded (newest first), without any network access.</summary>
+    public IReadOnlyList<string> ReadCachedVersions()
+    {
+        try
+        {
+            var path = Path.Combine(_cacheRoot, "versions.json");
+            if (!File.Exists(path)) return [];
+            using var doc = JsonDocument.Parse(File.ReadAllBytes(path));
+            return doc.RootElement.EnumerateArray().Select(e => e.GetString()).Where(s => !string.IsNullOrEmpty(s) && char.IsDigit(s[0])).Cast<string>().ToList();
+        }
+        catch (Exception ex) when (ex is IOException or JsonException)
+        {
+            return [];
+        }
+    }
+
+    public bool IsDataCached(string version, string file) => File.Exists(Path.Combine(_cacheRoot, version, Locale, file));
 
     public bool IsVersionCached(string version) =>
         new[] { "champion.json", "item.json", "runesReforged.json", "summoner.json" }.All(f => File.Exists(Path.Combine(_cacheRoot, version, Locale, f)));
@@ -127,11 +150,12 @@ public sealed class GameDataClient
     /// derived mapping is cached (7 days). It is refreshed sooner when <paramref name="championIds"/> contains a champion
     /// it doesn't know (a newly released champion). Returns an empty map if unavailable; positions are optional.
     /// </summary>
-    public async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> GetPositionsAsync(bool forceRefresh, IReadOnlyCollection<string> championIds, CancellationToken ct)
+    public async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> GetPositionsAsync(bool forceRefresh, IReadOnlyCollection<string> championIds, CancellationToken ct, bool preferCache = false)
     {
         var cachePath = Path.Combine(_cacheRoot, "positions.json");
         var exists = File.Exists(cachePath);
         var cached = exists ? await TryReadPositionsAsync(cachePath, ct).ConfigureAwait(false) : null;
+        if (cached is not null && preferCache && !forceRefresh) return cached;
         if (cached is not null && !forceRefresh)
         {
             var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(cachePath);

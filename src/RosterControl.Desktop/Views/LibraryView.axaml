@@ -18,7 +18,7 @@
 
     <Border Grid.Row="1" Classes="card" Padding="12,10" Margin="0,0,0,12">
       <WrapPanel ItemSpacing="10" LineSpacing="8">
-        <TextBox Classes="search" Width="260" PlaceholderText="Search champions…" Text="{Binding Browser.Search}" />
+        <TextBox Classes="search" Width="260" PlaceholderText="Search champions… (Enter opens)" Text="{Binding Browser.Search}" c:InputHelpers.EnterCommand="{Binding OpenFirstCommand}" />
         <v:RoleFilterBar DataContext="{Binding Browser}" VerticalAlignment="Center" />
         <ComboBox ItemsSource="{Binding Browser.ClassOptions}" SelectedItem="{Binding Browser.SelectedClass}" MinWidth="130" VerticalAlignment="Center" />
         <ComboBox ItemsSource="{Binding TagOptions}" SelectedItem="{Binding SelectedTag}" MinWidth="130" VerticalAlignment="Center" IsVisible="{Binding HasTags}" ToolTip.Tip="Filter by your tags" />
@@ -74,5 +74,12 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
     </ScrollViewer>
+    <StackPanel Grid.Row="2" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,60,0,0" IsVisible="{Binding Browser.IsEmpty}">
+      <c:LucideIcon Kind="search" Width="30" Height="30" Foreground="{StaticResource Brush.GoldDark}" HorizontalAlignment="Center" />
+      <TextBlock Text="No champions match these filters." Classes="secondary" HorizontalAlignment="Center" />
+      <Button Classes="small" HorizontalAlignment="Center" Command="{Binding Browser.ClearFiltersCommand}">
+        <TextBlock Text="Clear filters" FontSize="12" />
+      </Button>
+    </StackPanel>
   </Grid>
 </UserControl>

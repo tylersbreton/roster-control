@@ -20,7 +20,7 @@
             <TextBlock Text="{Binding Pool.CountText}" FontSize="11" Classes="secondary num" />
           </Border>
         </Grid>
-        <TextBox Grid.Row="1" Classes="search" Margin="14,0,14,10" PlaceholderText="Search champions…" Text="{Binding Pool.Search}" />
+        <TextBox Grid.Row="1" Classes="search" Margin="14,0,14,10" PlaceholderText="Search champions…" ToolTip.Tip="Enter opens the first match" Text="{Binding Pool.Search}" c:InputHelpers.EnterCommand="{Binding OpenFirstCommand}" />
         <StackPanel Grid.Row="2" Margin="14,0,14,8" Spacing="8">
           <v:RoleFilterBar DataContext="{Binding Pool}" />
           <Grid ColumnDefinitions="*,Auto">
@@ -40,6 +40,9 @@
                 <Border Classes="tile" Width="70" Padding="4,6" Margin="1" ToolTip.Tip="{Binding Tooltip}"
                         c:Dnd.Payload="{Binding DragData}"
                         c:Dnd.ClickCommand="{Binding $parent[UserControl].((vm:RostersViewModel)DataContext).OpenChampionCommand}">
+                  <Border.ContextMenu>
+                    <ContextMenu Opening="OnPoolTileMenuOpening" />
+                  </Border.ContextMenu>
                   <StackPanel Spacing="4">
                     <Panel Width="52" Height="52">
                       <c:AssetImage Source="{Binding IconUrl}" Width="52" Height="52" CornerRadius="6" Zoom="1.08" FallbackText="{Binding Name}"
@@ -57,23 +60,29 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
         </ScrollViewer>
-        <Border Grid.Row="4" Classes="divider" VerticalAlignment="Top" />
-        <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="7" Margin="16,10,16,12">
-          <c:LucideIcon Kind="hand-metal" Width="14" Height="14" Foreground="{StaticResource Brush.TextMuted}" />
-          <TextBlock Text="Click to open · Drag a card back here to remove it" Classes="caption" TextWrapping="Wrap" />
+        <StackPanel Grid.Row="3" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="16,30,16,0" IsVisible="{Binding Pool.IsEmpty}">
+          <TextBlock Text="No champions match these filters." Classes="secondary" HorizontalAlignment="Center" />
+          <Button Classes="small" HorizontalAlignment="Center" Command="{Binding Pool.ClearFiltersCommand}">
+            <TextBlock Text="Clear filters" FontSize="12" />
+          </Button>
         </StackPanel>
+        <Border Grid.Row="4" Classes="divider" VerticalAlignment="Top" />
+        <Grid Grid.Row="4" ColumnDefinitions="Auto,*" Margin="16,10,16,12">
+          <c:LucideIcon Kind="hand-metal" Width="14" Height="14" Foreground="{StaticResource Brush.TextMuted}" VerticalAlignment="Top" Margin="0,1,7,0" />
+          <TextBlock Grid.Column="1" Text="Click to open · right-click to add · drag a card back here to remove it" Classes="caption" TextWrapping="Wrap" />
+        </Grid>
       </Grid>
     </Border>
 
     <!-- ── Roster groups ─────────────────────────────────────────────────────────────────── -->
-    <Grid Grid.Column="2" RowDefinitions="Auto,*">
-      <Grid ColumnDefinitions="*,Auto" Margin="2,2,0,12">
-        <StackPanel Spacing="3" VerticalAlignment="Center">
+    <Grid Grid.Column="2" RowDefinitions="Auto,Auto,*">
+      <Grid Name="HeaderGrid" ColumnDefinitions="Auto,*,Auto" Margin="2,2,0,12">
+        <StackPanel Name="HeaderTitle" Spacing="3" VerticalAlignment="Center" Margin="0,0,16,0">
           <TextBlock Text="MY ROSTERS" Classes="heading" />
           <TextBlock Text="{Binding Summary}" Classes="caption" />
         </StackPanel>
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-          <!-- Priority legend -->
+        <!-- Priority legend + hint: hidden when the header is too narrow (small window or zoomed in) -->
+        <StackPanel Name="HeaderExtras" Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" HorizontalAlignment="Right">
           <ItemsControl ItemsSource="{x:Static vm:PriorityLegend.Items}" VerticalAlignment="Center" Margin="0,0,10,0">
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="12" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
@@ -89,6 +98,14 @@
           </ItemsControl>
           <Border Width="1" Height="16" Background="{StaticResource Brush.Border}" Margin="0,0,8,0" />
           <TextBlock Text="Ctrl + drop to copy" Classes="caption" VerticalAlignment="Center" Margin="0,0,6,0" />
+        </StackPanel>
+        <StackPanel Name="HeaderActions" Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <ToggleButton Classes="chip" IsChecked="{Binding Compact}" Height="32" VerticalContentAlignment="Center" ToolTip.Tip="Compact cards: fit more champions per column">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <c:LucideIcon Kind="list" Width="13" Height="13" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+              <TextBlock Text="Compact" FontSize="12" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+            </StackPanel>
+          </ToggleButton>
           <Button Classes="primary" Command="{Binding AddGroupCommand}">
             <StackPanel Orientation="Horizontal" Spacing="7">
               <c:LucideIcon Kind="plus" Width="15" Height="15" Foreground="{StaticResource Brush.GoldLight}" />
@@ -98,7 +115,23 @@
         </StackPanel>
       </Grid>
 
-      <ScrollViewer Grid.Row="1" Name="GroupsScroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+      <Border Grid.Row="1" Classes="card" Padding="16,12" Margin="0,0,0,12" IsVisible="{Binding ShowTips}" BorderBrush="{StaticResource Brush.GoldDark}">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <c:LucideIcon Kind="sparkles" Width="20" Height="20" Foreground="{StaticResource Brush.Gold}" VerticalAlignment="Top" Margin="0,2,14,0" />
+          <StackPanel Grid.Column="1" Spacing="5">
+            <TextBlock Text="Getting started" Classes="title" Foreground="{StaticResource Brush.GoldLight}" />
+            <TextBlock Classes="secondary" TextWrapping="Wrap" FontSize="12.5"
+                       Text="• Drag champions from the pool into a group — or right-click a champion and choose a group." />
+            <TextBlock Classes="secondary" TextWrapping="Wrap" FontSize="12.5"
+                       Text="• Drag cards between groups to move them (hold Ctrl to copy); drag a card back onto the pool to remove it." />
+            <TextBlock Classes="secondary" TextWrapping="Wrap" FontSize="12.5"
+                       Text="• Click a champion to save rune pages, item sets and matchups. Hover a card and press 1–5 to rate it. Ctrl+K searches everything." />
+          </StackPanel>
+          <Button Grid.Column="2" Classes="small" VerticalAlignment="Top" Command="{Binding DismissTipsCommand}" Content="Got it" />
+        </Grid>
+      </Border>
+
+      <ScrollViewer Grid.Row="2" Name="GroupsScroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
         <ItemsControl ItemsSource="{Binding Groups}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
@@ -172,10 +205,11 @@
                       <ItemsControl Margin="7,8,7,8" ItemsSource="{Binding Entries}">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="vm:RosterEntryViewModel">
-                            <Border Classes="rostercard" Margin="0,0,0,6" Padding="6,6,8,6"
-                                    c:Dnd.Payload="{Binding DragData}" c:Dnd.Item="{Binding}" c:Dnd.ClickCommand="{Binding OpenCommand}">
+                            <Border Classes="rostercard" Classes.compact="{Binding $parent[UserControl].((vm:RostersViewModel)DataContext).Compact}"
+                                    c:Dnd.Payload="{Binding DragData}" c:Dnd.Item="{Binding}" c:Dnd.ClickCommand="{Binding OpenCommand}"
+                                    PointerEntered="OnCardPointerEntered" PointerExited="OnCardPointerExited">
                               <Border.ContextMenu>
-                                <ContextMenu>
+                                <ContextMenu Opening="OnCardMenuOpening">
                                   <MenuItem Header="Open builds" Command="{Binding OpenCommand}"><MenuItem.Icon><c:LucideIcon Kind="book-open" /></MenuItem.Icon></MenuItem>
                                   <MenuItem Header="Open matchups" Command="{Binding OpenMatchupsCommand}"><MenuItem.Icon><c:LucideIcon Kind="swords" /></MenuItem.Icon></MenuItem>
                                   <Separator />
@@ -187,7 +221,15 @@
                                   <MenuItem Header="Remove from group" Command="{Binding RemoveCommand}"><MenuItem.Icon><c:LucideIcon Kind="x" Foreground="{StaticResource Brush.Bad}" /></MenuItem.Icon></MenuItem>
                                 </ContextMenu>
                               </Border.ContextMenu>
-                              <Grid ColumnDefinitions="Auto,*">
+                              <Panel>
+                              <!-- Compact layout -->
+                              <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding $parent[UserControl].((vm:RostersViewModel)DataContext).Compact}">
+                                <c:AssetImage Source="{Binding IconUrl}" Width="26" Height="26" CornerRadius="5" Zoom="1.1" Ring="{Binding PriorityBrush}" RingThickness="1.5" FallbackText="{Binding Name}" />
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="8,0,6,0" />
+                                <c:StarRating Grid.Column="2" Value="{Binding Proficiency}" StarSize="8.5" VerticalAlignment="Center" />
+                              </Grid>
+                              <!-- Regular layout -->
+                              <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding !$parent[UserControl].((vm:RostersViewModel)DataContext).Compact}">
                                 <Panel Width="42" Height="42">
                                   <c:AssetImage Source="{Binding IconUrl}" Width="42" Height="42" CornerRadius="6" Zoom="1.1" Ring="{Binding PriorityBrush}" RingThickness="1.5" FallbackText="{Binding Name}" />
                                   <!-- Priority badge (click to change) -->
@@ -209,7 +251,17 @@
                                   <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                   <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
                                     <c:StarRating Value="{Binding Proficiency}" StarSize="10" VerticalAlignment="Center" />
-                                    <TextBlock Text="{Binding PriorityLabel}" FontSize="8.5" FontWeight="Bold" LetterSpacing="0.2" Foreground="{Binding PriorityBrush}" VerticalAlignment="Center" Opacity="0.85" />
+                                    <Button Classes="plain" VerticalAlignment="Center" ToolTip.Tip="Change priority">
+                                      <TextBlock Text="{Binding PriorityLabel}" FontSize="8.5" FontWeight="Bold" LetterSpacing="0.2" Foreground="{Binding PriorityBrush}" Opacity="0.85" />
+                                      <Button.Flyout>
+                                      <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                        <MenuItem Header="Main — first pick" Command="{Binding SetPriorityCommand}" CommandParameter="{x:Static m:ChampionPriority.Main}" />
+                                        <MenuItem Header="Secondary — reliable alternative" Command="{Binding SetPriorityCommand}" CommandParameter="{x:Static m:ChampionPriority.Secondary}" />
+                                        <MenuItem Header="Pocket — situational / counter" Command="{Binding SetPriorityCommand}" CommandParameter="{x:Static m:ChampionPriority.Pocket}" />
+                                        <MenuItem Header="Learning — still practising" Command="{Binding SetPriorityCommand}" CommandParameter="{x:Static m:ChampionPriority.Learning}" />
+                                      </MenuFlyout>
+                                      </Button.Flyout>
+                                    </Button>
                                   </StackPanel>
                                   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="7" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="6,0,0,0">
                                     <StackPanel Orientation="Horizontal" Spacing="3" IsVisible="{Binding HasBuilds}" ToolTip.Tip="Saved builds">
@@ -223,6 +275,7 @@
                                   </StackPanel>
                                 </Grid>
                               </Grid>
+                              </Panel>
                             </Border>
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>

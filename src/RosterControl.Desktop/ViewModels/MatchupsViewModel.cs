@@ -29,9 +29,14 @@ public sealed partial class MatchupsViewModel : ObservableObject
         Picker = new ChampionBrowserViewModel(game, game.Champions.Where(c => c.Id != champion.Id)
             .Select(c => new ChampionTileViewModel(c, game.Version, game.NewChampionIds.Contains(c.Id))).ToList());
         RoleOptions = new ObservableCollection<FilterOption>(
-            new[] { new FilterOption("All roles", null, iconKind: "layout-grid") { IsSelected = true } }
+            new[] { new FilterOption("All roles", null, iconKind: "layout-grid") }
                 .Concat(PositionInfo.All.Select(p => new FilterOption(p.DisplayName(), p, AssetUrls.PositionIcon(p)))));
+        // The role you were recording for is remembered per champion.
+        _selectedRole = shell.Preferences.Get<Position?>(RoleKey, null);
+        foreach (var o in RoleOptions) o.IsSelected = Equals(o.Value as Position?, _selectedRole);
     }
+
+    private string RoleKey => $"matchups.role.{_champion.Id}";
 
     public IShell Shell => _shell;
     public ChampionInfo Champion => _champion;
@@ -57,6 +62,7 @@ public sealed partial class MatchupsViewModel : ObservableObject
 
     partial void OnSelectedRoleChanged(Position? value)
     {
+        _shell.Preferences.Set(RoleKey, value);
         foreach (var o in RoleOptions) o.IsSelected = Equals(o.Value as Position?, value);
         Good.NotifyHint();
         Weak.NotifyHint();
@@ -143,6 +149,9 @@ public sealed partial class MatchupsViewModel : ObservableObject
         _items.Remove(item);
         Refresh();
         _shell.MarkDirty();
+        var (opponent, kind, note, role) = (item.Opponent, item.Kind, item.Note, item.Role);
+        _shell.ShowToast($"Removed {opponent.Name} from {(kind == MatchupKind.GoodAgainst ? "Good against" : "Weak against")}", ToastKind.Info, "Undo",
+            () => SetAsync(opponent, kind, note, null, role));
     }
 
     internal async Task ChangeRoleAsync(MatchupItemViewModel item, Position? role)

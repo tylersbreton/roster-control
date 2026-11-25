@@ -427,4 +427,135 @@ public class AppScreenTests
         Capture("11-champion-1280x760");
         Window();
     }
+
+    // ── Quality of life ────────────────────────────────────────────────────────────────────────────
+
+    [AvaloniaTest, Order(15)]
+    public void Command_palette_opens_with_ctrl_k_and_enter_opens_the_champion()
+    {
+        var window = Window();
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+        window.KeyPressQwerty(PhysicalKey.K, RawInputModifiers.Control);
+        UiTestHost.Settle(3);
+        Assert.That(Vm.Palette.IsOpen, Is.True);
+        Vm.Palette.Query = "thre";
+        UiTestHost.Settle(3);
+        Assert.That(Vm.Palette.Results.First().Title, Is.EqualTo("Thresh"));
+        Capture("12-command-palette");
+        window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
+        UiTestHost.Settle(30);
+        Assert.That(Vm.Palette.IsOpen, Is.False);
+        Assert.That((Vm.CurrentPage as ChampionDetailViewModel)?.Champion.Id, Is.EqualTo("Thresh"));
+        window.KeyPressQwerty(PhysicalKey.K, RawInputModifiers.Control);
+        UiTestHost.Settle(3);
+        window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+        UiTestHost.Settle(3);
+        Assert.That(Vm.Palette.IsOpen, Is.False, "Esc closes the palette");
+    }
+
+    [AvaloniaTest, Order(16)]
+    public void Champion_opened_from_a_group_steps_through_the_group()
+    {
+        Window();
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+        var middle = Vm.Rosters!.Groups.First(g => g.Name == "Middle");
+        var ids = middle.Entries.Select(e => e.ChampionId).ToList();
+        middle.Entries[0].OpenCommand.Execute(null);
+        UiTestHost.Settle(30);
+        var page = (ChampionDetailViewModel)Vm.CurrentPage!;
+        Assert.That(page.HasSequence, Is.True);
+        Assert.That(page.SequenceText, Does.StartWith($"1 / {ids.Count}").And.Contain("Middle"));
+        Capture("13-champion-in-sequence");
+        Assert.That(Vm.HandleShortcut(Key.Right, KeyModifiers.Control, typing: false), Is.True);
+        UiTestHost.Settle(30);
+        Assert.That(((ChampionDetailViewModel)Vm.CurrentPage!).Champion.Id, Is.EqualTo(ids[1]));
+        ((ChampionDetailViewModel)Vm.CurrentPage!).PreviousCommand.Execute(null);
+        UiTestHost.Settle(30);
+        Assert.That(((ChampionDetailViewModel)Vm.CurrentPage!).Champion.Id, Is.EqualTo(ids[0]));
+    }
+
+    [AvaloniaTest, Order(17)]
+    public void Hovered_card_keys_rate_and_remove_and_ctrl_z_undoes()
+    {
+        Window();
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+        var rosters = Vm.Rosters!;
+        Assert.That(Vm.HandleShortcut(Key.D2, KeyModifiers.None, typing: false), Is.False, "no hovered card: digits do nothing");
+        var support = rosters.Groups.First(g => g.Name == "Support");
+        var lulu = support.Entries.First(e => e.ChampionId == "Lulu");
+        rosters.HoveredEntry = lulu;
+        Assert.That(Vm.HandleShortcut(Key.D2, KeyModifiers.None, typing: false), Is.True);
+        Assert.That(lulu.Proficiency, Is.EqualTo(2));
+        Assert.That(Vm.HandleShortcut(Key.D2, KeyModifiers.None, typing: true), Is.False, "ignored while typing");
+
+        rosters.HoveredEntry = lulu;
+        Vm.HandleShortcut(Key.Delete, KeyModifiers.None, typing: false);
+        UiTestHost.Settle(10);
+        Assert.That(support.Entries.Select(e => e.ChampionId), Does.Not.Contain("Lulu"));
+        Assert.That(Vm.Toasts.Any(t => t.ActionText == "Undo"), Is.True, "removal offers Undo");
+
+        Assert.That(Vm.HandleShortcut(Key.Z, KeyModifiers.Control, typing: false), Is.True);
+        UiTestHost.Settle(20);
+        support = Vm.Rosters!.Groups.First(g => g.Name == "Support");
+        Assert.That(support.Entries.Select(e => e.ChampionId), Does.Contain("Lulu"), "Ctrl+Z restores the card");
+        var stored = UiTestHost.Run(() => Repo.GetGroupsAsync());
+        Assert.That(stored.First(g => g.Name == "Support").Entries.Select(e => e.ChampionId), Does.Contain("Lulu"));
+    }
+
+    [AvaloniaTest, Order(18)]
+    public void Right_click_add_and_compact_cards_and_empty_filters()
+    {
+        Window();
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+        var rosters = Vm.Rosters!;
+        var top = rosters.Groups.First(g => g.Name == "Top");
+        rosters.AddToGroup(Game.Champion("Ornn")!, top);
+        UiTestHost.Settle(10);
+        Assert.That(top.Entries.Select(e => e.ChampionId), Does.Contain("Ornn"));
+
+        rosters.Compact = true;
+        UiTestHost.Settle(5);
+        Capture("01c-rosters-compact");
+        rosters.Compact = false;
+
+        rosters.Pool.Search = "zzzz";
+        UiTestHost.Settle(3);
+        Assert.That(rosters.Pool.IsEmpty, Is.True);
+        rosters.Pool.ClearFiltersCommand.Execute(null);
+        UiTestHost.Settle(3);
+        Assert.That(rosters.Pool.IsEmpty, Is.False);
+        Assert.That(rosters.Pool.Search, Is.Empty);
+    }
+
+    [AvaloniaTest, Order(19)]
+    public void Zoom_scales_the_whole_window()
+    {
+        Window();
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+        Assert.That(Vm.HandleShortcut(Key.OemPlus, KeyModifiers.Control, typing: false), Is.True);
+        Assert.That(Vm.UiScale, Is.EqualTo(1.1).Within(0.001));
+        Vm.UiScale = 1.25;
+        UiTestHost.Settle(5);
+        Capture("01d-rosters-zoom-125");
+        Vm.HandleShortcut(Key.D0, KeyModifiers.Control, typing: false);
+        Assert.That(Vm.UiScale, Is.EqualTo(1.0));
+    }
+
+    [AvaloniaTest, Order(20)]
+    public void Build_can_be_copied_to_another_champion()
+    {
+        Window();
+        Vm.OpenChampion("Ahri");
+        UiTestHost.Settle(30);
+        var page = (ChampionDetailViewModel)Vm.CurrentPage!;
+        var source = page.SelectedBuild!;
+        page.CopyQuery = "lux";
+        Assert.That(page.CopyTargets.First().Champion.Id, Is.EqualTo("Lux"));
+        UiTestHost.Run(() => page.CopyBuildToCommand.ExecuteAsync(page.CopyTargets.First()));
+        var copies = UiTestHost.Run(() => Repo.GetBuildsAsync("Lux"));
+        var copy = copies.Single(b => b.Name == source.Name);
+        Assert.That(copy.SkillOrder, Is.Empty, "skill order is champion-specific");
+        Assert.That(copy.Runes.PrimaryPerks, Is.EqualTo(source.Model.Runes.PrimaryPerks));
+        Assert.That(Vm.UndoLast(), Is.False, "the Open action of the copy toast is not an undo");
+    }
 }
