@@ -1,0 +1,19 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="RosterControl.Desktop.App"
+             RequestedThemeVariant="Dark"
+             Name="Roster Control">
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://RosterControl/Styles/Tokens.axaml" />
+        <ResourceInclude Source="avares://RosterControl/Styles/Icons.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+
+  <Application.Styles>
+    <FluentTheme />
+    <StyleInclude Source="avares://RosterControl/Styles/Controls.axaml" />
+  </Application.Styles>
+</Application>

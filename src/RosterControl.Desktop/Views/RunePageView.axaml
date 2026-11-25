@@ -1,0 +1,206 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:c="using:RosterControl.Desktop.Controls"
+             x:Class="RosterControl.Desktop.Views.RunePageView"
+             x:DataType="vm:RunePageViewModel">
+  <UserControl.DataTemplates>
+    <!-- Path (tree) selector icon -->
+    <DataTemplate DataType="vm:TreeOptionViewModel">
+      <Panel Width="46" Height="46" ToolTip.Tip="{Binding Tooltip}">
+        <Border Classes="treering" CornerRadius="999" BorderThickness="2" BorderBrush="#3A4558" Background="#B3060A11" IsVisible="{Binding !IsSelected}" />
+        <Border CornerRadius="999" BorderThickness="2" BorderBrush="{Binding Accent}" Background="{Binding AccentSoft}" IsVisible="{Binding IsSelected}" BoxShadow="0 0 16 0 #50000000" />
+        <c:AssetImage Source="{Binding IconUrl}" Width="26" Height="26" CornerRadius="0" ShowPlaceholder="False" Grayscale="{Binding !IsSelected}" />
+      </Panel>
+    </DataTemplate>
+
+    <!-- A rune (keystone or minor) -->
+    <DataTemplate DataType="vm:RuneOptionViewModel">
+      <Panel Width="{Binding RingSize}" Height="{Binding RingSize}">
+        <Border CornerRadius="999" BorderThickness="2" BorderBrush="{Binding Accent}" BoxShadow="{Binding Glow}" IsVisible="{Binding IsSelected}" Background="#80060A11" />
+        <c:AssetImage Source="{Binding IconUrl}" Width="{Binding Size}" Height="{Binding Size}" CornerRadius="999" ShowPlaceholder="False"
+                      Grayscale="{Binding !IsSelected}" Classes.unselected="{Binding !IsSelected}" />
+      </Panel>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <Grid RowDefinitions="Auto,*">
+    <!-- Status bar -->
+    <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,10">
+      <Border Classes="pill" Classes.complete="{Binding IsComplete}">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <c:LucideIcon Kind="circle-check" Width="13" Height="13" Foreground="{StaticResource Brush.Good}" IsVisible="{Binding IsComplete}" />
+          <TextBlock Text="{Binding ProgressText}" FontSize="11.5" Classes="secondary num" />
+        </StackPanel>
+      </Border>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="12,0" IsVisible="{Binding HasIssues}" VerticalAlignment="Center">
+        <c:LucideIcon Kind="triangle-alert" Width="13" Height="13" Foreground="{StaticResource Brush.Warning}" />
+        <TextBlock Text="{Binding IssuesText}" Classes="caption" Foreground="{StaticResource Brush.Warning}" TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+      <Button Grid.Column="2" Classes="ghost small" Command="{Binding ResetCommand}" ToolTip.Tip="Clear this rune page">
+        <StackPanel Orientation="Horizontal" Spacing="5">
+          <c:LucideIcon Kind="rotate-ccw" Width="13" Height="13" />
+          <TextBlock Text="Reset" FontSize="12" Classes="secondary" />
+        </StackPanel>
+      </Button>
+    </Grid>
+
+    <!-- Rune page -->
+    <Border Grid.Row="1" CornerRadius="10" ClipToBounds="True" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="1" Background="#070C14">
+      <Panel>
+        <c:AssetImage Source="{Binding BackgroundUrl}" DecodeWidth="1600" CornerRadius="10" ShowPlaceholder="False" FocusY="0.5" Opacity="0.9" />
+        <Border Background="{StaticResource Brush.RuneFade}" />
+        <ScrollViewer>
+          <Grid ColumnDefinitions="1.3*,36,*" Margin="30,22,30,22">
+
+            <!-- ── Primary path ─────────────────────────────────────────── -->
+            <StackPanel Grid.Column="0" Spacing="16">
+              <ItemsControl ItemsSource="{Binding PrimaryTrees}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="10" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:TreeOptionViewModel">
+                    <Button Classes="plain tree" Content="{Binding}" Command="{Binding $parent[UserControl].((vm:RunePageViewModel)DataContext).SelectPrimaryTreeCommand}" CommandParameter="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <c:AssetImage Source="{Binding PrimaryIconUrl}" Width="38" Height="38" CornerRadius="0" ShowPlaceholder="False" IsVisible="{Binding HasPrimary}" />
+                <StackPanel VerticalAlignment="Center" Spacing="2">
+                  <TextBlock Text="{Binding PrimaryName}" FontSize="19" FontWeight="Bold" LetterSpacing="2.5" Foreground="{Binding PrimaryAccent}" />
+                  <TextBlock Text="{Binding PrimaryTagline}" Classes="secondary" FontSize="12" />
+                </StackPanel>
+              </StackPanel>
+
+              <ItemsControl ItemsSource="{Binding PrimaryRows}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="14" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:RuneRowViewModel">
+                    <Grid ColumnDefinitions="Auto,*">
+                      <ItemsControl ItemsSource="{Binding Options}" MinWidth="200">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:RuneOptionViewModel">
+                            <Button Classes="plain rune" Content="{Binding}" Command="{Binding $parent[UserControl].((vm:RunePageViewModel)DataContext).SelectRuneCommand}" CommandParameter="{Binding}">
+                              <ToolTip.Tip>
+                                <StackPanel Spacing="6" MaxWidth="340">
+                                  <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13" Foreground="{Binding Accent}" />
+                                  <TextBlock c:RiotText.Markup="{Binding LongDesc}" TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}" LineHeight="17" />
+                                </StackPanel>
+                              </ToolTip.Tip>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="10,0,0,0" Spacing="2" IsVisible="{Binding HasSelection}">
+                        <TextBlock Text="{Binding SelectedName}" FontWeight="SemiBold" Foreground="{StaticResource Brush.GoldLight}" FontSize="{Binding IsKeystoneRow, Converter={x:Static c:Converters.KeystoneFontSize}}" />
+                        <TextBlock c:RiotText.Markup="{Binding SelectedDescription}" TextWrapping="Wrap" Classes="secondary" FontSize="11.5" MaxHeight="48" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <TextBlock Text="Pick a path above, then one rune in each row. Hover a rune for its full description." Classes="secondary" TextWrapping="Wrap" IsVisible="{Binding !HasPrimary}" Margin="0,8,0,0" />
+            </StackPanel>
+
+            <!-- Divider -->
+            <Border Grid.Column="1" Width="1" HorizontalAlignment="Center" Margin="0,8">
+              <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                  <GradientStop Color="#00785A28" Offset="0" />
+                  <GradientStop Color="#80785A28" Offset="0.5" />
+                  <GradientStop Color="#00785A28" Offset="1" />
+                </LinearGradientBrush>
+              </Border.Background>
+            </Border>
+
+            <!-- ── Secondary path + stat shards ─────────────────────────── -->
+            <StackPanel Grid.Column="2" Spacing="16" IsVisible="{Binding HasPrimary}">
+              <ItemsControl ItemsSource="{Binding SecondaryTrees}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="10" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:TreeOptionViewModel">
+                    <Button Classes="plain tree" Content="{Binding}" Command="{Binding $parent[UserControl].((vm:RunePageViewModel)DataContext).SelectSecondaryTreeCommand}" CommandParameter="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <c:AssetImage Source="{Binding SecondaryIconUrl}" Width="30" Height="30" CornerRadius="0" ShowPlaceholder="False" IsVisible="{Binding HasSecondary}" />
+                <StackPanel VerticalAlignment="Center" Spacing="2">
+                  <TextBlock Text="{Binding SecondaryName}" FontSize="15" FontWeight="Bold" LetterSpacing="2.2" Foreground="{Binding SecondaryAccent}" />
+                  <TextBlock Text="{Binding SecondaryTagline}" Classes="secondary" FontSize="12" />
+                </StackPanel>
+              </StackPanel>
+
+              <ItemsControl ItemsSource="{Binding SecondaryRows}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="10" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:RuneRowViewModel">
+                    <Grid ColumnDefinitions="Auto,*">
+                      <ItemsControl ItemsSource="{Binding Options}" MinWidth="160">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:RuneOptionViewModel">
+                            <Button Classes="plain rune" Content="{Binding}" Command="{Binding $parent[UserControl].((vm:RunePageViewModel)DataContext).SelectRuneCommand}" CommandParameter="{Binding}">
+                              <ToolTip.Tip>
+                                <StackPanel Spacing="6" MaxWidth="340">
+                                  <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13" Foreground="{Binding Accent}" />
+                                  <TextBlock c:RiotText.Markup="{Binding LongDesc}" TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}" LineHeight="17" />
+                                </StackPanel>
+                              </ToolTip.Tip>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <TextBlock Grid.Column="1" Text="{Binding SelectedName}" VerticalAlignment="Center" Margin="10,0,0,0" FontWeight="SemiBold" Foreground="{StaticResource Brush.GoldLight}" TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="Choose a secondary path, then two runes from different rows." Classes="secondary" IsVisible="{Binding !HasSecondary}" TextWrapping="Wrap" />
+
+              <!-- Stat shards -->
+              <StackPanel Spacing="9" Margin="0,6,0,0" IsVisible="{Binding HasShards}">
+                <Border Classes="goldline" Margin="0,0,0,4" />
+                <TextBlock Text="STAT SHARDS" Classes="overline" />
+                <ItemsControl ItemsSource="{Binding ShardRows}">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ShardRowViewModel">
+                      <Grid ColumnDefinitions="64,Auto,*">
+                        <TextBlock Text="{Binding Label}" Classes="caption" FontWeight="Bold" LetterSpacing="1" VerticalAlignment="Center" />
+                        <ItemsControl Grid.Column="1" ItemsSource="{Binding Options}">
+                          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="8" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ShardOptionViewModel">
+                              <Button Classes="plain rune" Command="{Binding $parent[UserControl].((vm:RunePageViewModel)DataContext).SelectShardCommand}" CommandParameter="{Binding}">
+                                <ToolTip.Tip>
+                                  <StackPanel Spacing="4" MaxWidth="300">
+                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{StaticResource Brush.GoldLight}" />
+                                    <TextBlock c:RiotText.Markup="{Binding Description}" TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}" />
+                                  </StackPanel>
+                                </ToolTip.Tip>
+                                <Panel Width="34" Height="34">
+                                  <Border CornerRadius="999" BorderThickness="1.5" BorderBrush="{StaticResource Brush.Gold}" Background="#2A2616" IsVisible="{Binding IsSelected}" BoxShadow="0 0 10 0 #60C8AA6E" />
+                                  <Border CornerRadius="999" BorderThickness="1" BorderBrush="#2E3A4C" Background="#99060A11" IsVisible="{Binding !IsSelected}" />
+                                  <c:AssetImage Source="{Binding IconUrl}" Width="22" Height="22" CornerRadius="0" ShowPlaceholder="False" Grayscale="{Binding !IsSelected}" Classes.unselected="{Binding !IsSelected}" />
+                                </Panel>
+                              </Button>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Grid.Column="2" Text="{Binding SelectedName}" Classes="secondary" FontSize="11.5" VerticalAlignment="Center" Margin="12,0,0,0" TextTrimming="CharacterEllipsis" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </StackPanel>
+          </Grid>
+        </ScrollViewer>
+      </Panel>
+    </Border>
+  </Grid>
+</UserControl>

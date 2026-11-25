@@ -1,0 +1,197 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:c="using:RosterControl.Desktop.Controls"
+             x:Class="RosterControl.Desktop.Views.SpellsSkillsView"
+             x:DataType="vm:SpellsSkillsViewModel">
+  <ScrollViewer>
+    <StackPanel Spacing="14">
+
+      <!-- ── Summoner spells ─────────────────────────────────────────────────────────── -->
+      <Border Classes="elevated" CornerRadius="10" Padding="16,14">
+        <Grid ColumnDefinitions="Auto,24,*">
+          <StackPanel Spacing="10">
+            <TextBlock Text="SUMMONER SPELLS" Classes="overline" />
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <ItemsControl ItemsSource="{Binding Slots}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="10" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SpellSlotViewModel">
+                    <Button Classes="plain" Command="{Binding $parent[UserControl].((vm:SpellsSkillsViewModel)DataContext).SelectSlotCommand}" CommandParameter="{Binding}">
+                      <ToolTip.Tip>
+                        <StackPanel Spacing="4" MaxWidth="300">
+                          <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{StaticResource Brush.GoldLight}" />
+                          <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Classes="secondary" />
+                        </StackPanel>
+                      </ToolTip.Tip>
+                      <StackPanel Spacing="5">
+                        <Border Width="62" Height="62" CornerRadius="6" BorderThickness="2" Padding="2" Classes="spellslot" Classes.active="{Binding IsActive}">
+                          <Panel>
+                            <c:AssetImage Source="{Binding IconUrl}" CornerRadius="3" ShowPlaceholder="True" />
+                            <c:LucideIcon Kind="plus" Width="18" Height="18" IsVisible="{Binding !HasSpell}" Foreground="{StaticResource Brush.TextMuted}" />
+                          </Panel>
+                        </Border>
+                        <Border CornerRadius="3" Background="#05080D" BorderBrush="{StaticResource Brush.GoldDark}" BorderThickness="1" Padding="6,0" HorizontalAlignment="Center">
+                          <TextBlock Text="{Binding Hotkey}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource Brush.Gold}" />
+                        </Border>
+                      </StackPanel>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button Classes="ghost icon" Command="{Binding SwapSpellsCommand}" ToolTip.Tip="Swap D and F" VerticalAlignment="Top" Margin="0,17,0,0">
+                <c:LucideIcon Kind="arrow-up-down" Width="15" Height="15" />
+              </Button>
+            </StackPanel>
+            <TextBlock Text="Select a slot, then pick a spell." Classes="caption" />
+          </StackPanel>
+
+          <ItemsControl Grid.Column="2" ItemsSource="{Binding Options}" VerticalAlignment="Center">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:SpellOptionViewModel">
+                <Button Classes="plain rune" Margin="0,0,8,8" Command="{Binding $parent[UserControl].((vm:SpellsSkillsViewModel)DataContext).ChooseSpellCommand}" CommandParameter="{Binding}">
+                  <ToolTip.Tip>
+                    <StackPanel Spacing="4" MaxWidth="320">
+                      <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{StaticResource Brush.GoldLight}" />
+                      <TextBlock Text="{Binding CooldownText}" Classes="caption" />
+                      <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Classes="secondary" />
+                      <TextBlock Text="{Binding ModeText}" Classes="caption" FontStyle="Italic" />
+                    </StackPanel>
+                  </ToolTip.Tip>
+                  <StackPanel Spacing="4" Width="58">
+                    <Border Width="46" Height="46" CornerRadius="5" BorderThickness="1.5" HorizontalAlignment="Center" Classes="spellopt" Classes.picked="{Binding IsSelected}">
+                      <c:AssetImage Source="{Binding IconUrl}" CornerRadius="4" Classes.unselected="{Binding !IsSelected}" />
+                    </Border>
+                    <TextBlock Text="{Binding Name}" FontSize="10.5" HorizontalAlignment="Center" Classes="secondary" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Grid>
+      </Border>
+
+      <!-- ── Skill order ─────────────────────────────────────────────────────────────── -->
+      <Border Classes="elevated" CornerRadius="10" Padding="16,14">
+        <StackPanel Spacing="12">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <StackPanel Spacing="2">
+              <TextBlock Text="SKILL ORDER" Classes="overline" />
+              <TextBlock Text="Click a cell to level that ability at that level; click again to clear." Classes="caption" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        IsVisible="{Binding MaxOrderText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+              <TextBlock Text="MAX" Classes="caption" FontWeight="Bold" LetterSpacing="1" VerticalAlignment="Center" />
+              <Border CornerRadius="6" Background="#05080D" BorderBrush="{StaticResource Brush.GoldDark}" BorderThickness="1" Padding="10,3">
+                <TextBlock Text="{Binding MaxOrderText}" FontWeight="Bold" FontSize="14" Foreground="{StaticResource Brush.GoldLight}" />
+              </Border>
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+              <TextBlock Text="{Binding SummaryText}" Classes="caption" VerticalAlignment="Center" Margin="0,0,6,0" />
+              <Button Classes="small">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <c:LucideIcon Kind="wand-sparkles" Width="13" Height="13" />
+                  <TextBlock Text="Fill from max order" FontSize="12" />
+                  <c:LucideIcon Kind="chevron-down" Width="12" Height="12" />
+                </StackPanel>
+                <Button.Flyout>
+                  <Flyout Placement="BottomEdgeAlignedRight">
+                    <StackPanel Spacing="2" MinWidth="170">
+                      <TextBlock Text="R at 6 / 11 / 16, then max:" Classes="caption" Margin="8,2,8,6" />
+                      <ItemsControl ItemsSource="{Binding FillOptions}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="x:String">
+                            <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,6"
+                                    Command="{Binding $parent[UserControl].((vm:SpellsSkillsViewModel)DataContext).FillSkillsCommand}" CommandParameter="{Binding}">
+                              <TextBlock Text="{Binding}" FontWeight="SemiBold" Foreground="{StaticResource Brush.GoldLight}" />
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Flyout>
+                </Button.Flyout>
+              </Button>
+              <Button Classes="ghost small" Command="{Binding ClearSkillsCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                  <c:LucideIcon Kind="rotate-ccw" Width="13" Height="13" />
+                  <TextBlock Text="Clear" FontSize="12" Classes="secondary" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </Grid>
+
+          <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="4">
+              <!-- Level header -->
+              <StackPanel Orientation="Horizontal" Spacing="0">
+                <Border Width="196" />
+                <ItemsControl ItemsSource="{Binding Levels}">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="x:Int32">
+                      <TextBlock Text="{Binding}" Width="30" TextAlignment="Center" Classes="caption num" FontWeight="SemiBold" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+              <!-- Q / W / E / R rows -->
+              <ItemsControl ItemsSource="{Binding SkillRows}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SkillRowViewModel">
+                    <StackPanel Orientation="Horizontal">
+                      <Grid Width="196" ColumnDefinitions="Auto,*,Auto">
+                        <ToolTip.Tip>
+                          <StackPanel Spacing="4" MaxWidth="340">
+                            <TextBlock Text="{Binding AbilityName}" FontWeight="Bold" Foreground="{StaticResource Brush.GoldLight}" />
+                            <TextBlock c:RiotText.Markup="{Binding AbilityDescription}" TextWrapping="Wrap" Classes="secondary" />
+                          </StackPanel>
+                        </ToolTip.Tip>
+                        <Panel Width="30" Height="30">
+                          <c:AssetImage Source="{Binding IconUrl}" Width="30" Height="30" CornerRadius="4" FallbackText="{Binding Key}" Ring="{Binding Accent}" RingThickness="1" />
+                          <Border CornerRadius="3" Background="#E6060A11" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-3,0,0,-3" Padding="3,0">
+                            <TextBlock Text="{Binding Key}" FontSize="10" FontWeight="Bold" Foreground="{Binding Accent}" />
+                          </Border>
+                        </Panel>
+                        <TextBlock Grid.Column="1" Text="{Binding AbilityName}" Margin="10,0,6,0" VerticalAlignment="Center" FontSize="12" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="2" Text="{Binding RankText}" Classes="caption num" VerticalAlignment="Center" Margin="0,0,10,0" />
+                      </Grid>
+                      <ItemsControl ItemsSource="{Binding Cells}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:SkillCellViewModel">
+                            <Button Classes="plain cell" Command="{Binding ToggleCommand}" ToolTip.Tip="{Binding Tooltip}">
+                              <Panel Width="30" Height="30">
+                                <Border Classes="cellbg" CornerRadius="4" BorderBrush="#1C2737" BorderThickness="1" />
+                                <Border CornerRadius="4" Background="{Binding Accent}" IsVisible="{Binding IsSet}" BoxShadow="0 0 10 0 #40000000" />
+                                <Border CornerRadius="4" BorderBrush="{StaticResource Brush.Bad}" BorderThickness="2" IsVisible="{Binding IsInvalid}" />
+                                <TextBlock Text="{Binding LevelText}" FontSize="11" FontWeight="Bold" Foreground="#060A11" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsSet}" />
+                              </Panel>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+
+          <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasInvalid}">
+            <c:LucideIcon Kind="triangle-alert" Width="13" Height="13" Foreground="{StaticResource Brush.Warning}" />
+            <TextBlock Text="Outlined cells break the usual rank limits (basic abilities: max rank ≤ half your level; ultimate at 6 / 11 / 16)." Classes="caption" Foreground="{StaticResource Brush.Warning}" />
+          </StackPanel>
+
+          <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding HasPassive}">
+            <c:AssetImage Source="{Binding PassiveIconUrl}" Width="24" Height="24" CornerRadius="4" />
+            <TextBlock Text="{Binding Passive.Name, FallbackValue=''}" VerticalAlignment="Center" FontSize="12" Classes="secondary" />
+            <TextBlock Text="(passive)" VerticalAlignment="Center" Classes="caption" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

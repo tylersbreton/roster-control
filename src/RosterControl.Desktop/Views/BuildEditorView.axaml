@@ -1,0 +1,66 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:c="using:RosterControl.Desktop.Controls"
+             xmlns:v="using:RosterControl.Desktop.Views"
+             x:Class="RosterControl.Desktop.Views.BuildEditorView"
+             x:DataType="vm:BuildViewModel">
+  <Border Classes="card" Padding="0">
+    <Grid RowDefinitions="Auto,Auto,*">
+      <!-- Header -->
+      <Grid ColumnDefinitions="*,Auto" Margin="12,10,12,0">
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <TextBox Classes="inline" Text="{Binding Name}" FontSize="17" FontWeight="Bold" MinWidth="160" MaxWidth="360" PlaceholderText="Build name" />
+          <ComboBox ItemsSource="{Binding RoleChoices}" SelectedItem="{Binding SelectedRole}" VerticalAlignment="Center" MinWidth="130" ToolTip.Tip="Role this build is for">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:RoleChoice">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <c:AssetImage Source="{Binding IconUrl}" Width="15" Height="15" CornerRadius="0" ShowPlaceholder="False" IsVisible="{Binding HasIcon}" />
+                  <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                </StackPanel>
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+          <Button Classes="ghost icon" ToolTip.Tip="Duplicate build"
+                  Command="{Binding $parent[v:ChampionView].((vm:ChampionDetailViewModel)DataContext).DuplicateBuildCommand}" CommandParameter="{Binding}">
+            <c:LucideIcon Kind="copy" />
+          </Button>
+          <Button Classes="ghost icon" ToolTip.Tip="Delete build"
+                  Command="{Binding $parent[v:ChampionView].((vm:ChampionDetailViewModel)DataContext).DeleteBuildCommand}" CommandParameter="{Binding}">
+            <c:LucideIcon Kind="trash-2" />
+          </Button>
+        </StackPanel>
+      </Grid>
+
+      <!-- Editor tabs -->
+      <Grid Grid.Row="1" RowDefinitions="Auto,Auto" Margin="16,4,16,0">
+        <StackPanel Orientation="Horizontal" Spacing="24">
+          <RadioButton Classes="tab" GroupName="editorTabs" IsChecked="{Binding IsRunesTab}">
+            <TextBlock Text="RUNES" LetterSpacing="1.2" FontWeight="Bold" FontSize="12" Foreground="{Binding $parent[RadioButton].Foreground}" />
+          </RadioButton>
+          <RadioButton Classes="tab" GroupName="editorTabs" IsChecked="{Binding IsItemsTab}">
+            <TextBlock Text="ITEMS" LetterSpacing="1.2" FontWeight="Bold" FontSize="12" Foreground="{Binding $parent[RadioButton].Foreground}" />
+          </RadioButton>
+          <RadioButton Classes="tab" GroupName="editorTabs" IsChecked="{Binding IsSpellsTab}">
+            <TextBlock Text="SPELLS &amp; SKILLS" LetterSpacing="1.2" FontWeight="Bold" FontSize="12" Foreground="{Binding $parent[RadioButton].Foreground}" />
+          </RadioButton>
+          <RadioButton Classes="tab" GroupName="editorTabs" IsChecked="{Binding IsNotesTab}">
+            <TextBlock Text="NOTES" LetterSpacing="1.2" FontWeight="Bold" FontSize="12" Foreground="{Binding $parent[RadioButton].Foreground}" />
+          </RadioButton>
+        </StackPanel>
+        <Border Grid.Row="1" Classes="divider" />
+      </Grid>
+
+      <!-- Editors (created on demand for the selected build) -->
+      <Panel Grid.Row="2" Margin="14,12,14,14">
+        <v:RunePageView DataContext="{Binding Runes}" IsVisible="{Binding $parent[v:BuildEditorView].((vm:BuildViewModel)DataContext).IsRunesTab}" />
+        <v:ItemSetView DataContext="{Binding Items}" IsVisible="{Binding $parent[v:BuildEditorView].((vm:BuildViewModel)DataContext).IsItemsTab}" />
+        <v:SpellsSkillsView DataContext="{Binding SpellsSkills}" IsVisible="{Binding $parent[v:BuildEditorView].((vm:BuildViewModel)DataContext).IsSpellsTab}" />
+        <TextBox Text="{Binding Notes}" IsVisible="{Binding IsNotesTab}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" Padding="12,10"
+                 PlaceholderText="Notes for this build: when to take it, power spikes, what to build against what…" />
+      </Panel>
+    </Grid>
+  </Border>
+</UserControl>

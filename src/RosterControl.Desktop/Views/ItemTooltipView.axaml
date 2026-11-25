@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:c="using:RosterControl.Desktop.Controls"
+             x:Class="RosterControl.Desktop.Views.ItemTooltipView"
+             x:DataType="vm:ItemDetailsViewModel">
+  <UserControl.DataTemplates>
+    <!-- Recursive build-path node: connector, icon, cost, then its components -->
+    <DataTemplate DataType="vm:RecipeNodeViewModel">
+      <StackPanel HorizontalAlignment="Center">
+        <Grid Height="8" ColumnDefinitions="*,*" IsVisible="{Binding !IsRoot}">
+          <Border Grid.Column="0" Height="1" VerticalAlignment="Top" Background="{StaticResource Brush.GoldDark}" IsVisible="{Binding ShowLeftLine}" />
+          <Border Grid.Column="1" Height="1" VerticalAlignment="Top" Background="{StaticResource Brush.GoldDark}" IsVisible="{Binding ShowRightLine}" />
+          <Border Grid.ColumnSpan="2" Width="1" HorizontalAlignment="Center" Background="{StaticResource Brush.GoldDark}" />
+        </Grid>
+        <StackPanel Margin="4,0" HorizontalAlignment="Center" Spacing="1" ToolTip.Tip="{Binding Name}">
+          <Border Classes="itemframe" HorizontalAlignment="Center">
+            <c:AssetImage Source="{Binding IconUrl}" Width="{Binding IconSize}" Height="{Binding IconSize}" CornerRadius="2" />
+          </Border>
+          <TextBlock Text="{Binding CostText}" FontSize="10" Foreground="{StaticResource Brush.Gold}" HorizontalAlignment="Center" Classes="num" />
+        </StackPanel>
+        <Border Width="1" Height="6" HorizontalAlignment="Center" Background="{StaticResource Brush.GoldDark}" IsVisible="{Binding HasChildren}" />
+        <ItemsControl ItemsSource="{Binding Children}" HorizontalAlignment="Center" IsVisible="{Binding HasChildren}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        </ItemsControl>
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <StackPanel Spacing="7" MaxWidth="400">
+    <Grid ColumnDefinitions="Auto,*">
+      <Border Classes="itemframe" Margin="0,0,10,0" VerticalAlignment="Top">
+        <c:AssetImage Source="{Binding IconUrl}" Width="36" Height="36" CornerRadius="2" />
+      </Border>
+      <StackPanel Grid.Column="1" Spacing="2">
+        <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13" Foreground="{StaticResource Brush.GoldLight}" TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <c:LucideIcon Kind="coins" Width="12" Height="12" Foreground="{StaticResource Brush.Gold}" />
+          <TextBlock Text="{Binding CostText}" Foreground="{StaticResource Brush.Gold}" FontSize="12" />
+          <TextBlock Text="{Binding CombineText}" Classes="caption" Margin="6,0,0,0" VerticalAlignment="Center" IsVisible="{Binding HasRecipe}" />
+        </StackPanel>
+      </StackPanel>
+    </Grid>
+    <TextBlock Text="{Binding PlainText}" Classes="caption" FontStyle="Italic" TextWrapping="Wrap" IsVisible="{Binding HasPlainText}" />
+    <TextBlock c:RiotText.Markup="{Binding Description}" TextWrapping="Wrap" Foreground="{StaticResource Brush.TextSecondary}" LineHeight="17" />
+
+    <!-- Build path -->
+    <StackPanel Spacing="6" IsVisible="{Binding HasRecipe}">
+      <Border Classes="goldline" Margin="0,2,0,0" />
+      <TextBlock Text="BUILD PATH" Classes="overline" FontSize="10" />
+      <ContentControl Content="{Binding Recipe}" HorizontalAlignment="Center" />
+    </StackPanel>
+
+    <!-- Builds into -->
+    <StackPanel Spacing="6" IsVisible="{Binding HasBuildsInto}">
+      <Border Classes="goldline" Margin="0,2,0,0" />
+      <TextBlock Text="BUILDS INTO" Classes="overline" FontSize="10" />
+      <ItemsControl ItemsSource="{Binding BuildsInto}">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:IntoItemViewModel">
+            <StackPanel Margin="0,0,5,4" Spacing="1" ToolTip.Tip="{Binding Name}">
+              <Border Classes="itemframe" HorizontalAlignment="Center">
+                <c:AssetImage Source="{Binding IconUrl}" Width="26" Height="26" CornerRadius="2" />
+              </Border>
+              <TextBlock Text="{Binding CostText}" FontSize="9.5" Foreground="{StaticResource Brush.Gold}" HorizontalAlignment="Center" Classes="num" />
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </StackPanel>
+</UserControl>

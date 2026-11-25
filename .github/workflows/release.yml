@@ -1,0 +1,66 @@
+# Builds, tests and publishes a self-updating portable release when a version tag is pushed:
+#   git tag v1.2.3 && git push origin v1.2.3
+# Installed copies of Roster Control find the new GitHub release, download it in the background and offer
+# "Restart to update" (Velopack).
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Version from tag
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Restore tools
+        run: dotnet tool restore
+
+      - name: Test
+        run: dotnet test tests/RosterControl.Tests -c Release
+
+      - name: Publish (self-contained win-x64)
+        run: >
+          dotnet publish src/RosterControl.Desktop/RosterControl.Desktop.csproj -c Release -r win-x64 --self-contained true
+          -p:Version=${{ env.VERSION }} -p:PublishSingleFile=false -p:PublishReadyToRun=true -p:DebugType=none -o publish
+
+      - name: Download previous release (enables small delta updates)
+        continue-on-error: true
+        run: dotnet vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }} -o Releases
+
+      - name: Pack (portable, self-updating)
+        run: >
+          dotnet vpk pack -u RosterControl -v ${{ env.VERSION }} -p publish -e RosterControl.exe
+          --packTitle "Roster Control" --packAuthors tylersbreton -i src/RosterControl.Desktop/Assets/roster.ico --noInst -o Releases
+
+      - name: Upload GitHub release
+        run: >
+          dotnet vpk upload github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
+          -o Releases --publish --releaseName "Roster Control ${{ env.VERSION }}" --tag ${{ github.ref_name }}
+
+      - name: Release notes
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $changes = gh api repos/${{ github.repository }}/releases/generate-notes -f tag_name=${{ github.ref_name }} --jq .body
+          $intro = @"
+          **New install:** download **RosterControl-win-Portable.zip**, unzip it anywhere and run **Roster Control.exe**. Your data is kept in the ``data`` folder next to it.
+
+          **Already installed?** Roster Control downloads this update by itself; click **Restart to update** in the title bar (or Settings → App updates).
+          "@
+          gh release edit ${{ github.ref_name }} --repo ${{ github.repository }} --notes "$intro`n`n$changes"

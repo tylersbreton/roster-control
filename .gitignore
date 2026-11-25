@@ -1,0 +1,13 @@
+bin/
+obj/
+.vs/
+*.user
+artifacts/
+TestResults/
+publish/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+Releases/
+/data/

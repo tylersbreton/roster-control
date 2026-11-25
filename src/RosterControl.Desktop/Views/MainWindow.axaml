@@ -1,0 +1,198 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:RosterControl.Desktop.ViewModels"
+        xmlns:v="using:RosterControl.Desktop.Views"
+        xmlns:c="using:RosterControl.Desktop.Controls"
+        x:Class="RosterControl.Desktop.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Roster Control"
+        Icon="avares://RosterControl/Assets/roster.ico"
+        Width="1600" Height="960" MinWidth="1100" MinHeight="680"
+        FontFamily="{StaticResource Font.UI}"
+        Background="{StaticResource Brush.AppBackground}"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="44">
+
+  <Window.DataTemplates>
+    <DataTemplate DataType="vm:RostersViewModel"><v:RostersView /></DataTemplate>
+    <DataTemplate DataType="vm:LibraryViewModel"><v:LibraryView /></DataTemplate>
+    <DataTemplate DataType="vm:CounterPicksViewModel"><v:CounterPicksView /></DataTemplate>
+    <DataTemplate DataType="vm:SettingsViewModel"><v:SettingsView /></DataTemplate>
+    <DataTemplate DataType="vm:ChampionDetailViewModel"><v:ChampionView /></DataTemplate>
+  </Window.DataTemplates>
+
+  <Panel>
+    <!-- Subtle hextech glow behind everything -->
+    <Border IsHitTestVisible="False">
+      <Border.Background>
+        <RadialGradientBrush Center="85%,0%" GradientOrigin="85%,0%" RadiusX="70%" RadiusY="60%">
+          <GradientStop Color="#1A0AC8B9" Offset="0" />
+          <GradientStop Color="#00060A11" Offset="1" />
+        </RadialGradientBrush>
+      </Border.Background>
+    </Border>
+
+    <Grid RowDefinitions="44,*">
+      <!-- ── Title bar (native caption buttons on the right) ─────────────────────────────── -->
+      <Border Grid.Row="0" Name="TitleBar" Background="Transparent" WindowDecorationProperties.ElementRole="TitleBar">
+        <!-- Last column = space for the window's caption buttons (measured at runtime; full screen / min / max / close). -->
+        <Grid Name="TitleGrid" ColumnDefinitions="Auto,Auto,Auto,*,Auto,196" Margin="10,0,0,0">
+          <Button Grid.Column="0" Classes="ghost icon" WindowDecorationProperties.ElementRole="User" Command="{Binding ToggleSidebarCommand}" ToolTip.Tip="Collapse / expand navigation" VerticalAlignment="Center">
+            <c:LucideIcon Kind="panel-left" />
+          </Button>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="9" Margin="10,0,18,0" VerticalAlignment="Center" IsHitTestVisible="False">
+            <Image Source="avares://RosterControl/Assets/roster-256.png" Width="22" Height="22" />
+            <TextBlock Text="ROSTER CONTROL" FontWeight="Bold" FontSize="12.5" LetterSpacing="2" Foreground="{StaticResource Brush.GoldLight}" VerticalAlignment="Center" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Button Classes="ghost icon" WindowDecorationProperties.ElementRole="User" Command="{Binding GoBackCommand}" IsVisible="{Binding CanGoBack}" ToolTip.Tip="Back">
+              <c:LucideIcon Kind="arrow-left" />
+            </Button>
+            <Border Width="1" Height="16" Background="{StaticResource Brush.Border}" Margin="2,0,8,0" IsVisible="{Binding !IsLoading}" />
+            <TextBlock Text="{Binding PageTitle}" Classes="secondary" FontWeight="SemiBold" VerticalAlignment="Center" IsHitTestVisible="False" />
+          </StackPanel>
+
+          <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="0,0,12,0">
+            <Button Name="ExitFullScreenButton" Classes="small" WindowDecorationProperties.ElementRole="User" IsVisible="False" ToolTip.Tip="Exit full screen (Esc or F11)">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <c:LucideIcon Kind="minimize-2" Width="13" Height="13" />
+                <TextBlock Text="Exit full screen" FontSize="12" />
+              </StackPanel>
+            </Button>
+            <Button Classes="teal small" WindowDecorationProperties.ElementRole="User" IsVisible="{Binding IsAppUpdateReady}" Command="{Binding RestartToUpdateCommand}"
+                    ToolTip.Tip="A new version of Roster Control has been downloaded. Restart to install it — your data is kept.">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <c:LucideIcon Kind="download" Width="13" Height="13" Foreground="#CDFAFA" />
+                <TextBlock Text="{Binding AppUpdateText}" FontSize="12" Foreground="#CDFAFA" />
+                <TextBlock Text="· Restart to update" FontSize="12" FontWeight="Bold" Foreground="{StaticResource Brush.Teal}" />
+              </StackPanel>
+            </Button>
+            <Button Classes="primary small" WindowDecorationProperties.ElementRole="User" IsVisible="{Binding HasNewPatch}" Command="{Binding UpdatePatchCommand}"
+                    ToolTip.Tip="Load the new patch's champions, items and runes. Your rosters and builds are kept.">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <c:LucideIcon Kind="sparkles" Width="13" Height="13" Foreground="{StaticResource Brush.GoldLight}" />
+                <TextBlock Text="{Binding NewPatchText}" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" />
+                <TextBlock Text="· Update" FontSize="12" FontWeight="Bold" Foreground="{StaticResource Brush.Gold}" />
+              </StackPanel>
+            </Button>
+            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsSaving}" IsHitTestVisible="False">
+              <c:LucideIcon Kind="save" Width="13" Height="13" Foreground="{StaticResource Brush.Teal}" />
+              <TextBlock Text="Saving…" FontSize="11.5" Foreground="{StaticResource Brush.Teal}" VerticalAlignment="Center" />
+            </StackPanel>
+            <Border Classes="pill" IsVisible="{Binding !IsLoading}" IsHitTestVisible="False">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Ellipse Width="6" Height="6" Fill="{StaticResource Brush.Teal}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding PatchText}" FontSize="11" Classes="secondary num" VerticalAlignment="Center" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+        <!-- ── Navigation rail ───────────────────────────────────────────────────────────── -->
+        <Border Grid.Column="0" Width="{Binding SidebarWidth}" Padding="10,6,10,12" IsVisible="{Binding !IsLoading}">
+          <Border.Transitions>
+            <Transitions>
+              <DoubleTransition Property="Width" Duration="0:0:0.18" />
+            </Transitions>
+          </Border.Transitions>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Bottom" Spacing="2">
+              <RadioButton Classes="nav" GroupName="nav" IsChecked="{Binding IsSettingsSection, Mode=OneWay}" Command="{Binding NavigateCommand}" CommandParameter="{x:Static vm:Section.Settings}" ToolTip.Tip="Settings, backups and data">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <c:LucideIcon Kind="settings" Width="18" Height="18" Foreground="{Binding $parent[RadioButton].Foreground}" />
+                  <TextBlock Text="Settings" IsVisible="{Binding !SidebarCollapsed}" Foreground="{Binding $parent[RadioButton].Foreground}" />
+                </StackPanel>
+              </RadioButton>
+            </StackPanel>
+            <StackPanel Spacing="2">
+              <TextBlock Text="MY ROSTER" Classes="overline muted" Margin="11,8,0,8" IsVisible="{Binding !SidebarCollapsed}" />
+              <RadioButton Classes="nav" GroupName="nav" IsChecked="{Binding IsRostersSection, Mode=OneWay}" Command="{Binding NavigateCommand}" CommandParameter="{x:Static vm:Section.Rosters}" ToolTip.Tip="Rosters — drag champions into groups">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <c:LucideIcon Kind="layout-grid" Width="18" Height="18" Foreground="{Binding $parent[RadioButton].Foreground}" />
+                  <TextBlock Text="Rosters" IsVisible="{Binding !SidebarCollapsed}" Foreground="{Binding $parent[RadioButton].Foreground}" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton Classes="nav" GroupName="nav" IsChecked="{Binding IsChampionsSection, Mode=OneWay}" Command="{Binding NavigateCommand}" CommandParameter="{x:Static vm:Section.Champions}" ToolTip.Tip="All champions, builds and notes">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <c:LucideIcon Kind="library-big" Width="18" Height="18" Foreground="{Binding $parent[RadioButton].Foreground}" />
+                  <TextBlock Text="Champions" IsVisible="{Binding !SidebarCollapsed}" Foreground="{Binding $parent[RadioButton].Foreground}" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton Classes="nav" GroupName="nav" IsChecked="{Binding IsCountersSection, Mode=OneWay}" Command="{Binding NavigateCommand}" CommandParameter="{x:Static vm:Section.Counters}" ToolTip.Tip="Counter picks — what should I play into this?">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <c:LucideIcon Kind="swords" Width="18" Height="18" Foreground="{Binding $parent[RadioButton].Foreground}" />
+                  <TextBlock Text="Counter Picks" IsVisible="{Binding !SidebarCollapsed}" Foreground="{Binding $parent[RadioButton].Foreground}" />
+                </StackPanel>
+              </RadioButton>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+
+        <!-- ── Page ──────────────────────────────────────────────────────────────────────── -->
+        <ContentControl Grid.Column="1" Content="{Binding CurrentPage}" Margin="0,0,14,14" IsVisible="{Binding !IsLoading}" />
+      </Grid>
+
+      <!-- ── Loading / error ─────────────────────────────────────────────────────────────── -->
+      <StackPanel Grid.Row="0" Grid.RowSpan="2" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16" IsVisible="{Binding IsLoading}" MaxWidth="460">
+        <Image Source="avares://RosterControl/Assets/roster-256.png" Width="84" Height="84" HorizontalAlignment="Center" />
+        <TextBlock Text="ROSTER CONTROL" Classes="heading" FontSize="18" LetterSpacing="4" HorizontalAlignment="Center" />
+        <ProgressBar IsIndeterminate="True" Width="220" Height="3" Foreground="{StaticResource Brush.Gold}" Background="{StaticResource Brush.SurfaceElevated}" IsVisible="{Binding !HasError}" />
+        <TextBlock Text="{Binding LoadingText}" Classes="secondary" HorizontalAlignment="Center" IsVisible="{Binding !HasError}" />
+        <Border Classes="card" Padding="18,14" IsVisible="{Binding HasError}">
+          <StackPanel Spacing="12">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <c:LucideIcon Kind="triangle-alert" Foreground="{StaticResource Brush.Warning}" />
+              <TextBlock Text="Couldn't load game data" Classes="title" />
+            </StackPanel>
+            <TextBlock Text="{Binding LoadError}" Classes="secondary" TextWrapping="Wrap" />
+            <Button Classes="primary" Content="Try again" Command="{Binding RetryCommand}" HorizontalAlignment="Left" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </Grid>
+
+    <!-- ── Toasts ────────────────────────────────────────────────────────────────────────── -->
+    <ItemsControl ItemsSource="{Binding Toasts}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,24,24" MaxWidth="420">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <StackPanel Spacing="8" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:ToastViewModel">
+          <Border Background="#F2121C2A" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="8" Padding="12,10" BoxShadow="{StaticResource Shadow.Popup}">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <c:LucideIcon Kind="{Binding IconKind}" Foreground="{Binding Accent}" VerticalAlignment="Top" Margin="0,1,10,0" />
+              <TextBlock Grid.Column="1" Text="{Binding Message}" TextWrapping="Wrap" VerticalAlignment="Center" />
+              <Button Grid.Column="2" Classes="ghost icon" Width="22" Height="22" Margin="10,-2,-4,0" VerticalAlignment="Top"
+                      Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DismissToastCommand}" CommandParameter="{Binding}">
+                <c:LucideIcon Kind="x" Width="13" Height="13" />
+              </Button>
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <!-- ── Confirmation dialog ───────────────────────────────────────────────────────────── -->
+    <Panel IsVisible="{Binding Dialog, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <Border Background="{StaticResource Brush.Overlay}" />
+      <Border Classes="card" Width="440" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="22,20" BorderBrush="{StaticResource Brush.GoldDark}" BoxShadow="{StaticResource Shadow.Popup}"
+              DataContext="{Binding Dialog}" x:DataType="vm:ConfirmDialogViewModel">
+        <StackPanel Spacing="14">
+          <TextBlock Text="{Binding Title}" Classes="heading" FontSize="16" LetterSpacing="0.5" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding Message}" Classes="secondary" TextWrapping="Wrap" LineHeight="19" />
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,6,0,0">
+            <Button Content="Cancel" Command="{Binding CancelCommand}" IsCancel="True" />
+            <Button Content="{Binding ConfirmText}" Command="{Binding ConfirmCommand}" Classes.danger="{Binding IsDanger}" Classes.primary="{Binding !IsDanger}" IsDefault="True" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Panel>
+
+    <!-- ── Drag & drop ghost layer (topmost, not hit-testable) ───────────────────────────── -->
+    <Canvas c:Dnd.IsLayer="True" />
+  </Panel>
+</Window>

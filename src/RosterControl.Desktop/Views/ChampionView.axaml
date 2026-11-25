@@ -1,0 +1,266 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:c="using:RosterControl.Desktop.Controls"
+             xmlns:v="using:RosterControl.Desktop.Views"
+             xmlns:m="using:RosterControl.Core.Model"
+             x:Class="RosterControl.Desktop.Views.ChampionView"
+             x:DataType="vm:ChampionDetailViewModel">
+  <Grid RowDefinitions="Auto,Auto,*">
+
+    <!-- ── Hero header: splash art, name, placements ────────────────────────────────────── -->
+    <Border Grid.Row="0" Height="214" CornerRadius="12" ClipToBounds="True" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="1">
+      <Panel>
+        <c:AssetImage Source="{Binding SplashUrl}" FallbackSource="{Binding SplashFallbackUrl}" DecodeWidth="1600" CornerRadius="12" FocusY="0.28" />
+        <Border Background="{StaticResource Brush.HeroSideFade}" CornerRadius="12" />
+        <Border Background="{StaticResource Brush.HeroFade}" CornerRadius="12" />
+        <Grid ColumnDefinitions="Auto,*,Auto" Margin="26,0,22,20" VerticalAlignment="Bottom">
+          <Border Width="92" Height="92" CornerRadius="10" BorderBrush="{StaticResource Brush.GoldFrame}" BorderThickness="2" Padding="2" Background="#05080D" BoxShadow="{StaticResource Shadow.GoldGlow}">
+            <c:AssetImage Source="{Binding PortraitUrl}" CornerRadius="7" Zoom="1.08" />
+          </Border>
+          <StackPanel Grid.Column="1" Margin="20,0,0,2" VerticalAlignment="Bottom" Spacing="6">
+            <TextBlock Text="{Binding Name}" Classes="display" />
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <TextBlock Text="{Binding ChampionTitle}" Classes="secondary" FontStyle="Italic" FontSize="14" VerticalAlignment="Center" />
+              <ItemsControl ItemsSource="{Binding Tags}" VerticalAlignment="Center">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="5" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <Border CornerRadius="4" Background="#80121C2A" BorderBrush="#40C8AA6E" BorderThickness="1" Padding="7,2">
+                      <TextBlock Text="{Binding}" FontSize="11" Foreground="{StaticResource Brush.Gold}" FontWeight="SemiBold" />
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <ItemsControl ItemsSource="{Binding Positions}" VerticalAlignment="Center" IsVisible="{Binding HasPositions}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:RoleChoice">
+                    <c:AssetImage Source="{Binding IconUrl}" Width="17" Height="17" CornerRadius="0" ShowPlaceholder="False" ToolTip.Tip="{Binding Label}" Opacity="0.85" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Roster placements (proficiency & priority per group) -->
+          <StackPanel Grid.Column="2" VerticalAlignment="Bottom" Spacing="6" HorizontalAlignment="Right">
+            <TextBlock Text="IN YOUR ROSTER" Classes="overline" HorizontalAlignment="Right" IsVisible="{Binding HasPlacements}" />
+            <ItemsControl ItemsSource="{Binding Placements}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="5" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PlacementViewModel">
+                  <Border Background="#D90C131D" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="8" Padding="10,6,6,6">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                      <Border Width="3" Height="18" CornerRadius="2" Background="{Binding Accent}" VerticalAlignment="Center" />
+                      <c:AssetImage Source="{Binding RoleIconUrl}" Width="16" Height="16" CornerRadius="0" ShowPlaceholder="False" IsVisible="{Binding HasRoleIcon}" VerticalAlignment="Center" />
+                      <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold" MinWidth="64" VerticalAlignment="Center" />
+                      <c:StarRating Value="{Binding Proficiency}" StarSize="13" VerticalAlignment="Center" />
+                      <Button Classes="plain" VerticalAlignment="Center" ToolTip.Tip="Priority">
+                        <Border CornerRadius="4" Background="{Binding PrioritySoftBrush}" Padding="7,3" MinWidth="78">
+                          <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
+                            <TextBlock Text="{Binding PriorityLabel}" FontSize="10" FontWeight="Bold" LetterSpacing="0.8" Foreground="{Binding PriorityBrush}" />
+                            <c:LucideIcon Kind="chevron-down" Width="11" Height="11" Foreground="{Binding PriorityBrush}" />
+                          </StackPanel>
+                        </Border>
+                        <Button.Flyout>
+                          <MenuFlyout>
+                            <MenuItem Header="Main — first pick" Command="{Binding SetPriorityCommand}" CommandParameter="{x:Static m:ChampionPriority.Main}" />
+                            <MenuItem Header="Secondary — reliable alternative" Command="{Binding SetPriorityCommand}" CommandParameter="{x:Static m:ChampionPriority.Secondary}" />
+                            <MenuItem Header="Pocket — situational / counter" Command="{Binding SetPriorityCommand}" CommandParameter="{x:Static m:ChampionPriority.Pocket}" />
+                            <MenuItem Header="Learning — still practising" Command="{Binding SetPriorityCommand}" CommandParameter="{x:Static m:ChampionPriority.Learning}" />
+                          </MenuFlyout>
+                        </Button.Flyout>
+                      </Button>
+                      <Button Classes="ghost icon" Width="24" Height="24" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove from this group">
+                        <c:LucideIcon Kind="x" Width="13" Height="13" />
+                      </Button>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Classes="small" HorizontalAlignment="Right" IsVisible="{Binding CanAddToGroup}" Background="#D90C131D">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <c:LucideIcon Kind="plus" Width="13" Height="13" />
+                <TextBlock Text="Add to group" FontSize="12" />
+              </StackPanel>
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedRight">
+                  <ItemsControl ItemsSource="{Binding AvailableGroups}" MinWidth="180">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:GroupChoice">
+                        <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,7"
+                                Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).AddToGroupCommand}" CommandParameter="{Binding}">
+                          <StackPanel Orientation="Horizontal" Spacing="9">
+                            <Ellipse Width="9" Height="9" Fill="{Binding Accent}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Name}" />
+                          </StackPanel>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </Flyout>
+              </Button.Flyout>
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Panel>
+    </Border>
+
+    <!-- ── Tabs ─────────────────────────────────────────────────────────────────────────── -->
+    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="26" Margin="6,10,0,8">
+      <RadioButton Classes="tab" GroupName="championTabs" IsChecked="{Binding IsBuildsTab}">
+        <StackPanel Orientation="Horizontal" Spacing="7">
+          <c:LucideIcon Kind="book-marked" Width="14" Height="14" Foreground="{Binding $parent[RadioButton].Foreground}" />
+          <TextBlock Text="{Binding BuildsTabText}" LetterSpacing="1.2" FontWeight="Bold" FontSize="12" Foreground="{Binding $parent[RadioButton].Foreground}" />
+        </StackPanel>
+      </RadioButton>
+      <RadioButton Classes="tab" GroupName="championTabs" IsChecked="{Binding IsMatchupsTab}">
+        <StackPanel Orientation="Horizontal" Spacing="7">
+          <c:LucideIcon Kind="swords" Width="14" Height="14" Foreground="{Binding $parent[RadioButton].Foreground}" />
+          <TextBlock Text="MATCHUPS" LetterSpacing="1.2" FontWeight="Bold" FontSize="12" Foreground="{Binding $parent[RadioButton].Foreground}" />
+        </StackPanel>
+      </RadioButton>
+      <RadioButton Classes="tab" GroupName="championTabs" IsChecked="{Binding IsNotesTab}">
+        <StackPanel Orientation="Horizontal" Spacing="7">
+          <c:LucideIcon Kind="notebook-pen" Width="14" Height="14" Foreground="{Binding $parent[RadioButton].Foreground}" />
+          <TextBlock Text="NOTES &amp; TAGS" LetterSpacing="1.2" FontWeight="Bold" FontSize="12" Foreground="{Binding $parent[RadioButton].Foreground}" />
+        </StackPanel>
+      </RadioButton>
+    </StackPanel>
+
+    <!-- ── Builds ───────────────────────────────────────────────────────────────────────── -->
+    <Grid Grid.Row="2" ColumnDefinitions="264,12,*" IsVisible="{Binding IsBuildsTab}">
+      <Border Classes="card" Padding="0">
+        <Grid RowDefinitions="Auto,*">
+          <Grid ColumnDefinitions="*,Auto" Margin="14,12,10,8">
+            <TextBlock Text="SAVED BUILDS" Classes="overline" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Classes="ghost small" Command="{Binding AddBuildCommand}" ToolTip.Tip="New build">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <c:LucideIcon Kind="plus" Width="14" Height="14" Foreground="{StaticResource Brush.Gold}" />
+                <TextBlock Text="New" FontSize="12" Foreground="{StaticResource Brush.Gold}" FontWeight="SemiBold" />
+              </StackPanel>
+            </Button>
+          </Grid>
+          <ScrollViewer Grid.Row="1">
+            <ItemsControl Margin="8,0,8,8" ItemsSource="{Binding Builds}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:BuildViewModel">
+                  <Border Classes="tile" Classes.selectedbuild="{Binding IsSelected}" Padding="10,9" Margin="0,0,0,4" BorderThickness="1" BorderBrush="Transparent"
+                          c:Dnd.ClickCommand="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).SelectBuildCommand}">
+                    <Border.ContextMenu>
+                      <ContextMenu>
+                        <MenuItem Header="Duplicate" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).DuplicateBuildCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="copy" /></MenuItem.Icon></MenuItem>
+                        <MenuItem Header="Move up" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).MoveBuildUpCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="chevron-up" /></MenuItem.Icon></MenuItem>
+                        <MenuItem Header="Move down" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).MoveBuildDownCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="chevron-down" /></MenuItem.Icon></MenuItem>
+                        <Separator />
+                        <MenuItem Header="Delete build…" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).DeleteBuildCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="trash-2" Foreground="{StaticResource Brush.Bad}" /></MenuItem.Icon></MenuItem>
+                      </ContextMenu>
+                    </Border.ContextMenu>
+                    <StackPanel Spacing="7">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Panel Width="30" Height="30" Margin="0,0,9,0">
+                          <c:AssetImage Source="{Binding KeystoneIconUrl}" Width="30" Height="30" CornerRadius="15" ShowPlaceholder="True" />
+                          <Border Width="15" Height="15" CornerRadius="8" Background="#060A11" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-4,-3" IsVisible="{Binding SubTreeIconUrl, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <c:AssetImage Source="{Binding SubTreeIconUrl}" Width="12" Height="12" CornerRadius="6" ShowPlaceholder="False" />
+                          </Border>
+                        </Panel>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding RuneSummary}" Classes="caption" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <c:AssetImage Grid.Column="2" Source="{Binding RoleIconUrl}" Width="16" Height="16" CornerRadius="0" ShowPlaceholder="False" IsVisible="{Binding HasRole}" VerticalAlignment="Top" />
+                      </Grid>
+                      <StackPanel Orientation="Horizontal" Spacing="3">
+                        <ItemsControl ItemsSource="{Binding SummarySpells}">
+                          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="x:String"><c:AssetImage Source="{Binding}" Width="20" Height="20" CornerRadius="3" /></DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Border Width="6" />
+                        <ItemsControl ItemsSource="{Binding SummaryItems}">
+                          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="x:String"><c:AssetImage Source="{Binding}" Width="20" Height="20" CornerRadius="3" Ring="{StaticResource Brush.GoldDeep}" RingThickness="1" /></DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding IsFromOlderPatch}" ToolTip.Tip="Items and runes may have changed since. Open the Items tab to see what changed; saving any edit marks the build as up to date.">
+                        <Ellipse Width="6" Height="6" Fill="{StaticResource Brush.Warning}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding SavedOnPatchText}" Classes="caption" Foreground="{StaticResource Brush.Warning}" />
+                      </StackPanel>
+                      <TextBlock Text="{Binding SkillSummary}" Classes="caption num" IsVisible="{Binding SkillSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+
+      <!-- Editor or empty state -->
+      <v:BuildEditorView Grid.Column="2" DataContext="{Binding SelectedBuild}" IsVisible="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).HasSelectedBuild}" />
+      <Border Grid.Column="2" Classes="card" IsVisible="{Binding !HasBuilds}">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" MaxWidth="380">
+          <c:LucideIcon Kind="book-marked" Width="38" Height="38" Foreground="{StaticResource Brush.GoldDark}" HorizontalAlignment="Center" />
+          <TextBlock Text="NO BUILDS YET" Classes="heading" HorizontalAlignment="Center" />
+          <TextBlock Text="Save rune pages, item sets, summoner spells and a skill order — make one per role or matchup (e.g. Standard, vs AP, Aggressive)." Classes="secondary" TextWrapping="Wrap" TextAlignment="Center" />
+          <Button Classes="primary" HorizontalAlignment="Center" Command="{Binding AddBuildCommand}" Margin="0,6,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <c:LucideIcon Kind="plus" Width="15" Height="15" Foreground="{StaticResource Brush.GoldLight}" />
+              <TextBlock Text="Create first build" Foreground="{StaticResource Brush.GoldLight}" FontWeight="SemiBold" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- ── Matchups ─────────────────────────────────────────────────────────────────────── -->
+    <v:MatchupsView Grid.Row="2" DataContext="{Binding Matchups}" IsVisible="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).IsMatchupsTab}" />
+
+    <!-- ── Notes & tags ─────────────────────────────────────────────────────────────────── -->
+    <Grid Grid.Row="2" ColumnDefinitions="*,12,340" IsVisible="{Binding IsNotesTab}">
+      <Border Classes="card" Padding="16,14">
+        <Grid RowDefinitions="Auto,*">
+          <StackPanel Spacing="2" Margin="0,0,0,10">
+            <TextBlock Text="CHAMPION NOTES" Classes="overline" />
+            <TextBlock Text="Power spikes, combos, wave management, reminders — anything you want to remember. Saved automatically." Classes="caption" />
+          </StackPanel>
+          <TextBox Grid.Row="1" Text="{Binding Notes}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" PlaceholderText="Write your notes for this champion…" Padding="12,10" />
+        </Grid>
+      </Border>
+      <Border Grid.Column="2" Classes="card" Padding="16,14" VerticalAlignment="Top">
+        <StackPanel Spacing="12">
+          <StackPanel Spacing="2">
+            <TextBlock Text="TAGS" Classes="overline" />
+            <TextBlock Text="Your own labels, e.g. “Blind pick”, “Teamfight”, “One-trick”. Filter by tag on the Champions page." Classes="caption" TextWrapping="Wrap" />
+          </StackPanel>
+          <ItemsControl ItemsSource="{Binding UserTags}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <Border CornerRadius="999" Background="{StaticResource Brush.GoldSoft}" BorderBrush="{StaticResource Brush.GoldDark}" BorderThickness="1" Padding="10,3,4,3" Margin="0,0,6,6">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <TextBlock Text="{Binding}" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" VerticalAlignment="Center" />
+                    <Button Classes="ghost icon" Width="18" Height="18" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).RemoveTagCommand}" CommandParameter="{Binding}">
+                      <c:LucideIcon Kind="x" Width="11" Height="11" />
+                    </Button>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBox Text="{Binding NewTag}" PlaceholderText="Add a tag…" KeyDown="OnTagKeyDown" />
+            <Button Grid.Column="1" Margin="6,0,0,0" Command="{Binding AddTagCommand}" Classes="primary">
+              <c:LucideIcon Kind="plus" Width="15" Height="15" Foreground="{StaticResource Brush.GoldLight}" />
+            </Button>
+          </Grid>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

@@ -1,0 +1,135 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    Design tokens: a modern dark UI with the League client's hextech palette (deep navy, warm gold, teal magic).
+    Every colour, size and radius used by views comes from here.
+  -->
+
+  <!-- Surfaces -->
+  <Color x:Key="Color.AppBackground">#060A11</Color>
+  <Color x:Key="Color.Surface">#0C131D</Color>
+  <Color x:Key="Color.SurfaceElevated">#121C2A</Color>
+  <Color x:Key="Color.SurfaceSunken">#080D15</Color>
+  <Color x:Key="Color.SurfaceHover">#192638</Color>
+  <Color x:Key="Color.Border">#22303F</Color>
+  <Color x:Key="Color.BorderSubtle">#17212D</Color>
+
+  <!-- Text (warm, like the client) -->
+  <Color x:Key="Color.TextPrimary">#ECE5D3</Color>
+  <Color x:Key="Color.TextSecondary">#A09B8C</Color>
+  <Color x:Key="Color.TextMuted">#6C6A62</Color>
+
+  <!-- Hextech accents -->
+  <Color x:Key="Color.Gold">#C8AA6E</Color>
+  <Color x:Key="Color.GoldLight">#F0E6D2</Color>
+  <Color x:Key="Color.GoldDark">#785A28</Color>
+  <Color x:Key="Color.GoldDeep">#463714</Color>
+  <Color x:Key="Color.Teal">#0AC8B9</Color>
+  <Color x:Key="Color.TealDark">#005A82</Color>
+  <Color x:Key="Color.Good">#4CD98A</Color>
+  <Color x:Key="Color.Bad">#EE5A6F</Color>
+  <Color x:Key="Color.Warning">#E6B85C</Color>
+
+  <SolidColorBrush x:Key="Brush.AppBackground" Color="{StaticResource Color.AppBackground}" />
+  <SolidColorBrush x:Key="Brush.Surface" Color="{StaticResource Color.Surface}" />
+  <SolidColorBrush x:Key="Brush.SurfaceElevated" Color="{StaticResource Color.SurfaceElevated}" />
+  <SolidColorBrush x:Key="Brush.SurfaceSunken" Color="{StaticResource Color.SurfaceSunken}" />
+  <SolidColorBrush x:Key="Brush.SurfaceHover" Color="{StaticResource Color.SurfaceHover}" />
+  <SolidColorBrush x:Key="Brush.Border" Color="{StaticResource Color.Border}" />
+  <SolidColorBrush x:Key="Brush.BorderSubtle" Color="{StaticResource Color.BorderSubtle}" />
+  <SolidColorBrush x:Key="Brush.TextPrimary" Color="{StaticResource Color.TextPrimary}" />
+  <SolidColorBrush x:Key="Brush.TextSecondary" Color="{StaticResource Color.TextSecondary}" />
+  <SolidColorBrush x:Key="Brush.TextMuted" Color="{StaticResource Color.TextMuted}" />
+  <SolidColorBrush x:Key="Brush.Gold" Color="{StaticResource Color.Gold}" />
+  <SolidColorBrush x:Key="Brush.GoldLight" Color="{StaticResource Color.GoldLight}" />
+  <SolidColorBrush x:Key="Brush.GoldDark" Color="{StaticResource Color.GoldDark}" />
+  <SolidColorBrush x:Key="Brush.GoldDeep" Color="{StaticResource Color.GoldDeep}" />
+  <SolidColorBrush x:Key="Brush.Teal" Color="{StaticResource Color.Teal}" />
+  <SolidColorBrush x:Key="Brush.Good" Color="{StaticResource Color.Good}" />
+  <SolidColorBrush x:Key="Brush.Bad" Color="{StaticResource Color.Bad}" />
+  <SolidColorBrush x:Key="Brush.Warning" Color="{StaticResource Color.Warning}" />
+  <SolidColorBrush x:Key="Brush.GoldSoft" Color="#C8AA6E" Opacity="0.12" />
+  <SolidColorBrush x:Key="Brush.TealSoft" Color="#0AC8B9" Opacity="0.12" />
+  <SolidColorBrush x:Key="Brush.GoodSoft" Color="#4CD98A" Opacity="0.12" />
+  <SolidColorBrush x:Key="Brush.BadSoft" Color="#EE5A6F" Opacity="0.12" />
+  <SolidColorBrush x:Key="Brush.WarningSoft" Color="#E6B85C" Opacity="0.12" />
+  <SolidColorBrush x:Key="Brush.Overlay" Color="#03060A" Opacity="0.72" />
+
+  <!-- Gold frame gradient used on hero elements, like the client's hextech borders -->
+  <LinearGradientBrush x:Key="Brush.GoldFrame" StartPoint="0%,0%" EndPoint="0%,100%">
+    <GradientStop Color="#C8AA6E" Offset="0" />
+    <GradientStop Color="#785A28" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="Brush.PrimaryButton" StartPoint="0%,0%" EndPoint="0%,100%">
+    <GradientStop Color="#1E2328" Offset="0" />
+    <GradientStop Color="#141A22" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="Brush.HeroFade" StartPoint="0%,0%" EndPoint="0%,100%">
+    <GradientStop Color="#00060A11" Offset="0" />
+    <GradientStop Color="#99060A11" Offset="0.55" />
+    <GradientStop Color="#FF060A11" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="Brush.HeroSideFade" StartPoint="0%,0%" EndPoint="100%,0%">
+    <GradientStop Color="#F2060A11" Offset="0" />
+    <GradientStop Color="#80060A11" Offset="0.45" />
+    <GradientStop Color="#00060A11" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="Brush.RuneFade" StartPoint="0%,0%" EndPoint="100%,0%">
+    <GradientStop Color="#E6060A11" Offset="0" />
+    <GradientStop Color="#B3060A11" Offset="0.5" />
+    <GradientStop Color="#D9060A11" Offset="1" />
+  </LinearGradientBrush>
+
+  <!-- Typography -->
+  <FontFamily x:Key="Font.UI">fonts:Inter#Inter, $Default</FontFamily>
+  <x:Double x:Key="FontSize.Caption">11</x:Double>
+  <x:Double x:Key="FontSize.Small">12</x:Double>
+  <x:Double x:Key="FontSize.Body">13</x:Double>
+  <x:Double x:Key="FontSize.Subtitle">14</x:Double>
+  <x:Double x:Key="FontSize.Title">16</x:Double>
+  <x:Double x:Key="FontSize.Headline">22</x:Double>
+  <x:Double x:Key="FontSize.Display">34</x:Double>
+
+  <!-- Spacing & shape -->
+  <Thickness x:Key="Space.CardPadding">14,12,14,12</Thickness>
+  <CornerRadius x:Key="Radius.Card">10</CornerRadius>
+  <CornerRadius x:Key="Radius.Control">6</CornerRadius>
+  <CornerRadius x:Key="Radius.Pill">999</CornerRadius>
+  <BoxShadows x:Key="Shadow.Card">0 1 2 0 #50000000, 0 10 28 -14 #80000000</BoxShadows>
+  <BoxShadows x:Key="Shadow.Popup">0 16 40 -8 #C0000000</BoxShadows>
+  <BoxShadows x:Key="Shadow.GoldGlow">0 0 18 0 #40C8AA6E</BoxShadows>
+
+  <!-- Fluent overrides so built-in controls inherit the design system -->
+  <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="{StaticResource Color.Surface}" />
+  <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="{StaticResource Color.SurfaceElevated}" />
+  <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="{StaticResource Color.Border}" />
+  <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="{StaticResource Color.SurfaceElevated}" />
+  <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="{StaticResource Color.Border}" />
+  <SolidColorBrush x:Key="FlyoutPresenterBackground" Color="{StaticResource Color.SurfaceElevated}" />
+  <SolidColorBrush x:Key="FlyoutBorderThemeBrush" Color="{StaticResource Color.Border}" />
+  <SolidColorBrush x:Key="ToolTipBackground" Color="#F0101823" />
+  <SolidColorBrush x:Key="ToolTipForeground" Color="{StaticResource Color.TextPrimary}" />
+  <SolidColorBrush x:Key="ToolTipBorderBrush" Color="{StaticResource Color.GoldDark}" />
+  <SolidColorBrush x:Key="TextControlBackground" Color="{StaticResource Color.SurfaceSunken}" />
+  <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="{StaticResource Color.SurfaceSunken}" />
+  <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="{StaticResource Color.SurfaceSunken}" />
+  <SolidColorBrush x:Key="TextControlBorderBrush" Color="{StaticResource Color.Border}" />
+  <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#38506A" />
+  <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="{StaticResource Color.Gold}" />
+  <SolidColorBrush x:Key="TextControlForeground" Color="{StaticResource Color.TextPrimary}" />
+  <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="{StaticResource Color.TextPrimary}" />
+  <SolidColorBrush x:Key="TextControlForegroundFocused" Color="{StaticResource Color.TextPrimary}" />
+  <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="{StaticResource Color.TextMuted}" />
+  <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="{StaticResource Color.TextMuted}" />
+  <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="{StaticResource Color.TextMuted}" />
+  <SolidColorBrush x:Key="TextControlSelectionHighlightColor" Color="#665A4A28" />
+  <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="{StaticResource Color.Gold}" />
+  <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="#D8BC82" />
+  <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeChecked" Color="{StaticResource Color.Gold}" />
+  <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundChecked" Color="#0C131D" />
+  <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundCheckedPointerOver" Color="#0C131D" />
+  <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="{StaticResource Color.Gold}" />
+  <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#D8BC82" />
+  <SolidColorBrush x:Key="ToggleSwitchKnobFillOn" Color="#0C131D" />
+  <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPointerOver" Color="#0C131D" />
+</ResourceDictionary>

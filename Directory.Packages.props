@@ -1,0 +1,36 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- UI -->
+    <PackageVersion Include="Avalonia" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Desktop" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Headless" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Headless.NUnit" Version="12.1.6" />
+    <PackageVersion Include="SkiaSharp" Version="3.119.4" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="3.119.4" />
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <!-- Self-updating portable releases from GitHub (MIT) -->
+    <PackageVersion Include="Velopack" Version="1.2.161" />
+    <!-- Hosting / logging -->
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0" />
+    <PackageVersion Include="Serilog" Version="4.4.0" />
+    <PackageVersion Include="Serilog.Extensions.Hosting" Version="11.0.0" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Debug" Version="3.0.0" />
+    <!-- Persistence: EF Core + SQLite (file based). EF Core 11 requires .NET 11; 10.0.x is the newest line for net10.0 -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15" />
+    <!-- Tests -->
+    <PackageVersion Include="NUnit" Version="5.0.0" />
+    <PackageVersion Include="NUnit3TestAdapter" Version="6.3.1" />
+    <PackageVersion Include="NUnit.Analyzers" Version="4.15.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
+  </ItemGroup>
+</Project>

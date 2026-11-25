@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:c="using:RosterControl.Desktop.Controls"
+             xmlns:v="using:RosterControl.Desktop.Views"
+             x:Class="RosterControl.Desktop.Views.LibraryView"
+             x:DataType="vm:LibraryViewModel">
+  <Grid RowDefinitions="Auto,Auto,*">
+    <Grid ColumnDefinitions="*,Auto" Margin="2,2,0,12">
+      <StackPanel Spacing="3">
+        <TextBlock Text="CHAMPIONS" Classes="heading" />
+        <TextBlock Text="Every champion, with your builds, matchups and notes. Click a champion to open it." Classes="caption" />
+      </StackPanel>
+      <Border Grid.Column="1" Classes="pill" VerticalAlignment="Center">
+        <TextBlock Text="{Binding Browser.CountText}" FontSize="11" Classes="secondary num" />
+      </Border>
+    </Grid>
+
+    <Border Grid.Row="1" Classes="card" Padding="12,10" Margin="0,0,0,12">
+      <WrapPanel ItemSpacing="10" LineSpacing="8">
+        <TextBox Classes="search" Width="260" PlaceholderText="Search champions…" Text="{Binding Browser.Search}" />
+        <v:RoleFilterBar DataContext="{Binding Browser}" VerticalAlignment="Center" />
+        <ComboBox ItemsSource="{Binding Browser.ClassOptions}" SelectedItem="{Binding Browser.SelectedClass}" MinWidth="130" VerticalAlignment="Center" />
+        <ComboBox ItemsSource="{Binding TagOptions}" SelectedItem="{Binding SelectedTag}" MinWidth="130" VerticalAlignment="Center" IsVisible="{Binding HasTags}" ToolTip.Tip="Filter by your tags" />
+        <ToggleButton Classes="chip" IsChecked="{Binding OnlyRoster}" VerticalAlignment="Center" Height="30">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <c:LucideIcon Kind="layout-grid" Width="13" Height="13" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+            <TextBlock Text="In my roster" FontSize="12" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+          </StackPanel>
+        </ToggleButton>
+        <ToggleButton Classes="chip" IsChecked="{Binding OnlyWithBuilds}" VerticalAlignment="Center" Height="30">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <c:LucideIcon Kind="book-marked" Width="13" Height="13" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+            <TextBlock Text="Has builds" FontSize="12" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+          </StackPanel>
+        </ToggleButton>
+      </WrapPanel>
+    </Border>
+
+    <ScrollViewer Grid.Row="2">
+      <ItemsControl ItemsSource="{Binding Browser.Tiles}">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ChampionTileViewModel">
+            <Border Classes="tile" Width="104" Padding="6,8" Margin="2" ToolTip.Tip="{Binding Tooltip}"
+                    c:Dnd.ClickCommand="{Binding $parent[UserControl].((vm:LibraryViewModel)DataContext).OpenCommand}">
+              <StackPanel Spacing="6">
+                <Panel Width="78" Height="78">
+                  <c:AssetImage Source="{Binding IconUrl}" CornerRadius="8" Zoom="1.08" Ring="{StaticResource Brush.GoldDark}" RingThickness="1" FallbackText="{Binding Name}" />
+                  <Border IsVisible="{Binding IsNew}" CornerRadius="3" Background="#C8AA6E" Padding="4,0" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-3,-4,0,0" ToolTip.Tip="New this patch"><TextBlock Text="NEW" FontSize="8.5" FontWeight="Bold" LetterSpacing="0.6" Foreground="#060A11" /></Border>
+                  <Border IsVisible="{Binding IsInRoster}" Width="19" Height="19" CornerRadius="10" Background="#0AC8B9" BorderBrush="#060A11" BorderThickness="2"
+                          HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-5,-5,0" ToolTip.Tip="In your roster">
+                    <c:LucideIcon Kind="check" Width="10" Height="10" Foreground="#04121A" StrokeWidth="3.4" />
+                  </Border>
+                  <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,-8">
+                    <Border CornerRadius="4" Background="#E6060A11" BorderBrush="{StaticResource Brush.GoldDark}" BorderThickness="1" Padding="4,1" IsVisible="{Binding HasBuilds}" ToolTip.Tip="Saved builds">
+                      <StackPanel Orientation="Horizontal" Spacing="3">
+                        <c:LucideIcon Kind="book-marked" Width="10" Height="10" Foreground="{StaticResource Brush.Gold}" />
+                        <TextBlock Text="{Binding BuildCount}" FontSize="10" Foreground="{StaticResource Brush.Gold}" />
+                      </StackPanel>
+                    </Border>
+                    <Border CornerRadius="4" Background="#E6060A11" BorderBrush="#4D0AC8B9" BorderThickness="1" Padding="4,1" IsVisible="{Binding HasMatchups}" ToolTip.Tip="Recorded matchups">
+                      <StackPanel Orientation="Horizontal" Spacing="3">
+                        <c:LucideIcon Kind="swords" Width="10" Height="10" Foreground="{StaticResource Brush.Teal}" />
+                        <TextBlock Text="{Binding MatchupCount}" FontSize="10" Foreground="{StaticResource Brush.Teal}" />
+                      </StackPanel>
+                    </Border>
+                  </StackPanel>
+                </Panel>
+                <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" Margin="0,4,0,0" />
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

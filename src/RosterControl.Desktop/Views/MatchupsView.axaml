@@ -1,0 +1,194 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:c="using:RosterControl.Desktop.Controls"
+             xmlns:v="using:RosterControl.Desktop.Views"
+             x:Class="RosterControl.Desktop.Views.MatchupsView"
+             x:DataType="vm:MatchupsViewModel">
+  <UserControl.DataTemplates>
+    <DataTemplate DataType="vm:MatchupColumnViewModel">
+      <Border Classes="card dropzone" c:Dnd.Target="{Binding}" c:Dnd.Orientation="Vertical" Padding="0">
+        <Grid RowDefinitions="Auto,Auto,*">
+          <Grid ColumnDefinitions="Auto,*,Auto" Margin="14,12,14,8">
+            <Border Width="26" Height="26" CornerRadius="6" Background="{Binding AccentSoft}" Margin="0,0,10,0">
+              <c:LucideIcon Kind="{Binding IconKind}" Width="14" Height="14" Foreground="{Binding Accent}" />
+            </Border>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+              <TextBlock Text="{Binding Title}" FontWeight="Bold" LetterSpacing="1.4" FontSize="12.5" Foreground="{Binding Accent}" />
+              <TextBlock Text="{Binding Hint}" Classes="caption" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <Border Grid.Column="2" Classes="pill" Padding="7,1" VerticalAlignment="Center">
+              <TextBlock Text="{Binding CountText}" FontSize="11" Classes="secondary num" />
+            </Border>
+          </Grid>
+          <Border Grid.Row="1" Height="2" Background="{Binding Accent}" Opacity="0.7" />
+          <Panel Grid.Row="2">
+            <ScrollViewer>
+              <ItemsControl Margin="8" ItemsSource="{Binding Items}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:MatchupItemViewModel">
+                    <Border Classes="rostercard" Margin="0,0,0,6" Padding="6,6,6,6" c:Dnd.Payload="{Binding DragData}" c:Dnd.Item="{Binding}">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <c:AssetImage Source="{Binding IconUrl}" Width="40" Height="40" CornerRadius="6" Zoom="1.1" Ring="{Binding Column.Accent}" RingThickness="1.5" VerticalAlignment="Top" />
+                        <StackPanel Grid.Column="1" Margin="10,0,4,0" Spacing="2">
+                          <StackPanel Orientation="Horizontal" Spacing="7" Margin="5,1,0,0">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <!-- Role the matchup applies to (click to change) -->
+                            <Button Classes="plain" VerticalAlignment="Center" ToolTip.Tip="{Binding RoleText}">
+                              <Panel>
+                                <Border IsVisible="{Binding HasRole}" CornerRadius="4" Background="#26C8AA6E" Padding="4,1">
+                                  <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <c:AssetImage Source="{Binding RoleIconUrl}" Width="12" Height="12" CornerRadius="0" ShowPlaceholder="False" />
+                                    <c:LucideIcon Kind="chevron-down" Width="10" Height="10" Foreground="{StaticResource Brush.Gold}" />
+                                  </StackPanel>
+                                </Border>
+                                <Border IsVisible="{Binding !HasRole}" CornerRadius="4" Padding="4,1" Background="{Binding ShowAllRolesTag, Converter={x:Static c:Converters.AllRolesTagBackground}}">
+                                  <StackPanel Orientation="Horizontal" Spacing="3">
+                                    <TextBlock Text="All roles" FontSize="10" Classes="muted" IsVisible="{Binding ShowAllRolesTag}" />
+                                    <c:LucideIcon Kind="target" Width="11" Height="11" Classes="hoveronlyicon" Foreground="{StaticResource Brush.TextMuted}" />
+                                  </StackPanel>
+                                </Border>
+                              </Panel>
+                              <Button.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedLeft">
+                                  <StackPanel Spacing="2" MinWidth="170">
+                                    <TextBlock Text="Applies when playing:" Classes="caption" Margin="8,2,8,6" />
+                                    <ItemsControl ItemsSource="{Binding RoleChoices}">
+                                      <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:RoleChoice">
+                                          <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,6"
+                                                  Command="{Binding $parent[Border].((vm:MatchupItemViewModel)DataContext).SetRoleCommand}" CommandParameter="{Binding}">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                              <Panel Width="15" Height="15">
+                                                <c:AssetImage Source="{Binding IconUrl}" Width="15" Height="15" CornerRadius="0" ShowPlaceholder="False" IsVisible="{Binding HasIcon}" />
+                                                <c:LucideIcon Kind="layout-grid" Width="13" Height="13" IsVisible="{Binding !HasIcon}" />
+                                              </Panel>
+                                              <TextBlock Text="{Binding Label}" Foreground="{StaticResource Brush.TextPrimary}" />
+                                            </StackPanel>
+                                          </Button>
+                                        </DataTemplate>
+                                      </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                  </StackPanel>
+                                </Flyout>
+                              </Button.Flyout>
+                            </Button>
+                          </StackPanel>
+                          <TextBox Classes="inline" Text="{Binding Note}" PlaceholderText="Add a note (e.g. “bait E, all-in at 6”)…" FontSize="12" TextWrapping="Wrap" AcceptsReturn="False" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0" VerticalAlignment="Top" Classes="hoveronly">
+                          <Button Classes="ghost icon" Width="24" Height="24" Command="{Binding FlipCommand}" ToolTip.Tip="{Binding FlipText}">
+                            <c:LucideIcon Kind="arrow-up-down" Width="13" Height="13" />
+                          </Button>
+                          <Button Classes="ghost icon" Width="24" Height="24" Command="{Binding OpenCommand}" ToolTip.Tip="Open this champion">
+                            <c:LucideIcon Kind="external-link" Width="13" Height="13" />
+                          </Button>
+                          <Button Classes="ghost icon" Width="24" Height="24" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove">
+                            <c:LucideIcon Kind="x" Width="13" Height="13" />
+                          </Button>
+                        </StackPanel>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+            <Border IsVisible="{Binding IsEmpty}" Margin="14,20,14,0" Height="70" VerticalAlignment="Top" CornerRadius="8" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" Background="#0A101A" IsHitTestVisible="False">
+              <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
+                <c:LucideIcon Kind="plus" Width="18" Height="18" Foreground="{StaticResource Brush.TextMuted}" HorizontalAlignment="Center" />
+                <TextBlock Text="Drag champions here" Classes="caption" HorizontalAlignment="Center" />
+              </StackPanel>
+            </Border>
+          </Panel>
+        </Grid>
+      </Border>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <Grid ColumnDefinitions="*,12,*,12,330" RowDefinitions="Auto,*,Auto">
+    <!-- Role being recorded / viewed -->
+    <Grid Grid.ColumnSpan="3" ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,10">
+      <TextBlock Text="ROLE" Classes="overline muted" VerticalAlignment="Center" Margin="2,0,10,0" />
+      <ItemsControl Grid.Column="1" ItemsSource="{Binding RoleOptions}" VerticalAlignment="Center">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:FilterOption">
+            <Button Classes="chip" Classes.selected="{Binding IsSelected}" ToolTip.Tip="{Binding Label}" Height="30" MinWidth="40"
+                    Command="{Binding $parent[UserControl].((vm:MatchupsViewModel)DataContext).SelectRoleCommand}" CommandParameter="{Binding}">
+              <Panel>
+                <c:AssetImage Source="{Binding IconUrl}" Width="17" Height="17" CornerRadius="0" ShowPlaceholder="False" IsVisible="{Binding HasIconUrl}" />
+                <TextBlock Text="All roles" FontSize="11.5" VerticalAlignment="Center" IsVisible="{Binding HasIconKind}" Foreground="{Binding $parent[Button].Foreground}" />
+              </Panel>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <TextBlock Grid.Column="2" Text="{Binding RoleHint}" Classes="caption" TextWrapping="Wrap" VerticalAlignment="Center" Margin="14,0,0,0" />
+    </Grid>
+
+    <ContentControl Grid.Row="1" Grid.Column="0" Content="{Binding Good}" />
+    <ContentControl Grid.Row="1" Grid.Column="2" Content="{Binding Weak}" />
+
+    <!-- Champion picker -->
+    <Border Grid.Column="4" Grid.RowSpan="3" Classes="card" Padding="0">
+      <Grid RowDefinitions="Auto,Auto,Auto,*">
+        <StackPanel Margin="14,12,14,8" Spacing="2">
+          <TextBlock Text="CHAMPIONS" Classes="overline" />
+          <TextBlock Text="Drag into a column, or right-click to add" Classes="caption" />
+        </StackPanel>
+        <TextBox Grid.Row="1" Classes="search" Margin="12,0,12,8" PlaceholderText="Search…" Text="{Binding Picker.Search}" />
+        <v:RoleFilterBar Grid.Row="2" DataContext="{Binding Picker}" Margin="12,0,12,8" />
+        <ScrollViewer Grid.Row="3">
+          <ItemsControl Margin="8,0,6,8" ItemsSource="{Binding Picker.Tiles}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ChampionTileViewModel">
+                <Border Classes="tile" Width="62" Padding="4,5" Margin="1" ToolTip.Tip="{Binding Name}" c:Dnd.Payload="{Binding DragData}" Opacity="{Binding IsSelected, Converter={x:Static c:Converters.UsedOpacity}}">
+                  <Border.ContextMenu>
+                    <ContextMenu>
+                      <MenuItem Header="Good against" Command="{Binding $parent[v:MatchupsView].((vm:MatchupsViewModel)DataContext).AddGoodCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="thumbs-up" Foreground="{StaticResource Brush.Good}" /></MenuItem.Icon></MenuItem>
+                      <MenuItem Header="Weak against" Command="{Binding $parent[v:MatchupsView].((vm:MatchupsViewModel)DataContext).AddWeakCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="thumbs-down" Foreground="{StaticResource Brush.Bad}" /></MenuItem.Icon></MenuItem>
+                      <Separator />
+                      <MenuItem Header="Open champion" Command="{Binding $parent[v:MatchupsView].((vm:MatchupsViewModel)DataContext).OpenChampionCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="external-link" /></MenuItem.Icon></MenuItem>
+                    </ContextMenu>
+                  </Border.ContextMenu>
+                  <StackPanel Spacing="3">
+                    <c:AssetImage Source="{Binding IconUrl}" Width="46" Height="46" CornerRadius="6" Zoom="1.08" HorizontalAlignment="Center" />
+                    <TextBlock Text="{Binding Name}" FontSize="10.5" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" Classes="secondary" />
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+
+    <!-- Matchups recorded from the other side -->
+    <Border Grid.Row="2" Grid.ColumnSpan="3" Classes="card" Padding="14,10" Margin="0,12,0,0" IsVisible="{Binding HasInverse}">
+      <StackPanel Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Text="NOTED FROM THE OTHER SIDE" Classes="overline" />
+          <TextBlock Text="Matchups you recorded on other champions that mention this one. They count in Counter Picks too." Classes="caption" VerticalAlignment="Center" />
+        </StackPanel>
+        <ItemsControl ItemsSource="{Binding Inverse}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:InverseMatchupViewModel">
+              <Button Classes="ghost" Padding="6,4" Margin="0,0,8,4" Command="{Binding OpenCommand}">
+                <ToolTip.Tip>
+                  <TextBlock Text="{Binding Note}" TextWrapping="Wrap" IsVisible="{Binding HasNote}" />
+                </ToolTip.Tip>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <c:AssetImage Source="{Binding IconUrl}" Width="24" Height="24" CornerRadius="4" Zoom="1.1" Ring="{Binding Accent}" />
+                  <TextBlock Text="{Binding Text}" FontSize="12" VerticalAlignment="Center" Foreground="{StaticResource Brush.TextPrimary}" />
+                  <c:LucideIcon Kind="notebook-pen" Width="12" Height="12" IsVisible="{Binding HasNote}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

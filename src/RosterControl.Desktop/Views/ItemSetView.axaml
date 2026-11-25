@@ -1,0 +1,180 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:c="using:RosterControl.Desktop.Controls"
+             xmlns:v="using:RosterControl.Desktop.Views"
+             x:Class="RosterControl.Desktop.Views.ItemSetView"
+             x:DataType="vm:ItemSetViewModel">
+  <Grid ColumnDefinitions="*,14,456">
+
+    <!-- ── Item set blocks ────────────────────────────────────────────────────────────── -->
+    <Grid RowDefinitions="Auto,*">
+      <Grid ColumnDefinitions="*,Auto" Margin="2,0,0,10">
+        <StackPanel Spacing="2">
+          <TextBlock Text="ITEM SET" Classes="overline" />
+          <TextBlock Text="Drag items from the shop into a block, or click an item to add it to the selected block. Right-click an item to remove it." Classes="caption" TextWrapping="Wrap" />
+          <!-- Items change most patches: flag what changed since this build was saved -->
+          <Border IsVisible="{Binding HasPatchChanges}" Background="{StaticResource Brush.WarningSoft}" BorderBrush="#66E6B85C" BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,6,0,0">
+            <Grid ColumnDefinitions="Auto,*">
+              <c:LucideIcon Kind="triangle-alert" Width="14" Height="14" Foreground="{StaticResource Brush.Warning}" VerticalAlignment="Top" Margin="0,1,8,0" />
+              <TextBlock Grid.Column="1" Text="{Binding PatchChangeSummary}" FontSize="12" Foreground="#F2DDB0" TextWrapping="Wrap" />
+            </Grid>
+          </Border>
+        </StackPanel>
+        <Button Grid.Column="1" Classes="small" Command="{Binding AddBlockCommand}" VerticalAlignment="Top" Margin="10,0,0,0">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <c:LucideIcon Kind="plus" Width="13" Height="13" />
+            <TextBlock Text="Add block" FontSize="12" />
+          </StackPanel>
+        </Button>
+      </Grid>
+      <ScrollViewer Grid.Row="1">
+        <ItemsControl ItemsSource="{Binding Blocks}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="10" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ItemBlockViewModel">
+              <Border Classes="dropzone itemblock" Classes.selected="{Binding IsSelected}" c:Dnd.Target="{Binding}" c:Dnd.Orientation="Horizontal"
+                      CornerRadius="8" BorderThickness="1" Padding="12,8,10,12" Tapped="OnBlockTapped">
+                <StackPanel Spacing="8">
+                  <Grid ColumnDefinitions="*,Auto,Auto">
+                    <TextBox Classes="inline" Text="{Binding Name}" FontWeight="Bold" FontSize="13" Foreground="{StaticResource Brush.GoldLight}" MaxWidth="320" HorizontalAlignment="Left" Margin="-6,0,0,0" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center" Margin="8,0" ToolTip.Tip="Total cost of this block">
+                      <c:LucideIcon Kind="coins" Width="13" Height="13" Foreground="{StaticResource Brush.Gold}" />
+                      <TextBlock Text="{Binding TotalGoldText}" FontSize="12" Foreground="{StaticResource Brush.Gold}" Classes="num" />
+                    </StackPanel>
+                    <Button Grid.Column="2" Classes="ghost icon" Width="24" Height="24" ToolTip.Tip="Block options">
+                      <c:LucideIcon Kind="ellipsis" Width="15" Height="15" />
+                      <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedRight">
+                          <MenuItem Header="Move up" Command="{Binding $parent[UserControl].((vm:ItemSetViewModel)DataContext).MoveBlockUpCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="chevron-up" /></MenuItem.Icon></MenuItem>
+                          <MenuItem Header="Move down" Command="{Binding $parent[UserControl].((vm:ItemSetViewModel)DataContext).MoveBlockDownCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="chevron-down" /></MenuItem.Icon></MenuItem>
+                          <MenuItem Header="Clear items" Command="{Binding ClearCommand}"><MenuItem.Icon><c:LucideIcon Kind="rotate-ccw" /></MenuItem.Icon></MenuItem>
+                          <Separator />
+                          <MenuItem Header="Delete block" Command="{Binding $parent[UserControl].((vm:ItemSetViewModel)DataContext).RemoveBlockCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="trash-2" Foreground="{StaticResource Brush.Bad}" /></MenuItem.Icon></MenuItem>
+                        </MenuFlyout>
+                      </Button.Flyout>
+                    </Button>
+                  </Grid>
+                  <Panel MinHeight="52">
+                    <ItemsControl ItemsSource="{Binding Items}">
+                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ItemSlotViewModel">
+                          <Border Classes="tile" Padding="3" Margin="0,0,4,4" c:Dnd.Payload="{Binding DragData}" c:Dnd.Item="{Binding}">
+                            <Border.ContextMenu>
+                              <ContextMenu>
+                                <MenuItem Header="Remove" Command="{Binding Block.RemoveItemCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="x" /></MenuItem.Icon></MenuItem>
+                              </ContextMenu>
+                            </Border.ContextMenu>
+                            <ToolTip.Tip>
+                              <StackPanel Spacing="8" MaxWidth="400">
+                                <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding HasChange}">
+                                  <c:LucideIcon Kind="triangle-alert" Width="12" Height="12" Foreground="{StaticResource Brush.Warning}" VerticalAlignment="Top" Margin="0,2,6,0" />
+                                  <TextBlock Grid.Column="1" Text="{Binding ChangeNote}" FontSize="12" Foreground="{StaticResource Brush.Warning}" TextWrapping="Wrap" />
+                                </Grid>
+                                <v:ItemTooltipView DataContext="{Binding Details}" IsVisible="{Binding $parent[StackPanel].((vm:ItemSlotViewModel)DataContext).HasDetails}" />
+                                <StackPanel Spacing="4" IsVisible="{Binding IsMissing}">
+                                  <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13" Foreground="{StaticResource Brush.Bad}" />
+                                  <TextBlock Text="{Binding Description}" Classes="secondary" TextWrapping="Wrap" />
+                                </StackPanel>
+                              </StackPanel>
+                            </ToolTip.Tip>
+                            <Panel>
+                              <Border Classes="itemframe" Classes.missing="{Binding IsMissing}" Classes.changed="{Binding HasChange}">
+                                <c:AssetImage Source="{Binding IconUrl}" Width="44" Height="44" CornerRadius="2" FallbackText="?" />
+                              </Border>
+                              <Ellipse Width="10" Height="10" Fill="{StaticResource Brush.Warning}" Stroke="#060A11" StrokeThickness="2"
+                                       HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-3,-3,0" IsVisible="{Binding HasChange}" />
+                            </Panel>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Border IsVisible="{Binding IsEmpty}" Height="50" CornerRadius="6" BorderBrush="#26354A" BorderThickness="1" Background="#0A0F17" IsHitTestVisible="False">
+                      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <c:LucideIcon Kind="shopping-bag" Width="14" Height="14" Foreground="{StaticResource Brush.TextMuted}" />
+                        <TextBlock Text="Drag items here" Classes="caption" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </Border>
+                  </Panel>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </Grid>
+
+    <!-- ── Item shop (drop items here to remove them) ─────────────────────────────────── -->
+    <Border Grid.Column="2" Classes="dropzone" c:Dnd.Target="{Binding}" CornerRadius="10" BorderThickness="1" BorderBrush="{StaticResource Brush.GoldDeep}" Background="#080D15">
+      <Grid RowDefinitions="Auto,*" DataContext="{Binding Shop}" x:DataType="vm:ItemShopViewModel">
+        <Grid ColumnDefinitions="*,Auto" Margin="12,12,12,10">
+          <TextBox Classes="search" PlaceholderText="Search items (e.g. ie, bork)…" Text="{Binding Search}" />
+          <Border Grid.Column="1" Classes="elevated" Padding="2" Margin="8,0,0,0" CornerRadius="7">
+            <StackPanel Orientation="Horizontal">
+              <RadioButton Classes="segment" Content="Rift" GroupName="shopMap" IsChecked="{Binding IsRift}" ToolTip.Tip="Summoner's Rift items" />
+              <RadioButton Classes="segment" Content="ARAM" GroupName="shopMap" IsChecked="{Binding IsAram}" ToolTip.Tip="Howling Abyss items" />
+            </StackPanel>
+          </Border>
+        </Grid>
+        <Grid Grid.Row="1" ColumnDefinitions="158,*">
+          <!-- Stat filters (like the client's item set editor) -->
+          <Border BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="0,1,1,0">
+            <ScrollViewer>
+              <StackPanel Margin="10,8,6,8" Spacing="0">
+                <Grid ColumnDefinitions="*,Auto" Margin="2,0,0,4">
+                  <TextBlock Text="FILTERS" Classes="overline muted" VerticalAlignment="Center" />
+                  <Button Grid.Column="1" Classes="ghost small" Padding="4,1" Content="Clear" FontSize="11" Command="{Binding ClearFiltersCommand}" IsVisible="{Binding HasFilters}" />
+                </Grid>
+                <ItemsControl ItemsSource="{Binding Categories}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CategoryOptionViewModel">
+                      <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" FontSize="11.5" MinHeight="24" Padding="6,0,0,0" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </ScrollViewer>
+          </Border>
+          <!-- Items by tier -->
+          <Border Grid.Column="1" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="0,1,0,0">
+            <Panel>
+              <ScrollViewer>
+                <ItemsControl Margin="10,6,6,10" ItemsSource="{Binding Sections}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ShopSectionViewModel">
+                      <StackPanel Spacing="4" Margin="0,4,0,6">
+                        <TextBlock Text="{Binding Title}" Classes="overline" FontSize="10" Margin="2,2,0,2" />
+                        <ItemsControl ItemsSource="{Binding Items}">
+                          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ShopItemViewModel">
+                              <Border Classes="tile" Padding="3,3,3,2" Margin="0,0,2,2" Width="50"
+                                      c:Dnd.Payload="{Binding DragData}"
+                                      c:Dnd.ClickCommand="{Binding $parent[UserControl].((vm:ItemSetViewModel)DataContext).Shop.AddCommand}">
+                                <ToolTip.Tip>
+                                  <v:ItemTooltipView DataContext="{Binding Details}" />
+                                </ToolTip.Tip>
+                                <StackPanel Spacing="1">
+                                  <Border Classes="itemframe" HorizontalAlignment="Center">
+                                    <c:AssetImage Source="{Binding IconUrl}" Width="38" Height="38" CornerRadius="2" />
+                                  </Border>
+                                  <TextBlock Text="{Binding CostText}" FontSize="10" Foreground="{StaticResource Brush.Gold}" HorizontalAlignment="Center" Classes="num" />
+                                </StackPanel>
+                              </Border>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+              <TextBlock Text="No items match these filters." Classes="secondary" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsEmpty}" />
+            </Panel>
+          </Border>
+        </Grid>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

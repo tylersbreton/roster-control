@@ -1,0 +1,234 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:c="using:RosterControl.Desktop.Controls"
+             xmlns:v="using:RosterControl.Desktop.Views"
+             x:Class="RosterControl.Desktop.Views.CounterPicksView"
+             x:DataType="vm:CounterPicksViewModel">
+  <UserControl.DataTemplates>
+    <DataTemplate DataType="vm:CounterResultViewModel">
+      <Border Classes="rostercard" Padding="10,8" Margin="0,0,0,6" c:Dnd.ClickCommand="{Binding $parent[v:CounterPicksView].((vm:CounterPicksViewModel)DataContext).OpenChampionCommand}">
+        <Grid ColumnDefinitions="Auto,190,*,Auto">
+          <c:AssetImage Source="{Binding IconUrl}" Width="46" Height="46" CornerRadius="6" Zoom="1.1" Ring="{Binding PriorityBrush}" RingThickness="1.5" />
+          <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center" Spacing="3">
+            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" />
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <c:AssetImage Source="{Binding RoleIconUrl}" Width="13" Height="13" CornerRadius="0" ShowPlaceholder="False" IsVisible="{Binding HasRole}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding PlacementText}" Classes="caption" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding PriorityLabel}" FontSize="9.5" FontWeight="Bold" LetterSpacing="0.8" Foreground="{Binding PriorityBrush}" VerticalAlignment="Center" IsVisible="{Binding HasEntry}" />
+            </StackPanel>
+            <c:StarRating Value="{Binding Proficiency, Mode=OneWay}" IsReadOnly="True" StarSize="10" HorizontalAlignment="Left" IsVisible="{Binding HasEntry}" />
+          </StackPanel>
+          <ItemsControl Grid.Column="2" ItemsSource="{Binding Reasons}" VerticalAlignment="Center">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ReasonViewModel">
+                <Border CornerRadius="999" Background="{Binding AccentSoft}" BorderBrush="{Binding Accent}" BorderThickness="1" Padding="3,3,10,3" Margin="0,2,6,2" ToolTip.Tip="{Binding Tooltip}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <c:AssetImage Source="{Binding EnemyIconUrl}" Width="20" Height="20" CornerRadius="10" Zoom="1.1" />
+                    <TextBlock Text="{Binding Text}" FontSize="11.5" VerticalAlignment="Center" Foreground="{StaticResource Brush.TextPrimary}" />
+                    <c:LucideIcon Kind="notebook-pen" Width="11" Height="11" IsVisible="{Binding HasNote}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Border Grid.Column="3" CornerRadius="8" Background="{Binding ScoreSoft}" BorderBrush="{Binding ScoreBrush}" BorderThickness="1" Width="46" Height="34" VerticalAlignment="Center" Margin="10,0,0,0" ToolTip.Tip="Good matchups minus bad matchups against the selected enemies">
+            <TextBlock Text="{Binding ScoreText}" FontWeight="Bold" FontSize="15" Foreground="{Binding ScoreBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Classes="num" />
+          </Border>
+        </Grid>
+      </Border>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <Grid ColumnDefinitions="*,14,340">
+    <Grid RowDefinitions="Auto,Auto,Auto,*">
+      <StackPanel Spacing="3" Margin="2,2,0,12">
+        <TextBlock Text="COUNTER PICKS" Classes="heading" />
+        <TextBlock Text="Add the enemy picks — your champions are ranked by the matchups you've recorded." Classes="caption" />
+      </StackPanel>
+
+      <!-- Suggested bans (from your Weak against matchups, weighted by priority) -->
+      <Border Grid.Row="1" Classes="card" Padding="16,12" Margin="0,0,0,12">
+        <Grid RowDefinitions="Auto,Auto">
+          <Grid ColumnDefinitions="Auto,*">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <c:LucideIcon Kind="circle-x" Width="14" Height="14" Foreground="{StaticResource Brush.Warning}" />
+              <TextBlock Text="SUGGESTED BANS" Classes="overline" Foreground="{StaticResource Brush.Warning}" VerticalAlignment="Center" />
+            </StackPanel>
+            <TextBlock Grid.Column="1" Classes="caption" Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                       Text="Champions that counter the most of your champions in this scope — Mains count most. Hover for details." />
+          </Grid>
+          <ItemsControl Grid.Row="1" ItemsSource="{Binding Bans}" Margin="0,10,0,0" IsVisible="{Binding HasBans}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:BanSuggestionViewModel">
+                <Border Classes="rostercard" Padding="6,6,12,6" Margin="0,0,8,8" Width="226"
+                        c:Dnd.ClickCommand="{Binding $parent[v:CounterPicksView].((vm:CounterPicksViewModel)DataContext).OpenBanCommand}">
+                  <ToolTip.Tip>
+                    <StackPanel Spacing="6" MaxWidth="360">
+                      <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{StaticResource Brush.GoldLight}" />
+                      <TextBlock Text="{Binding CountText}" Classes="caption" />
+                      <ItemsControl ItemsSource="{Binding Threats}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:BanThreatViewModel">
+                            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
+                              <Ellipse Width="7" Height="7" Fill="{Binding PriorityBrush}" VerticalAlignment="Top" Margin="0,5,0,0" />
+                              <TextBlock Text="{Binding Line}" TextWrapping="Wrap" MaxWidth="330" FontSize="12" Foreground="{StaticResource Brush.TextSecondary}" />
+                            </StackPanel>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <TextBlock Text="{Binding AnswersText}" Classes="caption" FontStyle="Italic" />
+                    </StackPanel>
+                  </ToolTip.Tip>
+                  <Grid ColumnDefinitions="Auto,*">
+                    <Panel Width="40" Height="40">
+                      <c:AssetImage Source="{Binding IconUrl}" CornerRadius="6" Zoom="1.1" Ring="{StaticResource Brush.Warning}" RingThickness="1.5" />
+                      <Border CornerRadius="6" Background="#99060A11" IsVisible="{Binding AlreadyPicked}" ToolTip.Tip="Already in the enemy team">
+                        <c:LucideIcon Kind="check" Width="16" Height="16" Foreground="{StaticResource Brush.TextSecondary}" />
+                      </Border>
+                    </Panel>
+                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="4">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <ItemsControl ItemsSource="{Binding TopThreats}">
+                          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:BanThreatViewModel">
+                              <c:AssetImage Source="{Binding IconUrl}" Width="18" Height="18" CornerRadius="4" Zoom="1.1" Ring="{Binding PriorityBrush}" RingThickness="1" />
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding CountText}" Classes="caption" VerticalAlignment="Center" Margin="3,0,0,0" />
+                      </StackPanel>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Grid.Row="1" Margin="0,8,0,0" Classes="caption" IsVisible="{Binding !HasBans}" TextWrapping="Wrap"
+                     Text="No suggestions yet — record “Weak against” matchups on your champions' pages and the champions that threaten your roster will show up here." />
+        </Grid>
+      </Border>
+
+      <!-- Enemy team (drop zone) -->
+      <Border Grid.Row="2" Classes="card dropzone" c:Dnd.Target="{Binding}" c:Dnd.Orientation="Horizontal" Padding="16,12" Margin="0,0,0,12">
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+          <TextBlock Text="ENEMY TEAM" Classes="overline" Foreground="{StaticResource Brush.Bad}" Margin="0,0,0,10" />
+          <ItemsControl Grid.Row="1" ItemsSource="{Binding Enemies}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="12" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:EnemySlotViewModel">
+                <StackPanel Spacing="5" Width="70" c:Dnd.Item="{Binding}">
+                  <Panel Width="64" Height="64">
+                    <Border CornerRadius="8" BorderBrush="#4DEE5A6F" BorderThickness="1" Background="#0A0F17" IsVisible="{Binding !HasChampion}">
+                      <c:LucideIcon Kind="plus" Width="18" Height="18" Foreground="{StaticResource Brush.TextMuted}" />
+                    </Border>
+                    <c:AssetImage Source="{Binding IconUrl}" CornerRadius="8" Zoom="1.08" Ring="{StaticResource Brush.Bad}" RingThickness="1.5" IsVisible="{Binding HasChampion}" />
+                    <Button Classes="icon" Width="20" Height="20" CornerRadius="10" Padding="0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-6,0"
+                            IsVisible="{Binding HasChampion}" Command="{Binding ClearCommand}" ToolTip.Tip="Remove" Background="#121C2A">
+                      <c:LucideIcon Kind="x" Width="11" Height="11" />
+                    </Button>
+                  </Panel>
+                  <TextBlock Text="{Binding Name}" FontSize="11" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" Classes="secondary" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <StackPanel Grid.Column="1" Grid.RowSpan="2" Spacing="8" VerticalAlignment="Center" MinWidth="230">
+            <TextBlock Text="RECOMMEND FROM" Classes="overline muted" />
+            <ComboBox ItemsSource="{Binding Scopes}" SelectedItem="{Binding SelectedScope}" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:ScopeOption">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Ellipse Width="8" Height="8" Fill="{Binding Accent}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Label}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <Grid ColumnDefinitions="*,Auto">
+              <CheckBox Content="Include champions outside this roster" IsChecked="{Binding IncludeOutsideRoster}" />
+              <Button Grid.Column="1" Classes="ghost small" Command="{Binding ClearEnemiesCommand}" IsVisible="{Binding HasEnemies}" Margin="6,0,0,0">
+                <TextBlock Text="Clear" FontSize="12" Classes="secondary" />
+              </Button>
+            </Grid>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- Results -->
+      <Panel Grid.Row="3">
+        <ScrollViewer IsVisible="{Binding HasEnemies}">
+          <StackPanel Spacing="8">
+            <TextBlock Text="{Binding ResultSummary}" Classes="caption" Margin="2,0,0,2" />
+            <StackPanel Spacing="6" IsVisible="{Binding HasStrong}">
+              <StackPanel Orientation="Horizontal" Spacing="7" Margin="2,4,0,2">
+                <c:LucideIcon Kind="thumbs-up" Width="14" Height="14" Foreground="{StaticResource Brush.Good}" />
+                <TextBlock Text="STRONG PICKS" Classes="overline" Foreground="{StaticResource Brush.Good}" />
+              </StackPanel>
+              <ItemsControl ItemsSource="{Binding Strong}" />
+            </StackPanel>
+            <StackPanel Spacing="6" IsVisible="{Binding HasRisky}">
+              <StackPanel Orientation="Horizontal" Spacing="7" Margin="2,8,0,2">
+                <c:LucideIcon Kind="thumbs-down" Width="14" Height="14" Foreground="{StaticResource Brush.Bad}" />
+                <TextBlock Text="RISKY PICKS" Classes="overline" Foreground="{StaticResource Brush.Bad}" />
+              </StackPanel>
+              <ItemsControl ItemsSource="{Binding Risky}" />
+            </StackPanel>
+            <StackPanel Spacing="6" IsVisible="{Binding HasNeutral}">
+              <ToggleButton Classes="chip" IsChecked="{Binding ShowNeutral}" HorizontalAlignment="Left" Margin="0,8,0,2">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <c:LucideIcon Kind="chevron-down" Width="13" Height="13" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+                  <TextBlock Text="Roster champions without matchup notes" FontSize="12" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+                </StackPanel>
+              </ToggleButton>
+              <ItemsControl ItemsSource="{Binding Neutral}" IsVisible="{Binding ShowNeutral}" />
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+
+        <Border Classes="card" IsVisible="{Binding !HasEnemies}" VerticalAlignment="Top" Padding="24,28">
+          <StackPanel Spacing="10" HorizontalAlignment="Center" MaxWidth="460">
+            <c:LucideIcon Kind="crosshair" Width="36" Height="36" Foreground="{StaticResource Brush.GoldDark}" HorizontalAlignment="Center" />
+            <TextBlock Text="WHO ARE YOU PLAYING AGAINST?" Classes="heading" HorizontalAlignment="Center" />
+            <TextBlock Text="Click or drag enemy champions from the list on the right. Your roster is ranked using the Good against / Weak against matchups recorded on each champion's page — including ones you noted from the enemy's side." Classes="secondary" TextWrapping="Wrap" TextAlignment="Center" />
+            <TextBlock Text="Tip: you haven't recorded any matchups yet. Open a champion and use the Matchups tab." Classes="caption" Foreground="{StaticResource Brush.Warning}" TextWrapping="Wrap" TextAlignment="Center" IsVisible="{Binding !HasMatchupData}" />
+          </StackPanel>
+        </Border>
+      </Panel>
+    </Grid>
+
+    <!-- Enemy picker -->
+    <Border Grid.Column="2" Classes="card" Padding="0">
+      <Grid RowDefinitions="Auto,Auto,Auto,*">
+        <StackPanel Margin="14,12,14,8" Spacing="2">
+          <TextBlock Text="ADD ENEMY" Classes="overline" Foreground="{StaticResource Brush.Bad}" />
+          <TextBlock Text="Click to add, or drag onto a slot" Classes="caption" />
+        </StackPanel>
+        <TextBox Grid.Row="1" Classes="search" Margin="12,0,12,8" PlaceholderText="Search…" Text="{Binding Picker.Search}" />
+        <v:RoleFilterBar Grid.Row="2" DataContext="{Binding Picker}" Margin="12,0,12,8" />
+        <ScrollViewer Grid.Row="3">
+          <ItemsControl Margin="8,0,6,8" ItemsSource="{Binding Picker.Tiles}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ChampionTileViewModel">
+                <Border Classes="tile" Width="62" Padding="4,5" Margin="1" ToolTip.Tip="{Binding Name}"
+                        Opacity="{Binding IsSelected, Converter={x:Static c:Converters.UsedOpacity}}"
+                        c:Dnd.Payload="{Binding DragData}"
+                        c:Dnd.ClickCommand="{Binding $parent[v:CounterPicksView].((vm:CounterPicksViewModel)DataContext).AddEnemyCommand}">
+                  <StackPanel Spacing="3">
+                    <c:AssetImage Source="{Binding IconUrl}" Width="46" Height="46" CornerRadius="6" Zoom="1.08" HorizontalAlignment="Center" />
+                    <TextBlock Text="{Binding Name}" FontSize="10.5" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" Classes="secondary" />
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

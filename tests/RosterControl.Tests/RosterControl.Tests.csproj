@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="NUnit.Analyzers" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\RosterControl.Core\RosterControl.Core.csproj" />
+    <ProjectReference Include="..\..\src\RosterControl.Integrations\RosterControl.Integrations.csproj" />
+    <ProjectReference Include="..\..\src\RosterControl.Data\RosterControl.Data.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+    <Using Include="NUnit.Framework" />
+  </ItemGroup>
+</Project>

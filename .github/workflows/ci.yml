@@ -1,0 +1,27 @@
+# Build and unit tests on every push and pull request. (The headless UI tests need Data Dragon downloads and are
+# run locally: dotnet test tests/RosterControl.UITests.)
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build
+        run: dotnet build RosterControl.sln -c Release
+
+      - name: Unit tests
+        run: dotnet test tests/RosterControl.Tests -c Release --no-build

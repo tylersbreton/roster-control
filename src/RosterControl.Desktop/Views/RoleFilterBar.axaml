@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:c="using:RosterControl.Desktop.Controls"
+             x:Class="RosterControl.Desktop.Views.RoleFilterBar"
+             x:DataType="vm:ChampionBrowserViewModel"
+             IsVisible="{Binding PositionsAvailable}">
+  <ItemsControl ItemsSource="{Binding RoleOptions}">
+    <ItemsControl.ItemsPanel>
+      <ItemsPanelTemplate>
+        <StackPanel Orientation="Horizontal" Spacing="4" />
+      </ItemsPanelTemplate>
+    </ItemsControl.ItemsPanel>
+    <ItemsControl.ItemTemplate>
+      <DataTemplate x:DataType="vm:FilterOption">
+        <Button Classes="chip" Classes.selected="{Binding IsSelected}" ToolTip.Tip="{Binding Label}" Height="30" MinWidth="40"
+                Command="{Binding $parent[UserControl].((vm:ChampionBrowserViewModel)DataContext).SelectRoleCommand}" CommandParameter="{Binding}">
+          <Panel>
+            <c:AssetImage Source="{Binding IconUrl}" Width="17" Height="17" CornerRadius="0" ShowPlaceholder="False" IsVisible="{Binding HasIconUrl}" />
+            <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding HasIconKind}">
+              <TextBlock Text="All" FontSize="11.5" VerticalAlignment="Center" Foreground="{Binding $parent[Button].Foreground}" />
+            </StackPanel>
+          </Panel>
+        </Button>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+  </ItemsControl>
+</UserControl>

@@ -1,0 +1,156 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:c="using:RosterControl.Desktop.Controls"
+             x:Class="RosterControl.Desktop.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+  <ScrollViewer>
+    <StackPanel Spacing="12" MaxWidth="900" HorizontalAlignment="Left" Margin="2,2,0,0">
+      <StackPanel Spacing="3" Margin="0,0,0,4">
+        <TextBlock Text="SETTINGS" Classes="heading" />
+        <TextBlock Text="Your data, game data and backups." Classes="caption" />
+      </StackPanel>
+
+      <!-- Data storage -->
+      <Border Classes="card" Padding="18,16">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Brush.GoldSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
+            <c:LucideIcon Kind="database" Width="18" Height="18" Foreground="{StaticResource Brush.Gold}" />
+          </Border>
+          <StackPanel Grid.Column="1" Spacing="8">
+            <TextBlock Text="Data storage" Classes="title" />
+            <TextBlock Text="{Binding StorageText}" Classes="secondary" TextWrapping="Wrap" />
+            <Border Classes="elevated" Padding="10,7">
+              <SelectableTextBlock Text="{Binding DataFolder}" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.TextPrimary}" />
+            </Border>
+            <TextBlock Classes="caption" TextWrapping="Wrap" Text="roster.db is a single SQLite file. Copy the whole data folder (with the app closed) to move your rosters to another PC, or use Export below." />
+            <Button HorizontalAlignment="Left" Command="{Binding OpenDataFolderCommand}" Classes="small">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <c:LucideIcon Kind="folder-open" Width="13" Height="13" />
+                <TextBlock Text="Open data folder" FontSize="12" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- Game data -->
+      <Border Classes="card" Padding="18,16">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Brush.TealSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
+            <c:LucideIcon Kind="refresh-cw" Width="18" Height="18" Foreground="{StaticResource Brush.Teal}" />
+          </Border>
+          <StackPanel Grid.Column="1" Spacing="8">
+            <TextBlock Text="Game data" Classes="title" />
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <TextBlock Text="Data Dragon" Classes="secondary" VerticalAlignment="Center" />
+              <Border Classes="pill"><TextBlock Text="{Binding GameVersion}" FontSize="12" FontWeight="SemiBold" Classes="num" /></Border>
+              <TextBlock Text="{Binding GameDataStatus}" Classes="caption" VerticalAlignment="Center" />
+            </StackPanel>
+            <ItemsControl ItemsSource="{Binding Warnings}" IsVisible="{Binding HasWarnings}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
+                    <c:LucideIcon Kind="triangle-alert" Width="13" Height="13" Foreground="{StaticResource Brush.Warning}" />
+                    <TextBlock Text="{Binding}" Classes="caption" Foreground="{StaticResource Brush.Warning}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="caption" TextWrapping="Wrap" Text="Champions, items, runes and spells come from Riot's Data Dragon; stat shards and rune page art from Community Dragon; champion positions from Meraki Analytics (all public and keyless). The patch list is checked at every start and every 2 hours; patch data and icons are cached per patch (the newest 3 patches are kept), stat shards refresh when the patch changes, positions refresh when a new champion appears, and splash/rune art is re-checked weekly. Builds saved on an older patch flag items that changed since." />
+            <Button HorizontalAlignment="Left" Command="{Binding RefreshGameDataCommand}" Classes="small">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <c:LucideIcon Kind="refresh-cw" Width="13" Height="13" />
+                <TextBlock Text="Check for a new patch now" FontSize="12" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- Backups -->
+      <Border Classes="card" Padding="18,16">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Brush.GoodSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
+            <c:LucideIcon Kind="archive" Width="18" Height="18" Foreground="{StaticResource Brush.Good}" />
+          </Border>
+          <StackPanel Grid.Column="1" Spacing="8">
+            <TextBlock Text="Backup &amp; restore" Classes="title" />
+            <TextBlock Classes="secondary" TextWrapping="Wrap" Text="Export everything (groups, proficiencies, builds, matchups, notes, tags) to a JSON file, or import one to replace your current data. An automatic backup is written once a day (the last 10 are kept)." />
+            <TextBlock Text="{Binding BackupStatus}" Classes="caption" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Classes="primary small" Command="{Binding ExportCommand}" IsEnabled="{Binding !IsBusy}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <c:LucideIcon Kind="download" Width="13" Height="13" Foreground="{StaticResource Brush.GoldLight}" />
+                  <TextBlock Text="Export…" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" />
+                </StackPanel>
+              </Button>
+              <Button Classes="small" Command="{Binding ImportCommand}" IsEnabled="{Binding !IsBusy}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <c:LucideIcon Kind="upload" Width="13" Height="13" />
+                  <TextBlock Text="Import…" FontSize="12" />
+                </StackPanel>
+              </Button>
+              <Button Classes="ghost small" Command="{Binding OpenBackupsFolderCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <c:LucideIcon Kind="folder-open" Width="13" Height="13" />
+                  <TextBlock Text="Open backups folder" FontSize="12" Classes="secondary" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- App updates -->
+      <Border Classes="card" Padding="18,16">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Brush.TealSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
+            <c:LucideIcon Kind="download" Width="18" Height="18" Foreground="{StaticResource Brush.Teal}" />
+          </Border>
+          <StackPanel Grid.Column="1" Spacing="8">
+            <TextBlock Text="App updates" Classes="title" />
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <TextBlock Text="Roster Control" Classes="secondary" VerticalAlignment="Center" />
+              <Border Classes="pill"><TextBlock Text="{Binding AppVersion}" FontSize="12" FontWeight="SemiBold" Classes="num" /></Border>
+            </StackPanel>
+            <TextBlock Text="{Binding UpdateStatus}" Classes="caption" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Classes="teal small" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RestartToUpdateCommand}" IsVisible="{Binding IsUpdateReady}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <c:LucideIcon Kind="rotate-ccw" Width="13" Height="13" Foreground="#CDFAFA" />
+                  <TextBlock Text="Restart to update" FontSize="12" Foreground="#CDFAFA" />
+                </StackPanel>
+              </Button>
+              <Button Classes="small" Command="{Binding CheckForUpdatesCommand}" IsEnabled="{Binding CanCheckForUpdates}" IsVisible="{Binding UpdatesSupported}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <c:LucideIcon Kind="refresh-cw" Width="13" Height="13" />
+                  <TextBlock Text="Check for updates" FontSize="12" />
+                </StackPanel>
+              </Button>
+              <Button Classes="ghost small" Command="{Binding OpenReleasesCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <c:LucideIcon Kind="external-link" Width="13" Height="13" />
+                  <TextBlock Text="Release notes on GitHub" FontSize="12" Classes="secondary" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- About -->
+      <Border Classes="card" Padding="18,16">
+        <StackPanel Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <Image Source="avares://RosterControl/Assets/roster-256.png" Width="28" Height="28" />
+            <TextBlock Text="Roster Control" Classes="title" VerticalAlignment="Center" />
+          </StackPanel>
+          <TextBlock Classes="caption" TextWrapping="Wrap" LineHeight="16"
+                     Text="Roster Control isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc." />
+          <TextBlock Classes="caption" TextWrapping="Wrap" Text="Built with .NET, Avalonia, EF Core + SQLite, Serilog and Lucide icons." />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
