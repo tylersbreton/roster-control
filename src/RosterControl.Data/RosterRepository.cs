@@ -22,6 +22,8 @@ public sealed class RosterRepository
         ("Support", Position.Support, "#5FD3C9"),
     ];
 
+    public const string DefaultRosterName = "My roster";
+
     private readonly IDbContextFactory<RosterDbContext> _factory;
     private readonly ILogger<RosterRepository> _logger;
     private readonly SemaphoreSlim _write = new(1, 1);
@@ -33,6 +35,14 @@ public sealed class RosterRepository
         _logger = logger;
     }
 
+    /// <summary>Raised after every successful write (for the "Saved" indicator).</summary>
+    public event EventHandler? Written;
+
+    /// <summary>
+    /// The roster that group and placement calls work on. Null (or a deleted roster) means the first roster.
+    /// </summary>
+    public int? ActiveRosterId { get; set; }
+
     /// <summary>Applies migrations and, on first run, creates one roster group per role.</summary>
     public async Task InitializeAsync(CancellationToken ct = default)
     {
@@ -42,14 +52,27 @@ public sealed class RosterRepository
         {
             if (_initialized) return;
             await using var db = await _factory.CreateDbContextAsync(ct).ConfigureAwait(false);
+            var applied = (await db.Database.GetAppliedMigrationsAsync(ct).ConfigureAwait(false)).ToList();
+            var pending = (await db.Database.GetPendingMigrationsAsync(ct).ConfigureAwait(false)).ToList();
+            var known = db.Database.GetMigrations().ToHashSet(StringComparer.Ordinal);
+            DatabaseFromNewerVersion = applied.Any(m => !known.Contains(m));
+            if (DatabaseFromNewerVersion)
+                _logger.LogWarning("The database was last used by a newer version of Roster Control (unknown migrations: {Migrations})",
+                    string.Join(", ", applied.Where(m => !known.Contains(m))));
+            // Upgrading existing data: keep an exact copy of the old database first.
+            if (applied.Count > 0 && pending.Count > 0) UpgradeBackupPath = BackupBeforeUpgrade(db, applied[^1], pending[^1]);
             await db.Database.MigrateAsync(ct).ConfigureAwait(false);
+            if (!await db.Rosters.AnyAsync(ct).ConfigureAwait(false))
+            {
+                db.Rosters.Add(new Roster { Name = DefaultRosterName });
+                await db.SaveChangesAsync(ct).ConfigureAwait(false);
+            }
             if (!await db.Preferences.AnyAsync(p => p.Key == SeededPreferenceKey, ct).ConfigureAwait(false))
             {
                 if (!await db.Groups.AnyAsync(ct).ConfigureAwait(false))
                 {
-                    var order = 0;
-                    foreach (var (name, role, color) in DefaultGroups)
-                        db.Groups.Add(new RosterGroup { Name = name, Role = role, Color = color, SortOrder = order++ });
+                    var rosterId = await db.Rosters.OrderBy(r => r.SortOrder).ThenBy(r => r.Id).Select(r => r.Id).FirstAsync(ct).ConfigureAwait(false);
+                    AddDefaultGroups(db, rosterId);
                 }
                 db.Preferences.Add(new Preference { Key = SeededPreferenceKey, ValueJson = "true" });
                 await db.SaveChangesAsync(ct).ConfigureAwait(false);
@@ -63,20 +86,149 @@ public sealed class RosterRepository
         }
     }
 
-    // ── Groups & entries ────────────────────────────────────────────────────────────────────────────
+    /// <summary>The data was written by a newer version of the app than this one (e.g. an older copy was started).</summary>
+    public bool DatabaseFromNewerVersion { get; private set; }
 
-    public async Task<IReadOnlyList<RosterGroup>> GetGroupsAsync(CancellationToken ct = default)
+    /// <summary>Copy of the database taken before this start applied schema upgrades (null when none were needed).</summary>
+    public string? UpgradeBackupPath { get; private set; }
+
+    public const int UpgradeBackupsKept = 5;
+
+    /// <summary>
+    /// Copies the database (SQLite online backup, consistent even with a WAL) to
+    /// <c>backups\before-upgrade-&lt;time&gt;.db</c> next to it. Failure is logged; the upgrade still runs, since each
+    /// migration is transactional.
+    /// </summary>
+    private string? BackupBeforeUpgrade(RosterDbContext db, string fromMigration, string toMigration)
+    {
+        try
+        {
+            var source = db.Database.GetDbConnection().DataSource;
+            if (string.IsNullOrEmpty(source) || !File.Exists(source)) return null;
+            var folder = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(source))!, "backups");
+            Directory.CreateDirectory(folder);
+            var target = Path.Combine(folder, $"before-upgrade-{DateTime.Now:yyyyMMdd-HHmmss-fff}.db");
+            using (var from = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = source, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString()))
+            using (var to = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = target, Pooling = false }.ToString()))
+            {
+                from.Open();
+                from.BackupDatabase(to);
+            }
+            _logger.LogInformation("Upgrading the database from {From} to {To}; previous version saved to {Path}", fromMigration, toMigration, target);
+            foreach (var old in new DirectoryInfo(folder).GetFiles("before-upgrade-*.db").OrderByDescending(f => f.Name).Skip(UpgradeBackupsKept))
+                old.Delete();
+            return target;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SqliteException)
+        {
+            _logger.LogError(ex, "Could not back up the database before upgrading it");
+            return null;
+        }
+    }
+
+    private static void AddDefaultGroups(RosterDbContext db, int rosterId)
+    {
+        var order = 0;
+        foreach (var (name, role, color) in DefaultGroups)
+            db.Groups.Add(new RosterGroup { RosterId = rosterId, Name = name, Role = role, Color = color, SortOrder = order++ });
+    }
+
+    // ── Rosters ─────────────────────────────────────────────────────────────────────────────────────
+
+    public async Task<IReadOnlyList<Roster>> GetRostersAsync(CancellationToken ct = default)
     {
         await using var db = await _factory.CreateDbContextAsync(ct).ConfigureAwait(false);
-        var groups = await db.Groups.AsNoTracking().Include(g => g.Entries).ToListAsync(ct).ConfigureAwait(false);
+        return (await db.Rosters.AsNoTracking().ToListAsync(ct).ConfigureAwait(false)).OrderBy(r => r.SortOrder).ThenBy(r => r.Id).ToList();
+    }
+
+    /// <summary>The active roster's id (the first roster when none is set or it was deleted).</summary>
+    public async Task<int> GetActiveRosterIdAsync(CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        return await ResolveRosterIdAsync(db, null, ct).ConfigureAwait(false);
+    }
+
+    private async Task<int> ResolveRosterIdAsync(RosterDbContext db, int? rosterId, CancellationToken ct)
+    {
+        var wanted = rosterId ?? ActiveRosterId;
+        if (wanted is { } id && await db.Rosters.AnyAsync(r => r.Id == id, ct).ConfigureAwait(false)) return id;
+        var first = await db.Rosters.OrderBy(r => r.SortOrder).ThenBy(r => r.Id).Select(r => (int?)r.Id).FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        if (first is { } f) return f;
+        var roster = new Roster { Name = DefaultRosterName };
+        db.Rosters.Add(roster);
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        return roster.Id;
+    }
+
+    public Task<Roster> AddRosterAsync(string name, RosterTemplate template, int? copyFromRosterId = null, CancellationToken ct = default) => WriteAsync(async db =>
+    {
+        var max = await db.Rosters.Select(r => (int?)r.SortOrder).MaxAsync(ct).ConfigureAwait(false) ?? -1;
+        var roster = new Roster { Name = Clean(name, 60, "Roster"), SortOrder = max + 1 };
+        db.Rosters.Add(roster);
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        switch (template)
+        {
+            case RosterTemplate.Roles:
+                AddDefaultGroups(db, roster.Id);
+                break;
+            case RosterTemplate.Copy:
+                var sourceId = await ResolveRosterIdAsync(db, copyFromRosterId, ct).ConfigureAwait(false);
+                var groups = await db.Groups.AsNoTracking().Include(g => g.Entries).Where(g => g.RosterId == sourceId).ToListAsync(ct).ConfigureAwait(false);
+                foreach (var g in groups)
+                    db.Groups.Add(new RosterGroup
+                    {
+                        RosterId = roster.Id,
+                        Name = g.Name,
+                        Role = g.Role,
+                        Color = g.Color,
+                        SortOrder = g.SortOrder,
+                        Entries = g.Entries.Select(e => new RosterEntry
+                        {
+                            ChampionId = e.ChampionId,
+                            Proficiency = e.Proficiency,
+                            Priority = e.Priority,
+                            SortOrder = e.SortOrder,
+                            AddedAt = e.AddedAt,
+                        }).ToList(),
+                    });
+                break;
+        }
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        return roster;
+    }, ct);
+
+    public Task RenameRosterAsync(int rosterId, string name, CancellationToken ct = default) => WriteAsync(async db =>
+        await db.Rosters.Where(r => r.Id == rosterId).ExecuteUpdateAsync(s => s.SetProperty(r => r.Name, Clean(name, 60, "Roster")), ct).ConfigureAwait(false), ct);
+
+    /// <summary>Deletes a roster with its groups and placements. The last roster can't be deleted.</summary>
+    public Task<bool> DeleteRosterAsync(int rosterId, CancellationToken ct = default) => WriteAsync(async db =>
+    {
+        if (await db.Rosters.CountAsync(ct).ConfigureAwait(false) <= 1) return false;
+        var groupIds = await db.Groups.Where(g => g.RosterId == rosterId).Select(g => g.Id).ToListAsync(ct).ConfigureAwait(false);
+        await db.Entries.Where(e => groupIds.Contains(e.GroupId)).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+        await db.Groups.Where(g => g.RosterId == rosterId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+        return await db.Rosters.Where(r => r.Id == rosterId).ExecuteDeleteAsync(ct).ConfigureAwait(false) > 0;
+    }, ct);
+
+    // ── Groups & entries ────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>The groups of a roster (default: the active roster), with their entries.</summary>
+    public async Task<IReadOnlyList<RosterGroup>> GetGroupsAsync(CancellationToken ct = default) => await GetGroupsAsync(null, ct).ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<RosterGroup>> GetGroupsAsync(int? rosterId, CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct).ConfigureAwait(false);
+        var id = await ResolveRosterIdAsync(db, rosterId, ct).ConfigureAwait(false);
+        var groups = await db.Groups.AsNoTracking().Include(g => g.Entries).Where(g => g.RosterId == id).ToListAsync(ct).ConfigureAwait(false);
         foreach (var g in groups) g.Entries = g.Entries.OrderBy(e => e.SortOrder).ThenBy(e => e.Id).ToList();
         return groups.OrderBy(g => g.SortOrder).ThenBy(g => g.Id).ToList();
     }
 
     public Task<RosterGroup> AddGroupAsync(string name, Position? role, string? color, CancellationToken ct = default) => WriteAsync(async db =>
     {
-        var max = await db.Groups.Select(g => (int?)g.SortOrder).MaxAsync(ct).ConfigureAwait(false) ?? -1;
-        var group = new RosterGroup { Name = Clean(name, 80, "New group"), Role = role, Color = color, SortOrder = max + 1 };
+        var rosterId = await ResolveRosterIdAsync(db, null, ct).ConfigureAwait(false);
+        var max = await db.Groups.Where(g => g.RosterId == rosterId).Select(g => (int?)g.SortOrder).MaxAsync(ct).ConfigureAwait(false) ?? -1;
+        var group = new RosterGroup { RosterId = rosterId, Name = Clean(name, 80, "New group"), Role = role, Color = color, SortOrder = max + 1 };
         db.Groups.Add(group);
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
         return group;
@@ -299,6 +451,18 @@ public sealed class RosterRepository
         return await db.SaveChangesAsync(ct).ConfigureAwait(false);
     }, ct);
 
+    /// <summary>
+    /// Sets the patch builds are considered up to date with (Patch review → Mark reviewed, and its Undo) without
+    /// touching anything else.
+    /// </summary>
+    public Task SetBuildPatchesAsync(IReadOnlyDictionary<int, string?> patches, CancellationToken ct = default) => WriteAsync(async db =>
+    {
+        var total = 0;
+        foreach (var (id, version) in patches)
+            total += await db.Builds.Where(b => b.Id == id).ExecuteUpdateAsync(s => s.SetProperty(b => b.GameVersion, version), ct).ConfigureAwait(false);
+        return total;
+    }, ct);
+
     public Task DeleteBuildAsync(int buildId, CancellationToken ct = default) => WriteAsync(async db =>
         await db.Builds.Where(b => b.Id == buildId).ExecuteDeleteAsync(ct).ConfigureAwait(false), ct);
 
@@ -315,18 +479,16 @@ public sealed class RosterRepository
     {
         await using var db = await _factory.CreateDbContextAsync(ct).ConfigureAwait(false);
         var groups = await GetGroupsAsync(ct).ConfigureAwait(false);
+        var rosters = new List<BackupRoster>();
+        foreach (var roster in await GetRostersAsync(ct).ConfigureAwait(false))
+            rosters.Add(new BackupRoster { Name = roster.Name, Groups = (await GetGroupsAsync(roster.Id, ct).ConfigureAwait(false)).Select(ToBackup).ToList() });
         return new RosterBackup
         {
             SchemaVersion = RosterBackup.CurrentSchemaVersion,
             ExportedAt = DateTimeOffset.Now,
             GameVersion = gameVersion,
-            Groups = groups.Select(g => new BackupGroup
-            {
-                Name = g.Name,
-                Role = g.Role,
-                Color = g.Color,
-                Entries = g.Entries.Select(e => new BackupEntry { ChampionId = e.ChampionId, Proficiency = e.Proficiency, Priority = e.Priority, AddedAt = e.AddedAt }).ToList(),
-            }).ToList(),
+            Groups = groups.Select(ToBackup).ToList(),
+            Rosters = rosters,
             Profiles = await db.Profiles.AsNoTracking().ToListAsync(ct).ConfigureAwait(false),
             Matchups = (await db.Matchups.AsNoTracking().ToListAsync(ct).ConfigureAwait(false)).OrderBy(m => m.ChampionId).ThenBy(m => m.SortOrder).ToList(),
             Builds = (await db.Builds.AsNoTracking().ToListAsync(ct).ConfigureAwait(false)).OrderBy(b => b.ChampionId).ThenBy(b => b.SortOrder).ToList(),
@@ -339,16 +501,34 @@ public sealed class RosterRepository
         await using var tx = await db.Database.BeginTransactionAsync(ct).ConfigureAwait(false);
         await db.Entries.ExecuteDeleteAsync(ct).ConfigureAwait(false);
         await db.Groups.ExecuteDeleteAsync(ct).ConfigureAwait(false);
+        await db.Rosters.ExecuteDeleteAsync(ct).ConfigureAwait(false);
         await db.Profiles.ExecuteDeleteAsync(ct).ConfigureAwait(false);
         await db.Matchups.ExecuteDeleteAsync(ct).ConfigureAwait(false);
         await db.Builds.ExecuteDeleteAsync(ct).ConfigureAwait(false);
 
+        var sourceRosters = backup.Rosters is { Count: > 0 }
+            ? backup.Rosters
+            : [new BackupRoster { Name = DefaultRosterName, Groups = backup.Groups }];
+        var rosterOrder = 0;
+        var rosters = new List<(Roster Roster, List<BackupGroup> Groups)>();
+        foreach (var r in sourceRosters)
+        {
+            var roster = new Roster { Name = Clean(r.Name, 60, "Roster"), SortOrder = rosterOrder++ };
+            db.Rosters.Add(roster);
+            rosters.Add((roster, r.Groups ?? []));
+        }
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        ActiveRosterId = null;
+
+        foreach (var (roster, groups) in rosters)
+        {
         var groupOrder = 0;
-        foreach (var g in backup.Groups)
+        foreach (var g in groups)
         {
             var entryOrder = 0;
             db.Groups.Add(new RosterGroup
             {
+                RosterId = roster.Id,
                 Name = Clean(g.Name, 80, "Group"),
                 Role = g.Role,
                 Color = g.Color,
@@ -362,6 +542,7 @@ public sealed class RosterRepository
                     SortOrder = entryOrder++,
                 }).ToList(),
             });
+        }
         }
         foreach (var p in backup.Profiles.DistinctBy(p => p.ChampionId, StringComparer.OrdinalIgnoreCase))
             db.Profiles.Add(new ChampionProfile { ChampionId = p.ChampionId, Notes = p.Notes ?? "", Tags = p.Tags ?? [], UpdatedAt = p.UpdatedAt });
@@ -386,7 +567,9 @@ public sealed class RosterRepository
         try
         {
             await using var db = await _factory.CreateDbContextAsync(ct).ConfigureAwait(false);
-            return await action(db).ConfigureAwait(false);
+            var result = await action(db).ConfigureAwait(false);
+            Written?.Invoke(this, EventArgs.Empty);
+            return result;
         }
         catch (Exception ex) when (ex is DbUpdateException or SqliteException)
         {
@@ -405,6 +588,14 @@ public sealed class RosterRepository
         if (v.Length == 0) v = fallback;
         return v.Length > max ? v[..max] : v;
     }
+
+    private static BackupGroup ToBackup(RosterGroup g) => new()
+    {
+        Name = g.Name,
+        Role = g.Role,
+        Color = g.Color,
+        Entries = g.Entries.Select(e => new BackupEntry { ChampionId = e.ChampionId, Proficiency = e.Proficiency, Priority = e.Priority, AddedAt = e.AddedAt }).ToList(),
+    };
 
     private static Build Copy(Build b) => new()
     {
@@ -442,10 +633,19 @@ public sealed class RosterBackup
     public int SchemaVersion { get; set; }
     public DateTimeOffset ExportedAt { get; set; }
     public string? GameVersion { get; set; }
+    /// <summary>The active roster's groups (what versions before 1.3 import).</summary>
     public List<BackupGroup> Groups { get; set; } = [];
+    /// <summary>Every roster with its groups (1.3+). When empty, <see cref="Groups"/> is imported as one roster.</summary>
+    public List<BackupRoster>? Rosters { get; set; }
     public List<ChampionProfile> Profiles { get; set; } = [];
     public List<Matchup> Matchups { get; set; } = [];
     public List<Build> Builds { get; set; } = [];
+}
+
+public sealed class BackupRoster
+{
+    public string Name { get; set; } = "";
+    public List<BackupGroup> Groups { get; set; } = [];
 }
 
 public sealed class BackupGroup

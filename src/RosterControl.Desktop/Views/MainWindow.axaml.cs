@@ -177,6 +177,16 @@ public partial class MainWindow : Window
             dialog.CancelCommand.Execute(null);
             e.Handled = true;
         }
+        else if (vm?.WhatsNew is { } whatsNew && e.Key == Key.Escape)
+        {
+            whatsNew.CloseCommand.Execute(null);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape && WindowState != WindowState.FullScreen && vm?.CurrentPage is IKeyboardPage page
+                 && page.HandleKey(Key.Escape, e.KeyModifiers, FocusManager?.GetFocusedElement() is TextBox))
+        {
+            e.Handled = true; // e.g. clears the roster selection
+        }
         else if (e.Key == Key.F11)
         {
             SetFullScreen(WindowState != WindowState.FullScreen);

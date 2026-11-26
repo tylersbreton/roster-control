@@ -1,0 +1,266 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:c="using:RosterControl.Desktop.Controls"
+             xmlns:m="using:RosterControl.Core.Model"
+             x:Class="RosterControl.Desktop.Views.CompareView"
+             x:DataType="vm:CompareViewModel">
+  <UserControl.DataTemplates>
+    <!-- One side of the comparison -->
+    <DataTemplate DataType="vm:CompareSideViewModel">
+      <Border Classes="card" Padding="16,14">
+        <StackPanel Spacing="14">
+          <!-- Champion -->
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Panel Width="56" Height="56">
+              <c:AssetImage Source="{Binding PortraitUrl}" Width="56" Height="56" CornerRadius="8" Zoom="1.08" Ring="{StaticResource Brush.GoldDark}" RingThickness="1.5" IsVisible="{Binding HasChampion}" />
+              <Border CornerRadius="8" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" Background="#0A101A" IsVisible="{Binding !HasChampion}">
+                <c:LucideIcon Kind="search" Width="20" Height="20" Foreground="{StaticResource Brush.TextMuted}" />
+              </Border>
+            </Panel>
+            <StackPanel Grid.Column="1" Margin="14,0,8,0" VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{Binding Name}" Classes="heading" FontSize="20" IsVisible="{Binding HasChampion}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{Binding ChampionTitle}" Classes="caption" FontStyle="Italic" IsVisible="{Binding HasChampion}" />
+              <TextBlock Text="Pick a champion" Classes="title" IsVisible="{Binding !HasChampion}" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" IsVisible="{Binding HasChampion}">
+              <Button Classes="small" ToolTip.Tip="Pick another champion">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <c:LucideIcon Kind="search" Width="13" Height="13" />
+                  <TextBlock Text="Change" FontSize="12" />
+                </StackPanel>
+                <Button.Flyout>
+                  <Flyout Placement="BottomEdgeAlignedRight">
+                    <StackPanel Width="260" Spacing="8">
+                      <TextBox Classes="search" Text="{Binding Query}" PlaceholderText="Champion name…" />
+                      <ItemsControl ItemsSource="{Binding Results}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:CopyTarget">
+                            <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="6,4"
+                                    Command="{Binding $parent[ItemsControl].((vm:CompareSideViewModel)DataContext).PickCommand}" CommandParameter="{Binding}">
+                              <StackPanel Orientation="Horizontal" Spacing="8">
+                                <c:AssetImage Source="{Binding IconUrl}" Width="24" Height="24" CornerRadius="4" Zoom="1.1" />
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Foreground="{StaticResource Brush.TextPrimary}" />
+                              </StackPanel>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Flyout>
+                </Button.Flyout>
+              </Button>
+              <Button Classes="ghost icon" Width="30" Height="30" Command="{Binding OpenCommand}" ToolTip.Tip="Open this champion">
+                <c:LucideIcon Kind="external-link" Width="15" Height="15" />
+              </Button>
+            </StackPanel>
+          </Grid>
+
+          <!-- Inline picker until a champion is chosen -->
+          <StackPanel Spacing="8" IsVisible="{Binding !HasChampion}">
+            <TextBox Classes="search" Text="{Binding Query}" PlaceholderText="Search champions…" />
+            <ItemsControl ItemsSource="{Binding Results}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CopyTarget">
+                  <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="6,4"
+                          Command="{Binding $parent[ItemsControl].((vm:CompareSideViewModel)DataContext).PickCommand}" CommandParameter="{Binding}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <c:AssetImage Source="{Binding IconUrl}" Width="26" Height="26" CornerRadius="4" Zoom="1.1" />
+                      <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Foreground="{StaticResource Brush.TextPrimary}" />
+                    </StackPanel>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+
+          <StackPanel Spacing="14" IsVisible="{Binding HasChampion}">
+            <!-- Roster placements -->
+            <StackPanel Spacing="6">
+              <TextBlock Text="IN YOUR ROSTER" Classes="overline muted" />
+              <TextBlock Text="Not in this roster." Classes="caption" IsVisible="{Binding !HasPlacements}" />
+              <ItemsControl ItemsSource="{Binding Placements}" IsVisible="{Binding HasPlacements}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="6" LineSpacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ComparePlacement">
+                    <Border Classes="elevated" CornerRadius="6" Padding="9,5">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Ellipse Width="8" Height="8" Fill="{Binding Accent}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Group}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <c:StarRating Value="{Binding Proficiency}" StarSize="9.5" IsReadOnly="True" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding PriorityLabel}" FontSize="9" FontWeight="Bold" Foreground="{Binding PriorityBrush}" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <Border Classes="divider" />
+
+            <!-- Build -->
+            <StackPanel Spacing="10">
+              <Grid ColumnDefinitions="Auto,*">
+                <TextBlock Text="BUILD" Classes="overline" VerticalAlignment="Center" Margin="0,0,12,0" />
+                <ComboBox Grid.Column="1" ItemsSource="{Binding Builds}" SelectedItem="{Binding SelectedBuild}" HorizontalAlignment="Stretch" IsVisible="{Binding HasBuild}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="m:Build">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <c:LucideIcon Kind="star" Width="12" Height="12" Foreground="{StaticResource Brush.Gold}" Fill="{StaticResource Brush.Gold}" IsVisible="{Binding IsDefault}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBlock Grid.Column="1" Text="No builds saved for this champion yet." Classes="caption" VerticalAlignment="Center" IsVisible="{Binding HasNoBuilds}" />
+              </Grid>
+
+              <StackPanel Spacing="12" IsVisible="{Binding HasBuild}">
+                <!-- Runes -->
+                <StackPanel Spacing="6">
+                  <TextBlock Text="{Binding RuneTrees}" Classes="caption" />
+                  <WrapPanel ItemSpacing="4" LineSpacing="6">
+                    <ItemsControl ItemsSource="{Binding PrimaryRunes}">
+                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CompareIcon">
+                          <c:AssetImage Source="{Binding Url}" Width="34" Height="34" CornerRadius="17" ToolTip.Tip="{Binding Tip}" ShowPlaceholder="True" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Border Width="1" Height="24" Background="{StaticResource Brush.Border}" Margin="6,0" VerticalAlignment="Center" />
+                    <ItemsControl ItemsSource="{Binding SecondaryRunes}">
+                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CompareIcon">
+                          <c:AssetImage Source="{Binding Url}" Width="28" Height="28" CornerRadius="14" ToolTip.Tip="{Binding Tip}" ShowPlaceholder="True" VerticalAlignment="Center" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Border Width="1" Height="24" Background="{StaticResource Brush.Border}" Margin="6,0" VerticalAlignment="Center" />
+                    <ItemsControl ItemsSource="{Binding Shards}" VerticalAlignment="Center">
+                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CompareIcon">
+                          <c:AssetImage Source="{Binding Url}" Width="20" Height="20" CornerRadius="10" ToolTip.Tip="{Binding Tip}" ShowPlaceholder="True" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </WrapPanel>
+                </StackPanel>
+
+                <!-- Items -->
+                <ItemsControl ItemsSource="{Binding Blocks}">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CompareBlock">
+                      <StackPanel Spacing="4">
+                        <TextBlock Text="{Binding Name}" Classes="caption" FontWeight="SemiBold" />
+                        <ItemsControl ItemsSource="{Binding Items}">
+                          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="4" LineSpacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:CompareIcon">
+                              <Border Classes="itemframe" ToolTip.Tip="{Binding Tip}">
+                                <c:AssetImage Source="{Binding Url}" Width="34" Height="34" CornerRadius="2" FallbackText="?" />
+                              </Border>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Spells and skill order -->
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <ItemsControl ItemsSource="{Binding Spells}">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:CompareIcon">
+                        <c:AssetImage Source="{Binding Url}" Width="30" Height="30" CornerRadius="4" ToolTip.Tip="{Binding Tip}" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="{Binding SkillOrder}" Classes="secondary num" VerticalAlignment="Center" IsVisible="{Binding HasSkillOrder}" />
+                </StackPanel>
+              </StackPanel>
+            </StackPanel>
+
+            <Border Classes="divider" />
+
+            <!-- Matchups -->
+            <StackPanel Spacing="8">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <c:LucideIcon Kind="thumbs-up" Width="13" Height="13" Foreground="{StaticResource Brush.Good}" />
+                <TextBlock Text="GOOD AGAINST" Classes="overline" Foreground="{StaticResource Brush.Good}" />
+              </StackPanel>
+              <TextBlock Text="None recorded." Classes="caption" IsVisible="{Binding !HasGood}" />
+              <ItemsControl ItemsSource="{Binding Good}" IsVisible="{Binding HasGood}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="4" LineSpacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:CompareIcon">
+                    <c:AssetImage Source="{Binding Url}" Width="32" Height="32" CornerRadius="5" Zoom="1.1" Ring="{StaticResource Brush.Good}" RingThickness="1" ToolTip.Tip="{Binding Tip}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <StackPanel Orientation="Horizontal" Spacing="7" Margin="0,4,0,0">
+                <c:LucideIcon Kind="thumbs-down" Width="13" Height="13" Foreground="{StaticResource Brush.Bad}" />
+                <TextBlock Text="WEAK AGAINST" Classes="overline" Foreground="{StaticResource Brush.Bad}" />
+              </StackPanel>
+              <TextBlock Text="None recorded." Classes="caption" IsVisible="{Binding !HasWeak}" />
+              <ItemsControl ItemsSource="{Binding Weak}" IsVisible="{Binding HasWeak}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="4" LineSpacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:CompareIcon">
+                    <c:AssetImage Source="{Binding Url}" Width="32" Height="32" CornerRadius="5" Zoom="1.1" Ring="{StaticResource Brush.Bad}" RingThickness="1" ToolTip.Tip="{Binding Tip}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <Grid RowDefinitions="Auto,Auto,*">
+    <Grid ColumnDefinitions="*,Auto" Margin="2,2,0,12">
+      <StackPanel Spacing="3">
+        <TextBlock Text="COMPARE" Classes="heading" />
+        <TextBlock Text="Two champions — or two builds of the same champion — side by side." Classes="caption" />
+      </StackPanel>
+      <Button Grid.Column="1" Classes="small" Command="{Binding SwapCommand}" VerticalAlignment="Center" ToolTip.Tip="Swap the two sides">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <c:LucideIcon Kind="arrow-left-right" Width="13" Height="13" />
+          <TextBlock Text="Swap" FontSize="12" />
+        </StackPanel>
+      </Button>
+    </Grid>
+
+    <!-- Head to head: what each champion's matchups say about the other -->
+    <Border Grid.Row="1" Classes="card" Padding="14,10" Margin="0,0,0,12" IsVisible="{Binding HasHeadToHead}">
+      <StackPanel Spacing="6">
+        <TextBlock Text="HEAD TO HEAD" Classes="overline" />
+        <ItemsControl ItemsSource="{Binding HeadToHead}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="5" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:HeadToHeadLine">
+              <Grid ColumnDefinitions="Auto,Auto,*">
+                <c:LucideIcon Kind="{Binding Icon}" Width="14" Height="14" Foreground="{Binding Brush}" VerticalAlignment="Top" Margin="0,2,8,0" />
+                <TextBlock Grid.Column="1" Text="{Binding Text}" FontWeight="SemiBold" Foreground="{Binding Brush}" />
+                <TextBlock Grid.Column="2" Text="{Binding Note, StringFormat='— {0}'}" Classes="secondary" TextWrapping="Wrap" Margin="8,0,0,0" IsVisible="{Binding HasNote}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
+    <ScrollViewer Grid.Row="2">
+      <Grid ColumnDefinitions="*,14,*" VerticalAlignment="Top">
+        <ContentControl Content="{Binding Left}" />
+        <ContentControl Grid.Column="2" Content="{Binding Right}" />
+      </Grid>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

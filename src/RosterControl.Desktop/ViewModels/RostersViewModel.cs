@@ -56,10 +56,224 @@ public sealed partial class RostersViewModel : ObservableObject, IPage, IDropTar
     private bool _tipsDismissed;
 
     /// <summary>First-run guidance, shown until dismissed or until the first champion is added.</summary>
-    public bool ShowTips => !TipsDismissed && IsEmpty;
+    public bool ShowTips => !TipsDismissed && IsEmpty && !HasSelection;
 
     /// <summary>The roster card under the mouse (keyboard shortcuts 0–5 and Delete act on it).</summary>
     public RosterEntryViewModel? HoveredEntry { get; set; }
+
+    // ── Rosters (Solo/Duo, Flex, ARAM…) ────────────────────────────────────────────────────────────
+
+    public ObservableCollection<RosterChoice> Rosters { get; } = [];
+    public int ActiveRosterId { get; private set; }
+
+    [ObservableProperty]
+    private string _rosterName = "";
+
+    [ObservableProperty]
+    private string _newRosterName = "";
+
+    [ObservableProperty]
+    private string _renameText = "";
+
+    public bool CanDeleteRoster => Rosters.Count > 1;
+    public string RosterHeading => RosterName.ToUpperInvariant();
+
+    partial void OnRosterNameChanged(string value) => OnPropertyChanged(nameof(RosterHeading));
+
+    private async Task LoadRostersAsync()
+    {
+        var repo = _shell.Repository;
+        var rosters = await repo.GetRostersAsync();
+        ActiveRosterId = await repo.GetActiveRosterIdAsync();
+        Rosters.Clear();
+        foreach (var r in rosters)
+        {
+            var champions = (await repo.GetGroupsAsync(r.Id)).SelectMany(g => g.Entries).Select(e => e.ChampionId)
+                .Distinct(StringComparer.OrdinalIgnoreCase).Count();
+            Rosters.Add(new RosterChoice(r.Id, r.Name, champions, r.Id == ActiveRosterId));
+        }
+        RosterName = Rosters.FirstOrDefault(r => r.IsActive)?.Name ?? "";
+        RenameText = RosterName;
+        OnPropertyChanged(nameof(CanDeleteRoster));
+    }
+
+    [RelayCommand]
+    private Task SwitchRosterAsync(RosterChoice roster) => roster.IsActive ? Task.CompletedTask : _shell.SwitchRosterAsync(roster.Id);
+
+    /// <param name="template">"Roles", "Empty" or "Copy".</param>
+    [RelayCommand]
+    private async Task NewRosterAsync(string template)
+    {
+        var kind = Enum.TryParse<RosterTemplate>(template, out var t) ? t : RosterTemplate.Roles;
+        var name = (NewRosterName ?? "").Trim();
+        if (name.Length == 0) name = kind == RosterTemplate.Copy ? $"{RosterName} (copy)" : "New roster";
+        for (var n = 2; Rosters.Any(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase)); n++)
+            name = $"{name.TrimEnd(' ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9')} {n}";
+        var roster = await _shell.Repository.AddRosterAsync(name, kind, ActiveRosterId);
+        NewRosterName = "";
+        await _shell.SwitchRosterAsync(roster.Id);
+        _shell.ShowToast($"Created roster \"{roster.Name}\"", ToastKind.Success);
+    }
+
+    [RelayCommand]
+    private async Task RenameRosterAsync()
+    {
+        var name = (RenameText ?? "").Trim();
+        if (name.Length == 0 || name == RosterName) return;
+        await _shell.Repository.RenameRosterAsync(ActiveRosterId, name);
+        await LoadRostersAsync();
+    }
+
+    [RelayCommand]
+    private async Task DeleteRosterAsync()
+    {
+        if (!CanDeleteRoster) return;
+        var count = Groups.Sum(g => g.Entries.Count);
+        var ok = await _shell.ConfirmAsync($"Delete the roster \"{RosterName}\"?",
+            $"Its {Groups.Count} group{(Groups.Count == 1 ? "" : "s")} and {count} placement{(count == 1 ? "" : "s")} are removed. Builds, matchups and notes are shared by all rosters and are kept.",
+            "Delete roster");
+        if (!ok) return;
+        var name = RosterName;
+        await _shell.Repository.DeleteRosterAsync(ActiveRosterId);
+        var next = Rosters.First(r => r.Id != ActiveRosterId);
+        await _shell.SwitchRosterAsync(next.Id);
+        _shell.ShowToast($"Deleted roster \"{name}\"");
+    }
+
+    // ── Multi-select (Ctrl/Shift-click) ────────────────────────────────────────────────────────────
+
+    private RosterEntryViewModel? _selectionAnchor;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelection), nameof(SelectionText), nameof(ShowTips))]
+    private int _selectionCount;
+
+    public bool HasSelection => SelectionCount > 0;
+    public string SelectionText => $"{SelectionCount} selected";
+
+    /// <summary>All cards in board order (groups left to right, cards top to bottom).</summary>
+    public IEnumerable<RosterEntryViewModel> AllEntries => Groups.SelectMany(g => g.Entries);
+    public IReadOnlyList<RosterEntryViewModel> SelectedEntries => AllEntries.Where(e => e.IsSelected).ToList();
+
+    internal void UpdateSelection() => SelectionCount = AllEntries.Count(e => e.IsSelected);
+
+    /// <summary>Click opens the champion; Ctrl+click toggles a card; Shift+click selects a range.</summary>
+    [RelayCommand]
+    private void CardClick(RosterEntryViewModel entry)
+    {
+        var mods = Dnd.LastClickModifiers;
+        if (mods.HasFlag(Avalonia.Input.KeyModifiers.Shift))
+        {
+            var all = AllEntries.ToList();
+            var from = _selectionAnchor is not null ? all.IndexOf(_selectionAnchor) : -1;
+            var to = all.IndexOf(entry);
+            if (from < 0) from = to;
+            for (var i = Math.Min(from, to); i <= Math.Max(from, to); i++) all[i].IsSelected = true;
+            UpdateSelection();
+            return;
+        }
+        if (mods.HasFlag(Avalonia.Input.KeyModifiers.Control))
+        {
+            entry.IsSelected = !entry.IsSelected;
+            _selectionAnchor = entry;
+            UpdateSelection();
+            return;
+        }
+        ClearSelection();
+        entry.OpenCommand.Execute(null);
+    }
+
+    [RelayCommand]
+    public void ClearSelection()
+    {
+        foreach (var e in AllEntries) e.IsSelected = false;
+        _selectionAnchor = null;
+        UpdateSelection();
+    }
+
+    [RelayCommand]
+    private void SelectAll()
+    {
+        foreach (var e in AllEntries) e.IsSelected = true;
+        UpdateSelection();
+    }
+
+    [RelayCommand]
+    private void SelectGroup(RosterGroupViewModel group)
+    {
+        foreach (var e in group.Entries) e.IsSelected = true;
+        UpdateSelection();
+    }
+
+    [RelayCommand]
+    private Task MoveSelectionAsync(RosterGroupViewModel target) => TransferSelectionAsync(target, copy: false);
+
+    [RelayCommand]
+    private Task CopySelectionAsync(RosterGroupViewModel target) => TransferSelectionAsync(target, copy: true);
+
+    /// <summary>Moves or copies every selected card to <paramref name="target"/> (cards already there are skipped).</summary>
+    internal async Task TransferSelectionAsync(RosterGroupViewModel target, bool copy, int? index = null)
+    {
+        var items = SelectedEntries.Where(e => !ReferenceEquals(e.Group, target)).ToList();
+        var done = 0;
+        var skipped = 0;
+        foreach (var entry in items)
+        {
+            if (target.Entries.Any(e => string.Equals(e.ChampionId, entry.ChampionId, StringComparison.OrdinalIgnoreCase)))
+            {
+                skipped++;
+                continue;
+            }
+            await target.DropAsync(entry.DragData, null, after: false, copy, quiet: true, index: index is { } i ? i + done : null);
+            done++;
+        }
+        ClearSelection();
+        var verb = copy ? "Copied" : "Moved";
+        var message = $"{verb} {done} champion{(done == 1 ? "" : "s")} to {target.Name}";
+        if (skipped > 0) message += $" ({skipped} already there)";
+        _shell.ShowToast(message, done > 0 ? ToastKind.Success : ToastKind.Info);
+    }
+
+    [RelayCommand]
+    private void RateSelection(string value)
+    {
+        if (!int.TryParse(value, out var n)) return;
+        foreach (var e in SelectedEntries) e.Proficiency = Math.Clamp(n, 0, 5);
+    }
+
+    [RelayCommand]
+    private void PrioritizeSelection(ChampionPriority priority)
+    {
+        foreach (var e in SelectedEntries) e.Priority = priority;
+    }
+
+    [RelayCommand]
+    private async Task RemoveSelectionAsync()
+    {
+        var items = SelectedEntries.Select(e => (Entry: e, Group: e.Group, Index: e.Group.Entries.IndexOf(e))).ToList();
+        if (items.Count == 0) return;
+        foreach (var (entry, group, _) in items) await group.RemoveAsync(entry, toast: false);
+        ClearSelection();
+        _shell.ShowToast($"Removed {items.Count} champion{(items.Count == 1 ? "" : "s")}", ToastKind.Info, "Undo", async () =>
+        {
+            foreach (var (entry, group, _) in items)
+                if (Groups.Contains(group))
+                    await _shell.Repository.AddEntryAsync(group.Id, entry.ChampionId, entry.Proficiency, entry.Priority);
+            // Put them back where they were, then reload.
+            foreach (var group in items.Select(i => i.Group).Distinct().Where(Groups.Contains))
+            {
+                var stored = (await _shell.Repository.GetGroupsAsync()).FirstOrDefault(g => g.Id == group.Id);
+                if (stored is null) continue;
+                var order = group.Entries.Select(e => e.ChampionId).ToList();
+                foreach (var (entry, g, index) in items.Where(i => ReferenceEquals(i.Group, group)).OrderBy(i => i.Index))
+                    order.Insert(Math.Clamp(index, 0, order.Count), entry.ChampionId);
+                var ids = order.Select(id => stored.Entries.FirstOrDefault(e => e.ChampionId == id)?.Id).OfType<int>().ToList();
+                await _shell.Repository.SetGroupOrderAsync(group.Id, ids);
+            }
+            await ReloadAsync();
+            _shell.MarkDirty();
+        });
+    }
 
     partial void OnHideAssignedChanged(bool value)
     {
@@ -94,6 +308,35 @@ public sealed partial class RostersViewModel : ObservableObject, IPage, IDropTar
             AddGroupCommand.Execute(null);
             return true;
         }
+        if (modifiers == Avalonia.Input.KeyModifiers.Control && key == Avalonia.Input.Key.A)
+        {
+            SelectAll();
+            return true;
+        }
+        if (key == Avalonia.Input.Key.Escape && HasSelection)
+        {
+            ClearSelection();
+            return true;
+        }
+        if (modifiers == Avalonia.Input.KeyModifiers.None && HasSelection)
+        {
+            var n = key switch
+            {
+                >= Avalonia.Input.Key.D0 and <= Avalonia.Input.Key.D5 => key - Avalonia.Input.Key.D0,
+                >= Avalonia.Input.Key.NumPad0 and <= Avalonia.Input.Key.NumPad5 => key - Avalonia.Input.Key.NumPad0,
+                _ => -1,
+            };
+            if (n >= 0)
+            {
+                RateSelection(n.ToString());
+                return true;
+            }
+            if (key is Avalonia.Input.Key.Delete or Avalonia.Input.Key.Back)
+            {
+                _ = RemoveSelectionAsync();
+                return true;
+            }
+        }
         if (modifiers != Avalonia.Input.KeyModifiers.None || HoveredEntry is not { } entry) return false;
         var digit = key switch
         {
@@ -125,6 +368,7 @@ public sealed partial class RostersViewModel : ObservableObject, IPage, IDropTar
 
     public async Task OnNavigatedToAsync()
     {
+        _ = _shell.RefreshPatchReviewAsync();
         if (_loaded)
         {
             await RefreshCountsAsync();
@@ -136,9 +380,12 @@ public sealed partial class RostersViewModel : ObservableObject, IPage, IDropTar
 
     public async Task ReloadAsync()
     {
+        await LoadRostersAsync();
         var groups = await _shell.Repository.GetGroupsAsync();
         Groups.Clear();
         foreach (var g in groups) Groups.Add(new RosterGroupViewModel(this, g));
+        _selectionAnchor = null;
+        UpdateSelection();
         await RefreshCountsAsync();
     }
 
@@ -151,6 +398,7 @@ public sealed partial class RostersViewModel : ObservableObject, IPage, IDropTar
                 counts.TryGetValue(e.ChampionId, out var c);
                 e.BuildCount = c.Builds;
                 e.MatchupCount = c.Matchups;
+                e.InvalidatePreview(); // builds may have changed while away
             }
         foreach (var t in Pool.All)
         {
@@ -169,6 +417,8 @@ public sealed partial class RostersViewModel : ObservableObject, IPage, IDropTar
         foreach (var t in Pool.All) t.GroupCount = membership.TryGetValue(t.Id, out var n) ? n : 0;
         var champions = membership.Count;
         Summary = $"{champions} champion{(champions == 1 ? "" : "s")} across {Groups.Count} group{(Groups.Count == 1 ? "" : "s")}";
+        if (Rosters.FirstOrDefault(r => r.IsActive) is { } active && active.ChampionCount != champions)
+            Rosters[Rosters.IndexOf(active)] = active with { ChampionCount = champions };
         IsEmpty = champions == 0;
         foreach (var g in Groups) g.NotifyCount();
         if (HideAssigned) Pool.Refilter();
@@ -249,12 +499,17 @@ public sealed partial class RostersViewModel : ObservableObject, IPage, IDropTar
 
     public bool CanAccept(IDragPayload payload) => payload is ChampionDragData { Origin: RosterEntryViewModel };
 
-    public string? Describe(IDragPayload payload, bool copy) =>
-        payload is ChampionDragData { Origin: RosterEntryViewModel e } ? $"Remove from {e.Group.Name}" : null;
+    public string? Describe(IDragPayload payload, bool copy) => payload switch
+    {
+        ChampionDragData { Origin: RosterEntryViewModel { IsSelected: true } } when SelectionCount > 1 => $"Remove {SelectionCount} from the roster",
+        ChampionDragData { Origin: RosterEntryViewModel e } => $"Remove from {e.Group.Name}",
+        _ => null,
+    };
 
     public void Drop(IDragPayload payload, object? relativeTo, bool after, bool copy)
     {
-        if (payload is ChampionDragData { Origin: RosterEntryViewModel e }) _ = e.Group.RemoveAsync(e);
+        if (payload is ChampionDragData { Origin: RosterEntryViewModel { IsSelected: true } } && SelectionCount > 1) _ = RemoveSelectionAsync();
+        else if (payload is ChampionDragData { Origin: RosterEntryViewModel e }) _ = e.Group.RemoveAsync(e);
     }
 }
 
@@ -416,6 +671,8 @@ public sealed partial class RosterGroupViewModel : ObservableObject, IDropTarget
     public string? Describe(IDragPayload payload, bool copy)
     {
         if (payload is not ChampionDragData data) return null;
+        if (data.Origin is RosterEntryViewModel { IsSelected: true } && _owner.SelectionCount > 1)
+            return $"{(copy ? "Copy" : "Move")} {_owner.SelectionCount} to {Name}";
         if (data.Origin is RosterEntryViewModel source)
         {
             if (ReferenceEquals(source.Group, this)) return "Reorder";
@@ -427,15 +684,27 @@ public sealed partial class RosterGroupViewModel : ObservableObject, IDropTarget
 
     public void Drop(IDragPayload payload, object? relativeTo, bool after, bool copy)
     {
-        if (payload is ChampionDragData data) _ = DropAsync(data, relativeTo as RosterEntryViewModel, after, copy);
+        if (payload is not ChampionDragData data) return;
+        if (data.Origin is RosterEntryViewModel { IsSelected: true } && _owner.SelectionCount > 1)
+        {
+            var relative = relativeTo as RosterEntryViewModel;
+            int? index = relative is not null && Entries.Contains(relative) ? Entries.IndexOf(relative) + (after ? 1 : 0) : null;
+            _ = _owner.TransferSelectionAsync(this, copy, index);
+            return;
+        }
+        _ = DropAsync(data, relativeTo as RosterEntryViewModel, after, copy);
     }
 
     private bool Contains(string championId) => Entries.Any(e => string.Equals(e.ChampionId, championId, StringComparison.OrdinalIgnoreCase));
 
-    private async Task DropAsync(ChampionDragData data, RosterEntryViewModel? relative, bool after, bool copy)
+    /// <param name="quiet">No toasts (bulk moves report once).</param>
+    /// <param name="index">Insert position; null = from <paramref name="relative"/>, or the end.</param>
+    internal async Task DropAsync(ChampionDragData data, RosterEntryViewModel? relative, bool after, bool copy, bool quiet = false, int? index = null)
     {
         var shell = _owner.Shell;
-        var index = relative is not null && Entries.Contains(relative) ? Entries.IndexOf(relative) + (after ? 1 : 0) : Entries.Count;
+        var position = index is { } i ? Math.Clamp(i, 0, Entries.Count)
+            : relative is not null && Entries.Contains(relative) ? Entries.IndexOf(relative) + (after ? 1 : 0) : Entries.Count;
+        index = position;
         try
         {
             if (data.Origin is RosterEntryViewModel source)
@@ -443,9 +712,10 @@ public sealed partial class RosterGroupViewModel : ObservableObject, IDropTarget
                 if (ReferenceEquals(source.Group, this))
                 {
                     var old = Entries.IndexOf(source);
-                    if (index > old) index--;
-                    if (index == old || old < 0) return;
-                    Entries.Move(old, index);
+                    var to = index.Value;
+                    if (to > old) to--;
+                    if (to == old || old < 0) return;
+                    Entries.Move(old, Math.Clamp(to, 0, Entries.Count - 1));
                     await SaveOrderAsync();
                     return;
                 }
@@ -463,16 +733,17 @@ public sealed partial class RosterGroupViewModel : ObservableObject, IDropTarget
                 if (copy)
                 {
                     var entry = await shell.Repository.AddEntryAsync(Id, data.Champion.Id, source.Proficiency, source.Priority);
-                    Entries.Insert(index, new RosterEntryViewModel(this, entry, data.Champion, _owner.Game.Version) { BuildCount = source.BuildCount, MatchupCount = source.MatchupCount });
+                    Entries.Insert(index.Value, new RosterEntryViewModel(this, entry, data.Champion, _owner.Game.Version) { BuildCount = source.BuildCount, MatchupCount = source.MatchupCount });
                     await SaveOrderAsync();
-                    shell.ShowToast($"Copied {data.Champion.Name} to {Name}", ToastKind.Success);
+                    if (!quiet) shell.ShowToast($"Copied {data.Champion.Name} to {Name}", ToastKind.Success);
                 }
                 else
                 {
                     var from = source.Group;
                     from.Entries.Remove(source);
                     source.Group = this;
-                    Entries.Insert(index, source);
+                    source.IsSelected = false;
+                    Entries.Insert(Math.Clamp(index.Value, 0, Entries.Count), source);
                     await SaveOrderAsync();
                     await from.SaveOrderAsync();
                 }
@@ -487,7 +758,7 @@ public sealed partial class RosterGroupViewModel : ObservableObject, IDropTarget
                 var priority = Entries.Count == 0 ? ChampionPriority.Main : ChampionPriority.Secondary;
                 var entry = await shell.Repository.AddEntryAsync(Id, data.Champion.Id, 0, priority);
                 var tile = _owner.Pool.Find(data.Champion.Id);
-                Entries.Insert(index, new RosterEntryViewModel(this, entry, data.Champion, _owner.Game.Version)
+                Entries.Insert(index.Value, new RosterEntryViewModel(this, entry, data.Champion, _owner.Game.Version)
                 {
                     BuildCount = tile?.BuildCount ?? 0,
                     MatchupCount = tile?.MatchupCount ?? 0,
@@ -548,6 +819,10 @@ public sealed partial class RosterEntryViewModel : ObservableObject
     [ObservableProperty]
     private RosterGroupViewModel _group;
 
+    /// <summary>Part of the multi-selection (Ctrl/Shift-click).</summary>
+    [ObservableProperty]
+    private bool _isSelected;
+
     [ObservableProperty]
     private int _proficiency;
 
@@ -597,4 +872,73 @@ public sealed partial class RosterEntryViewModel : ObservableObject
 
     [RelayCommand]
     private void OpenMatchups() => Group.Owner.Shell.OpenChampion(ChampionId, ChampionTab.Matchups, Group.Sequence);
+
+    // ── Hover preview: the build that opens first for this group's role ────────────────────────────
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPreviewLoading))]
+    private BuildPreview? _preview;
+
+    public bool IsPreviewLoading => Preview is null;
+    private bool _previewRequested;
+
+    internal void InvalidatePreview() => _previewRequested = false;
+
+    /// <summary>Loads (or refreshes) the preview; called when the pointer enters the card.</summary>
+    public async Task LoadPreviewAsync()
+    {
+        if (_previewRequested) return;
+        _previewRequested = true;
+        var shell = Group.Owner.Shell;
+        var builds = await shell.Repository.GetBuildsAsync(ChampionId);
+        Preview = BuildPreview.Create(shell.Game, Champion, Core.Rules.BuildSelection.PickDefault(builds, Group.Role), builds.Count, Group.Role);
+    }
+}
+
+/// <summary>A roster in the switcher (with how many champions it holds).</summary>
+public sealed record RosterChoice(int Id, string Name, int ChampionCount, bool IsActive)
+{
+    public string Detail => $"{ChampionCount} champion{(ChampionCount == 1 ? "" : "s")}";
+}
+
+/// <summary>What a roster card's tooltip shows: the build that opens first for the group's role.</summary>
+public sealed record BuildPreview(
+    string ChampionName,
+    bool HasBuild,
+    string BuildName,
+    bool IsDefault,
+    string DefaultText,
+    string? KeystoneUrl,
+    string? SecondaryTreeUrl,
+    string RuneText,
+    IReadOnlyList<CompareIcon> Items,
+    IReadOnlyList<CompareIcon> Spells,
+    string Footer)
+{
+    public bool HasItems => Items.Count > 0;
+    public bool HasSpells => Spells.Count > 0;
+
+    public static BuildPreview Create(GameDataSnapshot game, ChampionInfo champion, Build? build, int buildCount, Position? role)
+    {
+        if (build is null)
+            return new BuildPreview(champion.Name, false, "", false, "", null, null, "No builds yet", [], [], "Click to open and add a build");
+        var runes = build.Runes;
+        var keystone = game.Rune(runes.PrimaryPerks.ElementAtOrDefault(0));
+        var primary = game.Tree(runes.PrimaryStyleId);
+        var secondary = game.Tree(runes.SubStyleId);
+        var runeText = string.Join(" · ", new[] { keystone?.Name, string.Join(" + ", new[] { primary?.Name, secondary?.Name }.Where(n => n is not null)) }
+            .Where(t => !string.IsNullOrEmpty(t)));
+        var core = Core.Rules.BuildSelection.CoreBlock(build);
+        var items = (core?.Items ?? []).Take(6)
+            .Select(id => new CompareIcon(AssetUrls.Item(game.Item(id) is null ? build.GameVersion ?? game.Version : game.Version, id), game.Item(id)?.Name ?? "Removed item"))
+            .ToList();
+        var spells = build.SummonerSpells.Select(game.Spell).OfType<SummonerSpellInfo>()
+            .Select(s => new CompareIcon(AssetUrls.Spell(game.Version, s.ImageFile), s.Name)).ToList();
+        var defaultText = build.IsDefault ? $"Default for {(build.Role is { } r ? r.DisplayName() : "any role")}" : "";
+        var footer = buildCount > 1 ? $"Click to open · {buildCount} builds" : "Click to open";
+        return new BuildPreview(champion.Name, true, build.Name, build.IsDefault, defaultText,
+            keystone is not null ? AssetUrls.Rune(keystone.IconPath) : primary is not null ? AssetUrls.Rune(primary.IconPath) : null,
+            secondary is not null ? AssetUrls.Rune(secondary.IconPath) : null,
+            runeText.Length > 0 ? runeText : "No runes chosen", items, spells, footer);
+    }
 }

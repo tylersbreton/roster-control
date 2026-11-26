@@ -17,14 +17,16 @@ public sealed partial class LibraryViewModel : ObservableObject, IPage
         _shell = shell;
         Browser = new ChampionBrowserViewModel(shell.Game);
         Browser.ExtraFilter = Filter;
-        Browser.ExtraFiltersActive = () => OnlyRoster || OnlyWithBuilds || SelectedTag != "Any tag";
+        Browser.ExtraFiltersActive = () => OnlyRoster || NotInRoster || OnlyWithBuilds || SelectedTag != "Any tag";
         Browser.ResetExtraFilters = () =>
         {
             OnlyRoster = false;
+            NotInRoster = false;
             OnlyWithBuilds = false;
             SelectedTag = "Any tag";
         };
         _onlyRoster = shell.Preferences.Get("library.onlyRoster", false);
+        _notInRoster = !_onlyRoster && shell.Preferences.Get("library.notInRoster", false);
         _onlyWithBuilds = shell.Preferences.Get("library.onlyWithBuilds", false);
         _selectedTag = shell.Preferences.Get("library.tag", "Any tag");
         Browser.Remember(shell.Preferences, "library.browser");
@@ -35,6 +37,10 @@ public sealed partial class LibraryViewModel : ObservableObject, IPage
 
     [ObservableProperty]
     private bool _onlyRoster;
+
+    /// <summary>Champions in no group of the active roster (the opposite of <see cref="OnlyRoster"/>).</summary>
+    [ObservableProperty]
+    private bool _notInRoster;
 
     [ObservableProperty]
     private bool _onlyWithBuilds;
@@ -50,6 +56,14 @@ public sealed partial class LibraryViewModel : ObservableObject, IPage
     partial void OnOnlyRosterChanged(bool value)
     {
         _shell.Preferences.Set("library.onlyRoster", value);
+        if (value) NotInRoster = false;
+        Browser.Refilter();
+    }
+
+    partial void OnNotInRosterChanged(bool value)
+    {
+        _shell.Preferences.Set("library.notInRoster", value);
+        if (value) OnlyRoster = false;
         Browser.Refilter();
     }
 
@@ -75,6 +89,7 @@ public sealed partial class LibraryViewModel : ObservableObject, IPage
 
     private bool Filter(ChampionTileViewModel t) =>
         (!OnlyRoster || t.IsInRoster)
+        && (!NotInRoster || !t.IsInRoster)
         && (!OnlyWithBuilds || t.HasBuilds)
         && (SelectedTag == "Any tag" || (_tags.TryGetValue(t.Id, out var tags) && tags.Contains(SelectedTag, StringComparer.OrdinalIgnoreCase)));
 
@@ -294,6 +309,106 @@ public sealed partial class SettingsViewModel : ObservableObject, IPage
 
     [RelayCommand]
     private void OpenDataFolder() => OpenFolder(_paths.Root);
+
+    // ── Display options (stored by the shell) ──────────────────────────────────────────────────────
+
+    public bool ReduceMotion
+    {
+        get => _main.ReduceMotion;
+        set
+        {
+            _main.ReduceMotion = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool ReopenLast
+    {
+        get => _main.ReopenLast;
+        set
+        {
+            _main.ReopenLast = value;
+            OnPropertyChanged();
+        }
+    }
+
+    [RelayCommand]
+    private void ShowWhatsNew() => _main.ShowWhatsNew();
+
+    // ── Troubleshooting ────────────────────────────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private void OpenLogsFolder() => OpenFolder(_paths.LogDirectory);
+
+    /// <summary>Copies version, system, data and recent warnings/errors for a bug report (user folder names hidden).</summary>
+    [RelayCommand]
+    private async Task CopyDiagnosticsAsync()
+    {
+        var text = await BuildDiagnosticsAsync();
+        if (await _main.CopyTextAsync(text))
+            _main.ShowToast("Diagnostic info copied. Paste it into your bug report.", ToastKind.Success);
+        else
+            _main.ShowToast("Couldn't access the clipboard.", ToastKind.Error);
+    }
+
+    public async Task<string> BuildDiagnosticsAsync()
+    {
+        var repo = _main.Repository;
+        var rosters = await repo.GetRostersAsync();
+        var groups = await repo.GetGroupsAsync();
+        var builds = await repo.GetAllBuildsAsync();
+        var matchups = await repo.GetMatchupsAsync();
+        var status = _main.GameData.Status;
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Roster Control diagnostics");
+        sb.AppendLine($"Version: {AppVersion}{(_main.Updates.IsSupported ? "" : " (development build)")}");
+        sb.AppendLine($"OS: {System.Runtime.InteropServices.RuntimeInformation.OSDescription} ({System.Runtime.InteropServices.RuntimeInformation.OSArchitecture})");
+        sb.AppendLine($".NET: {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}");
+        sb.AppendLine($"Storage: {_paths.Mode} — {Redact(_paths.Root)}");
+        sb.AppendLine($"Game data: patch {GameVersion}, {status?.Source.ToString() ?? "unknown"}; last patch check {(_main.GameData.LastPatchCheck is { } t ? t.ToLocalTime().ToString("g") : "not yet")}");
+        foreach (var warning in Warnings) sb.AppendLine($"  warning: {warning}");
+        sb.AppendLine($"Cache: {CacheText}");
+        sb.AppendLine($"Data: {rosters.Count} roster(s); active has {groups.Count} groups, {groups.Sum(g => g.Entries.Count)} placements; {builds.Count} builds; {matchups.Count} matchups");
+        sb.AppendLine($"Display: zoom {_main.UiScale:P0}, reduce motion {(_main.ReduceMotion ? "on" : "off")}");
+        sb.AppendLine();
+        sb.AppendLine("Recent warnings and errors:");
+        var problems = RecentLogProblems(30);
+        if (problems.Count == 0) sb.AppendLine("  (none)");
+        foreach (var line in problems) sb.AppendLine("  " + Redact(line));
+        return sb.ToString();
+    }
+
+    private List<string> RecentLogProblems(int max)
+    {
+        var lines = new List<string>();
+        try
+        {
+            var files = Directory.Exists(_paths.LogDirectory)
+                ? new DirectoryInfo(_paths.LogDirectory).GetFiles("roster-*.log").OrderByDescending(f => f.LastWriteTimeUtc).Take(2).Reverse()
+                : [];
+            foreach (var file in files)
+            {
+                // The log is open for writing by the app itself: share it.
+                using var stream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                using var reader = new StreamReader(stream);
+                while (reader.ReadLine() is { } line)
+                    if (line.Contains(" [WRN] ", StringComparison.Ordinal) || line.Contains(" [ERR] ", StringComparison.Ordinal) || line.Contains(" [FTL] ", StringComparison.Ordinal))
+                        lines.Add(line.Length > 300 ? line[..300] + "…" : line);
+            }
+        }
+        catch (IOException ex)
+        {
+            lines.Add("(could not read the log: " + ex.Message + ")");
+        }
+        return lines.TakeLast(max).ToList();
+    }
+
+    /// <summary>Hides the Windows user name in paths.</summary>
+    private static string Redact(string text)
+    {
+        var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        return string.IsNullOrEmpty(profile) ? text : text.Replace(profile, "%USERPROFILE%", StringComparison.OrdinalIgnoreCase);
+    }
 
     [RelayCommand]
     private void OpenBackupsFolder() => OpenFolder(_paths.BackupDirectory);

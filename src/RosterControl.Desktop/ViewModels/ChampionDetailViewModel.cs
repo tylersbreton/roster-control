@@ -319,6 +319,9 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
     [RelayCommand]
     private void SelectBuild(BuildViewModel build) => SelectedBuild = build;
 
+    [RelayCommand]
+    private void Compare() => _shell.OpenCompare(Champion.Id, null);
+
     /// <summary>Selects a build by id (e.g. from a notes search result).</summary>
     public void SelectBuildById(int buildId)
     {
@@ -332,16 +335,7 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
     private Position? ContextRole => Sequence?.Role ?? (Placements.Count == 1 ? Placements[0].Role : null);
 
     /// <summary>Default for the context role, then the any-role default, then the first build for that role, then the first.</summary>
-    internal BuildViewModel? PickInitialBuild()
-    {
-        var role = ContextRole;
-        var defaults = Builds.Where(b => b.IsDefault).ToList();
-        return (role is not null ? defaults.FirstOrDefault(b => b.Role == role) : null)
-               ?? defaults.FirstOrDefault(b => b.Role is null)
-               ?? (role is not null ? Builds.FirstOrDefault(b => b.Role == role) : null)
-               ?? (role is null ? defaults.FirstOrDefault() : null)
-               ?? Builds.FirstOrDefault();
-    }
+    internal BuildViewModel? PickInitialBuild() => Core.Rules.BuildSelection.PickDefault(Builds, ContextRole, b => b.Model);
 
     [RelayCommand]
     private async Task ToggleDefaultAsync(BuildViewModel build)

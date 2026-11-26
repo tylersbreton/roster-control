@@ -11,7 +11,8 @@
         FontFamily="{StaticResource Font.UI}"
         Background="{StaticResource Brush.AppBackground}"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaTitleBarHeightHint="44">
+        ExtendClientAreaTitleBarHeightHint="44"
+        Classes.reducedmotion="{Binding ReduceMotion}">
 
   <Window.DataTemplates>
     <DataTemplate DataType="vm:RostersViewModel"><v:RostersView /></DataTemplate>
@@ -19,11 +20,13 @@
     <DataTemplate DataType="vm:CounterPicksViewModel"><v:CounterPicksView /></DataTemplate>
     <DataTemplate DataType="vm:SettingsViewModel"><v:SettingsView /></DataTemplate>
     <DataTemplate DataType="vm:ChampionDetailViewModel"><v:ChampionView /></DataTemplate>
+    <DataTemplate DataType="vm:CompareViewModel"><v:CompareView /></DataTemplate>
+    <DataTemplate DataType="vm:PatchReviewViewModel"><v:PatchReviewView /></DataTemplate>
   </Window.DataTemplates>
 
   <Panel>
-    <!-- Subtle hextech glow behind everything -->
-    <Border IsHitTestVisible="False">
+    <!-- Subtle hextech glow behind everything (off with Reduce motion) -->
+    <Border IsHitTestVisible="False" IsVisible="{Binding !ReduceMotion}">
       <Border.Background>
         <RadialGradientBrush Center="85%,0%" GradientOrigin="85%,0%" RadiusX="70%" RadiusY="60%">
           <GradientStop Color="#1A0AC8B9" Offset="0" />
@@ -92,6 +95,10 @@
               <c:LucideIcon Kind="save" Width="13" Height="13" Foreground="{StaticResource Brush.Teal}" />
               <TextBlock Text="Saving…" FontSize="11.5" Foreground="{StaticResource Brush.Teal}" VerticalAlignment="Center" />
             </StackPanel>
+            <StackPanel Name="SavedIndicator" Orientation="Horizontal" Spacing="5" IsVisible="{Binding ShowSaved}" IsHitTestVisible="False" ToolTip.Tip="Your changes are saved">
+              <c:LucideIcon Kind="check" Width="13" Height="13" Foreground="{StaticResource Brush.Good}" StrokeWidth="2.6" />
+              <TextBlock Text="Saved" FontSize="11.5" Foreground="{StaticResource Brush.Good}" VerticalAlignment="Center" />
+            </StackPanel>
             <Border Classes="pill" IsVisible="{Binding !IsLoading}" IsHitTestVisible="False">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <Ellipse Width="6" Height="6" Fill="{StaticResource Brush.Teal}" VerticalAlignment="Center" />
@@ -104,12 +111,7 @@
 
       <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
         <!-- ── Navigation rail ───────────────────────────────────────────────────────────── -->
-        <Border Grid.Column="0" Width="{Binding SidebarWidth}" Padding="10,6,10,12" IsVisible="{Binding !IsLoading}">
-          <Border.Transitions>
-            <Transitions>
-              <DoubleTransition Property="Width" Duration="0:0:0.18" />
-            </Transitions>
-          </Border.Transitions>
+        <Border Grid.Column="0" Classes="sidebar" Width="{Binding SidebarWidth}" Padding="10,6,10,12" IsVisible="{Binding !IsLoading}">
           <DockPanel>
             <StackPanel DockPanel.Dock="Bottom" Spacing="2">
               <RadioButton Classes="nav" GroupName="nav" IsChecked="{Binding IsSettingsSection, Mode=OneWay}" Command="{Binding NavigateCommand}" CommandParameter="{x:Static vm:Section.Settings}" ToolTip.Tip="Settings, backups and data">
@@ -192,6 +194,34 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
+
+    <!-- ── What's new (after an update, or Settings → About) ──────────────────────────────── -->
+    <Panel IsVisible="{Binding WhatsNew, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <Border Background="{StaticResource Brush.Overlay}" />
+      <Border Classes="card" Width="620" MaxHeight="640" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="0" BorderBrush="{StaticResource Brush.GoldDark}" BoxShadow="{StaticResource Shadow.Popup}"
+              DataContext="{Binding WhatsNew}" x:DataType="vm:WhatsNewViewModel">
+        <Grid RowDefinitions="Auto,*,Auto">
+          <StackPanel Orientation="Horizontal" Spacing="10" Margin="22,18,22,10">
+            <c:LucideIcon Kind="sparkles" Width="20" Height="20" Foreground="{StaticResource Brush.Gold}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding Title}" Classes="heading" FontSize="16" VerticalAlignment="Center" />
+          </StackPanel>
+          <ScrollViewer Grid.Row="1" Padding="22,0,18,0">
+            <ItemsControl ItemsSource="{Binding Entries}" Margin="0,0,4,0">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="16" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:WhatsNewEntry">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Heading}" Classes="overline" />
+                    <c:NotesEditor Text="{Binding Body, Mode=OneWay}" IsReadOnly="True" Compact="True" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <Button Grid.Row="2" Classes="primary" Content="Got it" Command="{Binding CloseCommand}" HorizontalAlignment="Right" Margin="22,12,22,18" IsDefault="True" />
+        </Grid>
+      </Border>
+    </Panel>
 
     <!-- ── Confirmation dialog ───────────────────────────────────────────────────────────── -->
     <Panel IsVisible="{Binding Dialog, Converter={x:Static ObjectConverters.IsNotNull}}">

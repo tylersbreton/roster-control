@@ -167,6 +167,13 @@ public sealed partial class CommandPaletteViewModel : ObservableObject
             await _main.NavigateAsync(Section.Rosters);
             _main.Rosters?.AddGroupCommand.Execute(null);
         });
+        foreach (var roster in _main.Rosters?.Rosters.Where(r => !r.IsActive) ?? [])
+            yield return new PaletteItem($"Switch to {roster.Name}", $"Roster · {roster.Detail}", null, "layout-grid", () => _ = _main.SwitchRosterAsync(roster.Id));
+        yield return new PaletteItem("Patch review", _main.Review.Count == 0 ? "Page · builds affected by patch changes" : $"Page · {_main.Review.Count} build(s) to review",
+            null, "triangle-alert", () => _main.OpenPatchReview());
+        yield return new PaletteItem("Compare champions", "Page · side by side", null, "columns-2", () => _main.OpenCompare(
+            (_main.CurrentPage as ChampionDetailViewModel)?.Champion.Id, null));
+        yield return new PaletteItem("What's new", "Changes in recent versions", null, "sparkles", () => _main.ShowWhatsNew());
         yield return new PaletteItem("Toggle compact roster cards", "Action", null, "list", () =>
         {
             if (_main.Rosters is { } r) r.Compact = !r.Compact;

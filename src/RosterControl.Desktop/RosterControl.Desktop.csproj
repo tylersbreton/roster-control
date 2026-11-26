@@ -14,6 +14,8 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <!-- Shown in the app as "What's new" after an update -->
+    <EmbeddedResource Include="..\..\CHANGELOG.md" LogicalName="CHANGELOG.md" Link="CHANGELOG.md" />
   </ItemGroup>
 
   <ItemGroup>

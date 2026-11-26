@@ -409,6 +409,29 @@
     <Setter Property="IsVisible" Value="False" />
   </Style>
 
+  <!-- ── Sidebar (animated width) ─────────────────────────────────────────── -->
+  <Style Selector="Border.sidebar">
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Width" Duration="0:0:0.18" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <!-- ── Reduce motion (Settings → Display): no transitions ──────────────── -->
+  <Style Selector="Window.reducedmotion Border.sidebar">
+    <Setter Property="Transitions" Value="{x:Null}" />
+  </Style>
+  <Style Selector="Window.reducedmotion Border.dropzone">
+    <Setter Property="Transitions" Value="{x:Null}" />
+  </Style>
+  <Style Selector="Window.reducedmotion Border.tile">
+    <Setter Property="Transitions" Value="{x:Null}" />
+  </Style>
+  <Style Selector="Window.reducedmotion Border.rostercard">
+    <Setter Property="Transitions" Value="{x:Null}" />
+  </Style>
+
   <!-- ── Drag & drop zones ───────────────────────────────────────────────── -->
   <Style Selector="Border.dropzone">
     <Setter Property="Transitions">
@@ -456,6 +479,13 @@
   <Style Selector="Border.rostercard">
     <Setter Property="Padding" Value="6,6,8,6" />
     <Setter Property="Margin" Value="0,0,0,6" />
+  </Style>
+  <Style Selector="TextBlock.removal">
+    <Setter Property="Foreground" Value="{StaticResource Brush.Bad}" />
+  </Style>
+  <Style Selector="Border.rostercard.selected">
+    <Setter Property="BorderBrush" Value="{StaticResource Brush.Gold}" />
+    <Setter Property="Background" Value="#2A2818" />
   </Style>
   <Style Selector="Border.rostercard.compact">
     <Setter Property="Padding" Value="5,4,7,4" />

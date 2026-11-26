@@ -121,7 +121,8 @@
     </Border>
 
     <!-- ── Tabs ─────────────────────────────────────────────────────────────────────────── -->
-    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="26" Margin="6,10,0,8">
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="6,10,0,8">
+    <StackPanel Orientation="Horizontal" Spacing="26">
       <RadioButton Classes="tab" GroupName="championTabs" IsChecked="{Binding IsBuildsTab}">
         <StackPanel Orientation="Horizontal" Spacing="7">
           <c:LucideIcon Kind="book-marked" Width="14" Height="14" Foreground="{Binding $parent[RadioButton].Foreground}" />
@@ -141,6 +142,13 @@
         </StackPanel>
       </RadioButton>
     </StackPanel>
+    <Button Grid.Column="1" Classes="small" Command="{Binding CompareCommand}" VerticalAlignment="Center" ToolTip.Tip="Compare this champion with another, side by side">
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <c:LucideIcon Kind="columns-2" Width="13" Height="13" />
+        <TextBlock Text="Compare" FontSize="12" />
+      </StackPanel>
+    </Button>
+    </Grid>
 
     <!-- ── Builds ───────────────────────────────────────────────────────────────────────── -->
     <Grid Grid.Row="2" ColumnDefinitions="264,12,*" IsVisible="{Binding IsBuildsTab}">

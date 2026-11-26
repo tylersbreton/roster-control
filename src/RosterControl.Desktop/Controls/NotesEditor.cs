@@ -28,6 +28,10 @@ public sealed class NotesEditor : UserControl
     public static readonly StyledProperty<bool> CompactProperty =
         AvaloniaProperty.Register<NotesEditor, bool>(nameof(Compact));
 
+    /// <summary>Formatted text only: no editing, no toolbar, checkboxes can't be ticked (e.g. release notes).</summary>
+    public static readonly StyledProperty<bool> IsReadOnlyProperty =
+        AvaloniaProperty.Register<NotesEditor, bool>(nameof(IsReadOnly));
+
     private readonly TextBox _box;
     private readonly StackPanel _lines = new() { Spacing = 3 };
     private readonly Border _view;
@@ -109,6 +113,12 @@ public sealed class NotesEditor : UserControl
         set => SetValue(CompactProperty, value);
     }
 
+    public bool IsReadOnly
+    {
+        get => GetValue(IsReadOnlyProperty);
+        set => SetValue(IsReadOnlyProperty, value);
+    }
+
     /// <summary>The text box (for tests and focus).</summary>
     public TextBox Editor => _box;
     public bool IsEditing => _box.IsVisible;
@@ -134,7 +144,7 @@ public sealed class NotesEditor : UserControl
         {
             _box.PlaceholderText = PlaceholderText;
         }
-        else if (change.Property == CompactProperty)
+        else if (change.Property == CompactProperty || change.Property == IsReadOnlyProperty)
         {
             ApplyLayout();
             Refresh();
@@ -143,7 +153,8 @@ public sealed class NotesEditor : UserControl
 
     private void ApplyLayout()
     {
-        _toolbar.IsVisible = !Compact;
+        _toolbar.IsVisible = !Compact && !IsReadOnly;
+        _view.Cursor = IsReadOnly ? Cursor.Default : new Cursor(StandardCursorType.Ibeam);
         if (Compact)
         {
             _box.Classes.Add("inline");
@@ -179,7 +190,7 @@ public sealed class NotesEditor : UserControl
 
     private void Refresh()
     {
-        var showEditor = _editing || string.IsNullOrWhiteSpace(Text);
+        var showEditor = !IsReadOnly && (_editing || string.IsNullOrWhiteSpace(Text));
         _box.IsVisible = showEditor;
         _view.IsVisible = !showEditor;
         if (!showEditor) Render();
@@ -215,6 +226,7 @@ public sealed class NotesEditor : UserControl
                     var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Margin = new Thickness(line.Indent * 16, 0, 0, 0) };
                     var box = CheckMark(line.Checked, Compact ? 13 : 16);
                     box.Margin = new Thickness(0, Compact ? 1.5 : 2, 7, 0);
+                    box.IsHitTestVisible = !IsReadOnly;
                     box.Click += (_, _) => Text = NoteFormat.ToggleCheck(Normalize(Text), index);
                     row.Children.Add(box);
                     var text = Paragraph(line.Content, fontSize, muted: line.Checked);
@@ -282,7 +294,7 @@ public sealed class NotesEditor : UserControl
 
     private void OnViewPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (e.InitialPressMouseButton != MouseButton.Left) return;
+        if (e.InitialPressMouseButton != MouseButton.Left || IsReadOnly) return;
         for (var v = e.Source as Visual; v is not null && !ReferenceEquals(v, _view); v = v.GetVisualParent())
             if (v is Button) return; // ticking a box doesn't start editing
         SetEditing(true);

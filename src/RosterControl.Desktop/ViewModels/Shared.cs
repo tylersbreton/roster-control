@@ -50,6 +50,23 @@ public interface IShell
 
     Task<bool> CopyTextAsync(string text);
 
+    /// <summary>Makes another roster (Solo/Duo, Flex…) the one shown and used everywhere.</summary>
+    Task SwitchRosterAsync(int rosterId);
+
+    /// <summary>Builds affected by patch changes (banner on Rosters, Patch review page).</summary>
+    PatchReviewState Review { get; }
+
+    /// <summary>Re-scans builds for patch changes (after edits, a new patch or marking builds reviewed).</summary>
+    Task RefreshPatchReviewAsync();
+
+    void OpenPatchReview();
+
+    /// <summary>Opens the side-by-side comparison (either side may be empty and picked there).</summary>
+    void OpenCompare(string? leftChampionId, string? rightChampionId);
+
+    /// <returns>The chosen path, or null when cancelled.</returns>
+    Task<string?> PickSaveFileAsync(string title, string suggestedName, string extension, string typeName);
+
     /// <summary>
     /// Reads a build share code from the clipboard and saves it. When it's for a different champion than
     /// <paramref name="targetChampionId"/>, asks first. Returns the saved build, or null (with a toast saying why).
@@ -223,6 +240,7 @@ public sealed partial class ChampionBrowserViewModel : ObservableObject
                 .Concat(PositionInfo.All.Select(p => new FilterOption(p.DisplayName(), p, AssetUrls.PositionIcon(p)))));
         ClassOptions = ["All classes", "Assassin", "Fighter", "Mage", "Marksman", "Support", "Tank"];
         _selectedClass = ClassOptions[0];
+        _sort = SortOptions[0];
         Refilter();
     }
 
@@ -246,6 +264,23 @@ public sealed partial class ChampionBrowserViewModel : ObservableObject
 
     [ObservableProperty]
     private Position? _role;
+
+    /// <summary>A–Z, Newest (by Riot's champion key, which follows release order) or Class.</summary>
+    public IReadOnlyList<string> SortOptions { get; } = ["A–Z", "Newest", "Class"];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SortLabel))]
+    private string _sort;
+
+    public string SortLabel => Sort;
+
+    partial void OnSortChanged(string value) => Changed();
+
+    [RelayCommand]
+    private void SetSort(string sort)
+    {
+        if (SortOptions.Contains(sort)) Sort = sort;
+    }
 
     [ObservableProperty]
     private IReadOnlyList<ChampionTileViewModel> _tiles = [];
@@ -275,10 +310,10 @@ public sealed partial class ChampionBrowserViewModel : ObservableObject
     {
         Refilter();
         if (_restoring || _prefs is null || _stateKey is null) return;
-        _prefs.Set(_stateKey, new BrowserState(Search, Role, SelectedClass));
+        _prefs.Set(_stateKey, new BrowserState(Search, Role, SelectedClass, Sort));
     }
 
-    private sealed record BrowserState(string Search, Position? Role, string Class);
+    private sealed record BrowserState(string Search, Position? Role, string Class, string? Sort = null);
 
     /// <summary>Restores the last search and filters, and keeps them saved under <paramref name="key"/>.</summary>
     public void Remember(PreferencesStore prefs, string key)
@@ -290,6 +325,7 @@ public sealed partial class ChampionBrowserViewModel : ObservableObject
         Search = state.Search ?? "";
         Role = state.Role;
         SelectedClass = ClassOptions.Contains(state.Class) ? state.Class : ClassOptions[0];
+        Sort = state.Sort is { } sort && SortOptions.Contains(sort) ? sort : SortOptions[0];
         _restoring = false;
         Refilter();
     }
@@ -321,13 +357,19 @@ public sealed partial class ChampionBrowserViewModel : ObservableObject
         var cls = SelectedClass == ClassOptions[0] ? null : SelectedClass;
         // Best matches first when searching: names starting with the query, then the rest alphabetically.
         var query = ChampionInfo.Normalize(Search);
-        Tiles = _all.Where(t =>
-                t.Champion.Matches(Search)
-                && (Role is null || t.Champion.Positions.Contains(Role.Value))
-                && (cls is null || t.Champion.Tags.Contains(cls))
-                && (ExtraFilter?.Invoke(t) ?? true))
-            .OrderBy(t => query.Length > 0 && !ChampionInfo.Normalize(t.Name).StartsWith(query, StringComparison.Ordinal))
-            .ToList();
+        var matches = _all.Where(t =>
+            t.Champion.Matches(Search)
+            && (Role is null || t.Champion.Positions.Contains(Role.Value))
+            && (cls is null || t.Champion.Tags.Contains(cls))
+            && (ExtraFilter?.Invoke(t) ?? true));
+        IEnumerable<ChampionTileViewModel> sorted = Sort switch
+        {
+            "Newest" => matches.OrderByDescending(t => t.Champion.Key),
+            "Class" => matches.OrderBy(t => t.Champion.Tags.FirstOrDefault() ?? "~").ThenBy(t => t.Name, StringComparer.OrdinalIgnoreCase),
+            _ => matches.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase),
+        };
+        // OrderBy is stable: names starting with the search come first, each part keeping the chosen order.
+        Tiles = sorted.OrderBy(t => query.Length > 0 && !ChampionInfo.Normalize(t.Name).StartsWith(query, StringComparison.Ordinal)).ToList();
     }
 }
 

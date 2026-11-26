@@ -655,4 +655,284 @@ public class AppScreenTests
         Assert.That(page.Champion.Id, Is.EqualTo("Ahri"));
         Assert.That(page.IsNotesTab, Is.True);
     }
+
+    // ── 1.3: rosters, selection, sorting, image, compare, what's new, diagnostics ─────────────────
+
+    private static RostersView RostersView(Window window) => window.GetVisualDescendants().OfType<RostersView>().First(v => v.IsEffectivelyVisible);
+
+    [AvaloniaTest, Order(25)]
+    public void Rosters_can_be_created_and_switched()
+    {
+        var window = Window();
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+        var rosters = Vm.Rosters!;
+        Assert.That(rosters.Rosters.Select(r => r.Name), Is.EqualTo(new[] { "My roster" }));
+        var original = rosters.Groups.Select(g => g.Name).ToList();
+
+        rosters.NewRosterName = "ARAM";
+        UiTestHost.Run(() => rosters.NewRosterCommand.ExecuteAsync("Empty"));
+        UiTestHost.Settle(10);
+        Assert.That(rosters.RosterName, Is.EqualTo("ARAM"));
+        Assert.That(rosters.Groups, Is.Empty);
+        Assert.That(rosters.Rosters.Single(r => r.IsActive).Name, Is.EqualTo("ARAM"));
+
+        var switcher = window.GetVisualDescendants().OfType<Button>().First(b => b.Name == "RosterSwitcher");
+        switcher.Flyout!.ShowAt(switcher);
+        UiTestHost.Settle(5);
+        Capture("01e-roster-switcher");
+        switcher.Flyout.Hide();
+
+        UiTestHost.Run(() => rosters.SwitchRosterCommand.ExecuteAsync(rosters.Rosters.First(r => r.Name == "My roster")));
+        UiTestHost.Settle(10);
+        Assert.That(rosters.Groups.Select(g => g.Name), Is.EqualTo(original), "back to the first roster");
+        Assert.That(UiTestHost.Run(() => Repo.GetRostersAsync()), Has.Count.EqualTo(2));
+
+        // Delete the empty one again (without the confirmation dialog: straight through the repository).
+        var aram = rosters.Rosters.First(r => r.Name == "ARAM");
+        Assert.That(UiTestHost.Run(() => Repo.DeleteRosterAsync(aram.Id)), Is.True);
+        UiTestHost.Run(() => rosters.ReloadAsync());
+        Assert.That(rosters.Rosters, Has.Count.EqualTo(1));
+    }
+
+    [AvaloniaTest, Order(26)]
+    public void Ctrl_click_selects_cards_and_the_selection_moves_together()
+    {
+        var window = Window();
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+        UiTestHost.Settle(5);
+        var rosters = Vm.Rosters!;
+        rosters.ClearSelection();
+        var cards = window.GetVisualDescendants().OfType<Border>()
+            .Where(b => b.Classes.Contains("rostercard") && b.DataContext is RosterEntryViewModel { Group.Name: "Support" } && b.IsEffectivelyVisible)
+            .ToList();
+        Assert.That(cards, Has.Count.GreaterThanOrEqualTo(2));
+        foreach (var card in cards.Take(2))
+        {
+            var point = card.TranslatePoint(new Point(card.Bounds.Width / 2, 12), window)!.Value;
+            window.MouseDown(point, MouseButton.Left, RawInputModifiers.Control);
+            window.MouseUp(point, MouseButton.Left, RawInputModifiers.Control);
+            UiTestHost.Settle(2);
+        }
+        Assert.That(rosters.SelectionCount, Is.EqualTo(2), "Ctrl+click selects instead of opening");
+        Assert.That(Vm.CurrentSection, Is.EqualTo(Section.Rosters));
+        Capture("01f-multi-select");
+
+        var picked = rosters.SelectedEntries.Select(e => e.ChampionId).ToList();
+        var bottom = rosters.Groups.First(g => g.Name == "Bottom");
+        UiTestHost.Run(() => rosters.CopySelectionCommand.ExecuteAsync(bottom));
+        UiTestHost.Settle(10);
+        Assert.That(bottom.Entries.Select(e => e.ChampionId), Is.SupersetOf(picked), "copied together");
+        Assert.That(rosters.Groups.First(g => g.Name == "Support").Entries.Select(e => e.ChampionId), Is.SupersetOf(picked), "copy keeps the originals");
+        Assert.That(rosters.HasSelection, Is.False);
+
+        // Select the copies and remove them in one go (Delete key), then undo.
+        foreach (var e in bottom.Entries.Where(e => picked.Contains(e.ChampionId))) e.IsSelected = true;
+        rosters.UpdateSelection();
+        Assert.That(Vm.HandleShortcut(Key.Delete, KeyModifiers.None, typing: false), Is.True);
+        UiTestHost.Settle(10);
+        Assert.That(bottom.Entries.Select(e => e.ChampionId), Has.None.AnyOf(picked.ToArray()));
+        Assert.That(Vm.HandleShortcut(Key.Z, KeyModifiers.Control, typing: false), Is.True);
+        UiTestHost.Settle(20);
+        Assert.That(Vm.Rosters!.Groups.First(g => g.Name == "Bottom").Entries.Select(e => e.ChampionId), Is.SupersetOf(picked), "undo restores all of them");
+        // Leave Bottom as it was for later tests.
+        foreach (var e in Vm.Rosters!.Groups.First(g => g.Name == "Bottom").Entries.Where(e => picked.Contains(e.ChampionId))) e.IsSelected = true;
+        Vm.Rosters!.UpdateSelection();
+        UiTestHost.Run(() => Vm.Rosters!.RemoveSelectionCommand.ExecuteAsync(null));
+        UiTestHost.Settle(5);
+    }
+
+    [AvaloniaTest, Order(27)]
+    public void Pool_sorts_by_newest_and_the_roster_saves_as_an_image()
+    {
+        var window = Window();
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+        var pool = Vm.Rosters!.Pool;
+        pool.SetSortCommand.Execute("Newest");
+        Assert.That(pool.Tiles[0].Champion.Key, Is.EqualTo(Game.Champions.Max(c => c.Key)));
+        pool.SetSortCommand.Execute("Class");
+        Assert.That(pool.Tiles[0].Champion.Tags.First(), Is.EqualTo("Assassin"));
+        pool.SetSortCommand.Execute("A–Z");
+        Assert.That(pool.Tiles[0].Name, Is.EqualTo("Aatrox"));
+
+        using var bitmap = UiTestHost.Run(() => RostersView(window).RenderImageAsync(), 30);
+        Assert.That(bitmap.PixelSize.Width, Is.GreaterThan(1000));
+        bitmap.Save(Path.Combine(UiTestHost.ScreenshotDirectory, "14-roster-image.png"));
+    }
+
+    [AvaloniaTest, Order(28)]
+    public void Compare_shows_two_champions_and_their_head_to_head()
+    {
+        Window();
+        Vm.OpenCompare("Ahri", "Veigar");
+        UiTestHost.Settle(40);
+        var page = (CompareViewModel)Vm.CurrentPage!;
+        Assert.That(page.Left.Champion!.Id, Is.EqualTo("Ahri"));
+        Assert.That(page.Right.Champion!.Id, Is.EqualTo("Veigar"));
+        Assert.That(page.Left.HasBuild, Is.True);
+        Assert.That(page.Left.Blocks, Is.Not.Empty);
+        Assert.That(page.HeadToHead.Select(h => h.Text), Has.Some.StartsWith("Ahri is good against Veigar"));
+        Capture("15-compare");
+        UiTestHost.Run(() => page.SwapCommand.ExecuteAsync(null));
+        Assert.That(page.Left.Champion!.Id, Is.EqualTo("Veigar"));
+    }
+
+    [AvaloniaTest, Order(29)]
+    public void Whats_new_diagnostics_saved_indicator_and_reduce_motion()
+    {
+        var window = Window();
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Settings));
+        Vm.ShowWhatsNew();
+        UiTestHost.Settle(5);
+        Assert.That(Vm.WhatsNew, Is.Not.Null);
+        Assert.That(Vm.WhatsNew!.Entries.First().Version, Is.EqualTo("1.3.0"));
+        Capture("16-whats-new");
+        window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+        UiTestHost.Settle(3);
+        Assert.That(Vm.WhatsNew, Is.Null, "Esc closes it");
+
+        var diagnostics = UiTestHost.Run(() => Vm.Settings!.BuildDiagnosticsAsync());
+        Assert.That(diagnostics, Does.StartWith("Roster Control diagnostics"));
+        Assert.That(diagnostics, Does.Contain("Version:").And.Contain("roster(s)"));
+        Assert.That(diagnostics, Does.Not.Contain(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)), "the Windows user name is hidden");
+
+        UiTestHost.Run(() => Repo.SaveProfileAsync("Thresh", "Hook from fog.", []));
+        UiTestHost.Settle(3);
+        Assert.That(Vm.ShowSaved, Is.True, "Saved indicator after a write");
+
+        Vm.ReduceMotion = true;
+        UiTestHost.Settle(2);
+        Assert.That(window.Classes, Does.Contain("reducedmotion"));
+        Vm.ReduceMotion = false;
+        Assert.That(window.Classes, Does.Not.Contain("reducedmotion"));
+    }
+
+    // ── Hover preview, patch review, edge scrolling ───────────────────────────────────────────────
+
+    [AvaloniaTest, Order(30)]
+    public void Hovering_a_roster_card_previews_its_default_build()
+    {
+        var window = Window();
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+        UiTestHost.Settle(5);
+        var ahri = Vm.Rosters!.Groups.First(g => g.Name == "Middle").Entries.First(e => e.ChampionId == "Ahri");
+        UiTestHost.Run(() => ahri.LoadPreviewAsync());
+        var preview = ahri.Preview!;
+        Assert.That(preview.HasBuild, Is.True);
+        Assert.That(preview.BuildName, Is.EqualTo("vs Assassins"), "the default build for Middle (set in an earlier test)");
+        Assert.That(preview.IsDefault, Is.True);
+        Assert.That(preview.Items, Is.Not.Empty);
+        Assert.That(preview.Spells, Has.Count.EqualTo(2));
+
+        var amumu = Vm.Rosters!.Groups.First(g => g.Name == "Jungle").Entries.First(e => e.ChampionId == "Amumu");
+        UiTestHost.Run(() => amumu.LoadPreviewAsync());
+        Assert.That(amumu.Preview!.HasBuild, Is.False);
+
+        var card = window.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("rostercard") && b.DataContext == ahri);
+        ToolTip.SetIsOpen(card, true);
+        UiTestHost.Settle(5);
+        Capture("01g-card-preview");
+        ToolTip.SetIsOpen(card, false);
+    }
+
+    [AvaloniaTest, Order(31)]
+    public void Builds_changed_by_a_patch_are_listed_for_review()
+    {
+        Window();
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+        UiTestHost.Run(() => Vm.RefreshPatchReviewAsync(), 60);
+        var review = Vm.Review;
+        var entry = review.Entries.FirstOrDefault(e => e.ChampionName == "Ahri" && e.BuildName == "vs Assassins");
+        Assert.That(entry, Is.Not.Null, "saved on 16.10 with items that changed since");
+        Assert.That(entry!.Changes, Is.Not.Empty);
+        Assert.That(review.ShowBanner, Is.True);
+        Capture("01h-patch-review-banner");
+
+        Vm.OpenPatchReview();
+        UiTestHost.Settle(30);
+        var page = (PatchReviewViewModel)Vm.CurrentPage!;
+        Capture("17-patch-review");
+
+        var before = review.Count;
+        UiTestHost.Run(() => page.MarkReviewedCommand.ExecuteAsync(entry));
+        UiTestHost.Settle(3);
+        Assert.That(review.Count, Is.EqualTo(before - 1));
+        Assert.That(UiTestHost.Run(() => Repo.GetBuildsAsync("Ahri")).Single(b => b.Name == "vs Assassins").GameVersion, Is.EqualTo(Game.Version));
+
+        Assert.That(Vm.HandleShortcut(Key.Z, KeyModifiers.Control, typing: false), Is.True, "Ctrl+Z undoes it");
+        UiTestHost.Settle(30);
+        Assert.That(review.Entries.Select(e => e.BuildName), Does.Contain("vs Assassins"));
+        Assert.That(UiTestHost.Run(() => Repo.GetBuildsAsync("Ahri")).Single(b => b.Name == "vs Assassins").GameVersion, Is.EqualTo("16.10.1"));
+    }
+
+    [AvaloniaTest, Order(32)]
+    public void Dragging_past_the_edge_scrolls_the_board()
+    {
+        Assert.That(Dnd.Speed(200, 400), Is.Zero, "middle: no scrolling");
+        Assert.That(Dnd.Speed(40, 400), Is.LessThan(0).And.GreaterThan(-10), "inside the edge zone: slow");
+        Assert.That(Dnd.Speed(-200, 400), Is.EqualTo(-38), "far past the edge: fastest");
+        Assert.That(Dnd.Speed(399, 400), Is.GreaterThan(Dnd.Speed(360, 400)), "faster nearer the edge");
+
+        var window = Window(1280, 760);
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+        UiTestHost.Settle(10);
+        var scroller = window.GetVisualDescendants().OfType<ScrollViewer>().First(s => s.Name == "GroupsScroller");
+        Assert.That(scroller.Extent.Width, Is.GreaterThan(scroller.Viewport.Width), "the groups overflow at this size");
+        scroller.Offset = new Vector(0, 0);
+        var tile = window.GetVisualDescendants().OfType<Border>().First(b => Dnd.GetPayload(b) is ChampionDragData { Origin: null, Champion.Id: "Annie" });
+        var start = tile.TranslatePoint(new Point(tile.Bounds.Width / 2, tile.Bounds.Height / 2), window)!.Value;
+        var outside = new Point(window.Bounds.Width + 60, 400); // past the window's right edge
+        window.MouseMove(start);
+        window.MouseDown(start, MouseButton.Left, RawInputModifiers.LeftMouseButton);
+        try
+        {
+            for (var i = 1; i <= 10; i++)
+            {
+                window.MouseMove(new Point(start.X + (outside.X - start.X) * i / 10, start.Y + (outside.Y - start.Y) * i / 10), RawInputModifiers.LeftMouseButton);
+                UiTestHost.Settle(1);
+            }
+            for (var i = 0; i < 25 && scroller.Offset.X <= 0; i++)
+            {
+                Thread.Sleep(45);
+                UiTestHost.Settle(2);
+            }
+            Assert.That(scroller.Offset.X, Is.GreaterThan(0), "kept scrolling with the pointer outside the window");
+        }
+        finally
+        {
+            window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None); // cancel the drag
+            window.MouseUp(outside, MouseButton.Left);
+            UiTestHost.Settle(5);
+        }
+        Assert.That(Vm.Rosters!.Groups.SelectMany(g => g.Entries).Count(e => e.ChampionId == "Annie"), Is.Zero, "cancelled, nothing added");
+        Window();
+    }
+
+    [AvaloniaTest, Order(33)]
+    public void Not_in_roster_filter_shows_unplaced_champions()
+    {
+        Window();
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Champions));
+        var library = Vm.Library!;
+        var placed = Vm.Rosters!.Groups.SelectMany(g => g.Entries).Select(e => e.ChampionId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        Assert.That(placed, Is.Not.Empty);
+        try
+        {
+            library.OnlyRoster = true;
+            library.NotInRoster = true;
+            Assert.That(library.OnlyRoster, Is.False, "the two roster filters exclude each other");
+            UiTestHost.Settle(5);
+            var shown = library.Browser.Tiles.Select(t => t.Id).ToList();
+            Assert.That(shown, Has.Count.EqualTo(Game.Champions.Count - placed.Count));
+            Assert.That(shown.Intersect(placed, StringComparer.OrdinalIgnoreCase), Is.Empty);
+            Assert.That(library.Browser.HasActiveFilters, Is.True);
+            Capture("33-not-in-roster");
+            library.Browser.ClearFiltersCommand.Execute(null);
+            Assert.That(library.NotInRoster, Is.False, "Clear filters resets it");
+        }
+        finally
+        {
+            library.OnlyRoster = false;
+            library.NotInRoster = false;
+        }
+    }
 }

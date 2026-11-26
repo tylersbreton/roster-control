@@ -38,10 +38,75 @@ public partial class RostersView : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        if (_vm is not null) _vm.Groups.CollectionChanged -= OnGroupsChanged;
+        if (_vm is not null)
+        {
+            _vm.Groups.CollectionChanged -= OnGroupsChanged;
+            _vm.PropertyChanged -= OnVmPropertyChanged;
+        }
         _vm = DataContext as RostersViewModel;
-        if (_vm is not null) _vm.Groups.CollectionChanged += OnGroupsChanged;
+        if (_vm is not null)
+        {
+            _vm.Groups.CollectionChanged += OnGroupsChanged;
+            _vm.PropertyChanged += OnVmPropertyChanged;
+        }
         UpdateColumnWidth();
+    }
+
+    private void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        // Switched, renamed or created a roster: close the roster menu.
+        if (e.PropertyName == nameof(RostersViewModel.RosterName)) RosterSwitcher.Flyout?.Hide();
+    }
+
+    // ── Save the roster as an image ────────────────────────────────────────────────────────────────
+
+    private async void OnExportImageClick(object? sender, RoutedEventArgs e)
+    {
+        if (_vm is not { } vm) return;
+        try
+        {
+            ExportImageButton.IsEnabled = false;
+            using var bitmap = await Controls.RosterImage.RenderAsync(Controls.RosterImage.Build(vm), ExportHost, TimeSpan.FromSeconds(4));
+            var safeName = string.Concat(vm.RosterName.Split(Path.GetInvalidFileNameChars()));
+            var path = await vm.Shell.PickSaveFileAsync("Save roster image", $"Roster - {safeName}.png", "png", "PNG image");
+            if (path is null) return;
+            bitmap.Save(path, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+            vm.Shell.ShowToast($"Saved {Path.GetFileName(path)}", ToastKind.Success, "Open", () =>
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = path, UseShellExecute = true });
+                return Task.CompletedTask;
+            });
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Roster image export failed");
+            vm.Shell.ShowToast("Couldn't save the image: " + ex.Message, ToastKind.Error);
+        }
+        finally
+        {
+            ExportImageButton.IsEnabled = true;
+        }
+    }
+
+    /// <summary>For tests: renders the roster image without asking where to save it.</summary>
+    public Task<Avalonia.Media.Imaging.RenderTargetBitmap> RenderImageAsync() =>
+        Controls.RosterImage.RenderAsync(Controls.RosterImage.Build(_vm!), ExportHost, TimeSpan.FromSeconds(8));
+
+    // ── Selection bar menus (one entry per group) ──────────────────────────────────────────────────
+
+    private void OnMoveSelectionMenuOpening(object? sender, EventArgs e) => FillGroupMenu(sender as MenuFlyout, copy: false);
+
+    private void OnCopySelectionMenuOpening(object? sender, EventArgs e) => FillGroupMenu(sender as MenuFlyout, copy: true);
+
+    private void FillGroupMenu(MenuFlyout? menu, bool copy)
+    {
+        if (menu is null || _vm is not { } vm) return;
+        var items = vm.Groups.Select(group => (object)MenuItem(group.Name, null, () =>
+        {
+            if (copy) vm.CopySelectionCommand.Execute(group);
+            else vm.MoveSelectionCommand.Execute(group);
+        })).ToList();
+        menu.ItemsSource = items;
     }
 
     private void OnGroupsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => UpdateColumnWidth();
@@ -110,7 +175,9 @@ public partial class RostersView : UserControl
 
     private void OnCardPointerEntered(object? sender, PointerEventArgs e)
     {
-        if (_vm is not null && (sender as Control)?.DataContext is RosterEntryViewModel entry) _vm.HoveredEntry = entry;
+        if (_vm is null || (sender as Control)?.DataContext is not RosterEntryViewModel entry) return;
+        _vm.HoveredEntry = entry;
+        _ = entry.LoadPreviewAsync(); // ready by the time the tooltip shows
     }
 
     private void OnCardPointerExited(object? sender, PointerEventArgs e)

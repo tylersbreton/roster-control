@@ -22,6 +22,8 @@ public enum Section
     Counters,
     Settings,
     Champion,
+    Compare,
+    Review,
 }
 
 /// <summary>Application shell: loading, navigation, keyboard shortcuts, search palette, dialogs and toasts.</summary>
@@ -54,12 +56,24 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
         _paths = paths;
         _updates = updates;
         _logger = logger;
-        _saves.SavingChanged += (_, saving) => Dispatcher.UIThread.Post(() => IsSaving = saving);
+        _saves.SavingChanged += (_, saving) => Dispatcher.UIThread.Post(() =>
+        {
+            IsSaving = saving;
+            if (!saving) FlashSaved();
+        });
+        _repository.ActiveRosterId = preferences.Get<int?>(ActiveRosterKey, null);
+        _repository.Written += (_, _) => Dispatcher.UIThread.Post(FlashSaved);
+        // Both off by default (user's choice): animations on, and startup always opens Rosters.
+        _reduceMotion = preferences.Get(ReduceMotionKey, false);
+        _reopenLast = preferences.Get(ReopenLastKey, false);
+        // Read before startup navigation writes it: any earlier session saved the page it was on.
+        _returningUser = preferences.Get<Section?>("ui.section", null) is not null;
         _updates.Changed += (_, _) => Dispatcher.UIThread.Post(OnUpdateStateChanged);
         _sidebarCollapsed = preferences.Get("ui.sidebarCollapsed", false);
         _uiScale = Math.Clamp(preferences.Get(ScaleKey, 1.0), ScaleSteps[0], ScaleSteps[^1]);
         _recentChampions.AddRange(preferences.Get<List<string>>("ui.recentChampions", []).Take(6));
         Palette = new CommandPaletteViewModel(this);
+        Review = new PatchReviewState(OpenPatchReview);
     }
 
     /// <summary>Raised when every page is rebuilt (patch update, import) so cached views can be dropped.</summary>
@@ -229,6 +243,173 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
 
     public void AttachTopLevel(Func<TopLevel?> topLevel) => _topLevel = topLevel;
 
+    // ── Saved indicator ────────────────────────────────────────────────────────────────────────────
+
+    private DispatcherTimer? _savedTimer;
+
+    /// <summary>"Saved ✓" shows briefly after each change reaches the database.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowSaved))]
+    private bool _isSavedVisible;
+
+    public bool ShowSaved => IsSavedVisible && !IsSaving;
+
+    partial void OnIsSavingChanged(bool value) => OnPropertyChanged(nameof(ShowSaved));
+
+    private void FlashSaved()
+    {
+        if (IsLoading) return;
+        IsSavedVisible = true;
+        _savedTimer ??= new DispatcherTimer(TimeSpan.FromSeconds(1.8), DispatcherPriority.Background, (_, _) =>
+        {
+            IsSavedVisible = false;
+            _savedTimer?.Stop();
+        });
+        _savedTimer.Stop();
+        _savedTimer.Start();
+    }
+
+    // ── Display options ────────────────────────────────────────────────────────────────────────────
+
+    private const string ReduceMotionKey = "ui.reduceMotion";
+    private const string ReopenLastKey = "ui.reopenLast";
+    private const string LastChampionKey = "ui.lastChampion";
+    private const string ActiveRosterKey = "roster.active";
+    private const string LastSeenVersionKey = "app.lastSeenVersion";
+    private readonly bool _returningUser;
+
+    /// <summary>No transitions and no background glow (off by default).</summary>
+    [ObservableProperty]
+    private bool _reduceMotion;
+
+    partial void OnReduceMotionChanged(bool value) => _preferences.Set(ReduceMotionKey, value);
+
+    /// <summary>Reopen the last page (including the champion that was open) at startup; off = always start on Rosters.</summary>
+    [ObservableProperty]
+    private bool _reopenLast;
+
+    partial void OnReopenLastChanged(bool value) => _preferences.Set(ReopenLastKey, value);
+
+    private sealed record LastChampion(string Id, ChampionTab Tab);
+
+    // ── Rosters, compare, files ────────────────────────────────────────────────────────────────────
+
+    public async Task SwitchRosterAsync(int rosterId)
+    {
+        await _saves.FlushAsync();
+        _repository.ActiveRosterId = rosterId;
+        _preferences.Set(ActiveRosterKey, rosterId);
+        MarkDirty();
+        if (Rosters is { } rosters)
+        {
+            rosters.ClearSelection();
+            await rosters.ReloadAsync();
+        }
+        if (CurrentSection != Section.Rosters) await NavigateAsync(Section.Rosters);
+    }
+
+    // ── Patch review ───────────────────────────────────────────────────────────────────────────────
+
+    public PatchReviewState Review { get; }
+    private int _reviewScan;
+
+    public async Task RefreshPatchReviewAsync()
+    {
+        if (_game is null) return;
+        var scan = ++_reviewScan;
+        try
+        {
+            await _saves.FlushAsync();
+            var entries = await PatchReviewState.ScanAsync(this, CancellationToken.None);
+            if (scan != _reviewScan) return; // a newer scan started meanwhile
+            Review.Patch = _game.Version;
+            Review.Entries = entries;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Patch review scan failed");
+        }
+    }
+
+    public void OpenPatchReview() => _ = OpenPatchReviewAsync();
+
+    private async Task OpenPatchReviewAsync()
+    {
+        if (_game is null) return;
+        await _saves.FlushAsync();
+        if (CurrentPage is not null && CurrentSection != Section.Review) _history.Push((CurrentSection, CurrentPage));
+        CanGoBack = _history.Count > 0;
+        var page = new PatchReviewViewModel(this);
+        CurrentSection = Section.Review;
+        CurrentPage = page;
+        PageTitle = page.Title;
+        await page.OnNavigatedToAsync();
+    }
+
+    /// <summary>Pages opened on top of a section (not restored at startup, not remembered).</summary>
+    private static bool IsTransient(Section section) => section is Section.Champion or Section.Compare or Section.Review;
+
+    public void OpenCompare(string? leftChampionId, string? rightChampionId) => _ = OpenCompareAsync(leftChampionId, rightChampionId);
+
+    private async Task OpenCompareAsync(string? left, string? right)
+    {
+        if (_game is null) return;
+        await _saves.FlushAsync();
+        if (CurrentPage is not null) _history.Push((CurrentSection, CurrentPage));
+        CanGoBack = _history.Count > 0;
+        var page = new CompareViewModel(this, left, right);
+        CurrentSection = Section.Compare;
+        CurrentPage = page;
+        PageTitle = page.Title;
+        await page.OnNavigatedToAsync();
+    }
+
+    public async Task<string?> PickSaveFileAsync(string title, string suggestedName, string extension, string typeName)
+    {
+        if (_topLevel?.Invoke()?.StorageProvider is not { } storage) return null;
+        var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = title,
+            SuggestedFileName = suggestedName,
+            DefaultExtension = extension,
+            FileTypeChoices = [new FilePickerFileType(typeName) { Patterns = [$"*.{extension}"] }],
+            SuggestedStartLocation = await storage.TryGetWellKnownFolderAsync(WellKnownFolder.Pictures),
+        });
+        return file?.TryGetLocalPath();
+    }
+
+    // ── What's new ─────────────────────────────────────────────────────────────────────────────────
+
+    [ObservableProperty]
+    private WhatsNewViewModel? _whatsNew;
+
+    private static IReadOnlyList<Core.Rules.ChangelogEntry> LoadChangelog()
+    {
+        using var stream = typeof(MainWindowViewModel).Assembly.GetManifestResourceStream("CHANGELOG.md");
+        if (stream is null) return [];
+        using var reader = new StreamReader(stream);
+        return Core.Rules.Changelog.Parse(reader.ReadToEnd());
+    }
+
+    /// <summary>After an update, shows what changed since the version last run (nothing on the first run).</summary>
+    private void ShowWhatsNewAfterUpdate()
+    {
+        if (!Core.Rules.Changelog.TryParseVersion(_updates.CurrentVersion, out var current)) return;
+        // Versions before 1.3 didn't record this: an existing install without it is coming from 1.2.
+        var lastSeenText = _preferences.Get<string?>(LastSeenVersionKey, null) ?? (_returningUser ? "1.2.0" : null);
+        _preferences.Set(LastSeenVersionKey, current.ToString(3));
+        if (!Core.Rules.Changelog.TryParseVersion(lastSeenText, out var lastSeen) || lastSeen >= current) return;
+        var entries = Core.Rules.Changelog.Between(LoadChangelog(), lastSeen, current);
+        if (entries.Count > 0) WhatsNew = new WhatsNewViewModel(this, $"What's new in Roster Control {current.ToString(3)}", entries);
+    }
+
+    [RelayCommand]
+    public void ShowWhatsNew()
+    {
+        var entries = LoadChangelog().Take(3).ToList();
+        if (entries.Count > 0) WhatsNew = new WhatsNewViewModel(this, "What's new", entries);
+    }
+
     // ── Startup ────────────────────────────────────────────────────────────────────────────────────
 
     public async Task InitializeAsync()
@@ -239,6 +420,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
         {
             LoadingText = "Opening your rosters…";
             await _repository.InitializeAsync();
+            if (_repository.DatabaseFromNewerVersion)
+                ShowToast("This data was last used by a newer version of Roster Control. Update this copy (Settings → App updates) so nothing goes missing.", ToastKind.Warning);
             var progress = new Progress<string>(t => LoadingText = t);
             // Fast start: open with cached game data and check for a new patch in the background.
             var cached = await _gameData.LoadCachedAsync(progress, CancellationToken.None);
@@ -246,7 +429,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
             OnPropertyChanged(nameof(PatchText));
             CreatePages();
             IsLoading = false;
-            await NavigateAsync(_preferences.Get("ui.section", Section.Rosters) is var s && s is Section.Champion ? Section.Rosters : s);
+            await RestoreLastPageAsync();
+            ShowWhatsNewAfterUpdate();
             _ = Task.Run(() => _backups.RunAutomaticBackupAsync(_game.Version));
             foreach (var warning in _gameData.Status?.Warnings ?? []) ShowToast(warning, ToastKind.Warning);
             if (_game.NewChampionIds.Count > 0)
@@ -254,6 +438,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
             if (cached is not null) DispatcherTimer.RunOnce(() => _ = CheckForNewPatchAsync(), TimeSpan.FromSeconds(1.5));
             StartPatchWatcher();
             StartUpdateChecks();
+            DispatcherTimer.RunOnce(() => _ = RefreshPatchReviewAsync(), TimeSpan.FromSeconds(3));
         }
         catch (Exception ex)
         {
@@ -264,6 +449,18 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
 
     [RelayCommand]
     private Task RetryAsync() => InitializeAsync();
+
+    private async Task RestoreLastPageAsync()
+    {
+        var section = ReopenLast ? _preferences.Get("ui.section", Section.Rosters) : Section.Rosters;
+        if (section == Section.Champion && _preferences.Get<LastChampion?>(LastChampionKey, null) is { } last && _game?.Champion(last.Id) is not null)
+        {
+            await NavigateAsync(Section.Rosters);
+            await OpenChampionAsync(last.Id, last.Tab, null, replace: false);
+            return;
+        }
+        await NavigateAsync(IsTransient(section) ? Section.Rosters : section);
+    }
 
     private void CreatePages()
     {
@@ -280,7 +477,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
     public async Task ReloadGameDataAsync(bool force)
     {
         await _saves.FlushAsync();
-        var section = CurrentSection == Section.Champion ? Section.Rosters : CurrentSection;
+        var section = IsTransient(CurrentSection) ? Section.Rosters : CurrentSection;
         IsLoading = true;
         try
         {
@@ -294,6 +491,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
             await NavigateAsync(section);
             StartPatchWatcher();
             ShowToast($"Game data is up to date (patch {_game.Version})", ToastKind.Success);
+            Review.HiddenThisSession = false;
+            _ = RefreshPatchReviewAsync();
         }
         catch (Exception ex)
         {
@@ -336,7 +535,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
         CurrentSection = section;
         CurrentPage = page;
         PageTitle = (page as IPage)?.Title ?? "";
-        if (section != Section.Champion) _preferences.Set("ui.section", section);
+        if (!IsTransient(section)) _preferences.Set("ui.section", section);
         if (page is IPage p) await p.OnNavigatedToAsync();
     }
 
@@ -359,8 +558,12 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
         var page = new ChampionDetailViewModel(this, champion, tab ?? _preferences.Get(ChampionTabKey, ChampionTab.Builds), sequence, buildId);
         page.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(ChampionDetailViewModel.SelectedTab)) _preferences.Set(ChampionTabKey, (ChampionTab)page.SelectedTab);
+            if (e.PropertyName != nameof(ChampionDetailViewModel.SelectedTab)) return;
+            _preferences.Set(ChampionTabKey, (ChampionTab)page.SelectedTab);
+            if (ReferenceEquals(CurrentPage, page)) _preferences.Set(LastChampionKey, new LastChampion(page.Champion.Id, (ChampionTab)page.SelectedTab));
         };
+        _preferences.Set("ui.section", Section.Champion);
+        _preferences.Set(LastChampionKey, new LastChampion(champion.Id, (ChampionTab)page.SelectedTab));
         CurrentSection = Section.Champion;
         CurrentPage = page;
         PageTitle = champion.Name;
@@ -582,3 +785,19 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
         return files.Count > 0 ? files[0].TryGetLocalPath() : null;
     }
 }
+
+/// <summary>The "What's new" dialog (after an update, or from Settings → About).</summary>
+public sealed partial class WhatsNewViewModel(MainWindowViewModel owner, string title, IReadOnlyList<Core.Rules.ChangelogEntry> entries) : ObservableObject
+{
+    public string Title { get; } = title;
+    public IReadOnlyList<WhatsNewEntry> Entries { get; } = entries.Select(e => new WhatsNewEntry(e.Version.ToString(3), e.Body)).ToList();
+
+    [RelayCommand]
+    private void Close() => owner.WhatsNew = null;
+}
+
+public sealed record WhatsNewEntry(string Version, string Body)
+{
+    public string Heading => "Version " + Version;
+}
+

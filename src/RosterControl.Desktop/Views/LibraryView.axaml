@@ -21,11 +21,30 @@
         <TextBox Classes="search" Width="260" PlaceholderText="Search champions… (Enter opens)" Text="{Binding Browser.Search}" c:InputHelpers.EnterCommand="{Binding OpenFirstCommand}" />
         <v:RoleFilterBar DataContext="{Binding Browser}" VerticalAlignment="Center" />
         <ComboBox ItemsSource="{Binding Browser.ClassOptions}" SelectedItem="{Binding Browser.SelectedClass}" MinWidth="130" VerticalAlignment="Center" />
+        <Button Classes="small" VerticalAlignment="Center" ToolTip.Tip="Sort champions">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <c:LucideIcon Kind="arrow-up-down" Width="13" Height="13" />
+            <TextBlock Text="{Binding Browser.SortLabel}" FontSize="12" />
+          </StackPanel>
+          <Button.Flyout>
+            <MenuFlyout Placement="BottomEdgeAlignedLeft">
+              <MenuItem Header="A–Z" Command="{Binding Browser.SetSortCommand}" CommandParameter="A–Z" />
+              <MenuItem Header="Newest first" Command="{Binding Browser.SetSortCommand}" CommandParameter="Newest" />
+              <MenuItem Header="By class" Command="{Binding Browser.SetSortCommand}" CommandParameter="Class" />
+            </MenuFlyout>
+          </Button.Flyout>
+        </Button>
         <ComboBox ItemsSource="{Binding TagOptions}" SelectedItem="{Binding SelectedTag}" MinWidth="130" VerticalAlignment="Center" IsVisible="{Binding HasTags}" ToolTip.Tip="Filter by your tags" />
         <ToggleButton Classes="chip" IsChecked="{Binding OnlyRoster}" VerticalAlignment="Center" Height="30">
           <StackPanel Orientation="Horizontal" Spacing="6">
             <c:LucideIcon Kind="layout-grid" Width="13" Height="13" Foreground="{Binding $parent[ToggleButton].Foreground}" />
             <TextBlock Text="In my roster" FontSize="12" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+          </StackPanel>
+        </ToggleButton>
+        <ToggleButton Classes="chip" IsChecked="{Binding NotInRoster}" VerticalAlignment="Center" Height="30" ToolTip.Tip="Champions that aren't in any group of the current roster">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <c:LucideIcon Kind="eye-off" Width="13" Height="13" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+            <TextBlock Text="Not in roster" FontSize="12" Foreground="{Binding $parent[ToggleButton].Foreground}" />
           </StackPanel>
         </ToggleButton>
         <ToggleButton Classes="chip" IsChecked="{Binding OnlyWithBuilds}" VerticalAlignment="Center" Height="30">

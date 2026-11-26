@@ -59,6 +59,9 @@ public sealed class AssetImage : Control
     public static readonly StyledProperty<bool> ShowPlaceholderProperty = AvaloniaProperty.Register<AssetImage, bool>(nameof(ShowPlaceholder), true);
 
     private Bitmap? _bitmap;
+
+    /// <summary>The image has been loaded (used to wait before capturing an off-screen image).</summary>
+    public bool HasImage => _bitmap is not null;
     private string? _loadedKey;
 
     static AssetImage()

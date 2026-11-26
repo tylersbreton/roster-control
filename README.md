@@ -39,6 +39,15 @@ It never restarts on its own, and your data is untouched by updates.
   from the pool into a group; drag cards to reorder or to move them to another group (hold **Ctrl** to copy); drag a
   card back onto the pool to remove it. Or right-click: *Add to …* on a pool champion, *Move to / Copy to* on a card.
   Add, rename, recolour, re-role, sort, reorder and delete groups. A **Compact** toggle fits more cards per column.
+- **Several rosters** — separate rosters for Solo/Duo, Flex, Clash or ARAM: click the roster name to switch, create
+  (one group per role, empty, or a copy), rename or delete. Builds, matchups and notes are shared by every roster.
+- **Multi-select** — Ctrl+click / Shift+click cards (Ctrl+A for all), then move, copy, rate, prioritise or remove them
+  together from the selection bar; dragging a selected card moves the whole selection.
+- **Pool sorting** — A–Z, newest first or by class; **Hide rostered** shows only champions not yet in a group.
+- **Save as image** — the whole roster board as a PNG to share.
+- **Card preview** — hover a roster card to see the build that opens first for that group's role (runes, core items,
+  spells).
+- **Edge scrolling** — while dragging, the board and columns scroll near and past their edges, faster the further out.
 - **Proficiency & priority per placement** — 1–5 stars and Main / Secondary / Pocket / Learning, separately for each
   group (great Pantheon support, weak Pantheon top). Hover a card and press **1–5** to rate it (0 clears); click the
   priority label to change it.
@@ -67,6 +76,10 @@ It never restarts on its own, and your data is untouched by updates.
 - **Suggested bans** — the champions that counter the most of your champions in scope (Mains weigh most; champions you
   have answers to rank lower), with the reasons and notes on hover.
 - **Champions library** — every champion with roster/build/matchup badges; filter by role, class, your tags.
+- **Patch review** — builds whose items changed or were removed (or whose runes no longer exist) since they were saved
+  are listed after a patch, with a banner on Rosters; open each one or mark it reviewed (with Undo).
+- **Compare** — two champions (or two builds of one) side by side: runes, items, spells, skill order, roster
+  placements, matchups and a head-to-head from your notes. From a champion's page or Ctrl+K.
 - **Notes & tags** per champion. Champion, build and matchup notes support light formatting: `- bullets`,
   `[ ] checkboxes` (tick them without editing) and `**bold**`; Enter continues a list and **Ctrl+B** toggles bold.
 - **Full screen** — F11 or the ⤢ caption button; leave with **Esc**, **F11** or *Exit full screen* in the title bar
@@ -83,6 +96,11 @@ It never restarts on its own, and your data is untouched by updates.
   monitor it was on is gone, the window opens centred on the main screen. **Enter** in a search box opens or adds the
   first result.
 - **Zoom** — 80–150 % (**Ctrl+=**, **Ctrl+-**, **Ctrl+0** or *Settings → Display*).
+- **Pick up where you left off** — optionally reopen the last page and champion at startup (*Settings → Display*;
+  off by default, so the app starts on Rosters).
+- **What's new** after each update (from [CHANGELOG.md](CHANGELOG.md); also under *Settings → About*).
+- **Saved ✓** in the title bar after each change; **Reduce motion** in *Settings → Display* (no animations or glow).
+- **Troubleshooting** — *Copy diagnostic info* (Windows user name hidden) and *Open logs folder* in Settings.
 
 ### Keyboard shortcuts
 
@@ -99,6 +117,7 @@ It never restarts on its own, and your data is untouched by updates.
 | Ctrl+Tab | Next tab on a champion page |
 | Ctrl+← / Ctrl+→ | Previous / next champion in the list it was opened from |
 | Ctrl+B, Enter, Esc (in notes) | Bold, continue a list, finish editing |
+| Ctrl+click, Shift+click, Ctrl+A | Select roster cards (then 0–5 rates, Delete removes, Esc clears) |
 
 ## Data storage
 
@@ -108,13 +127,24 @@ Everything is local to each copy of the app, in the `data` folder **of the folde
 | Path | Content |
 |---|---|
 | `data\roster.db` | SQLite database (groups, placements, builds, matchups, notes, preferences) |
-| `data\backups\` | Automatic daily backups and safety backups taken before an import |
+| `data\backups\` | Automatic daily backups, safety backups taken before an import, and `before-upgrade-*.db` copies of the database taken before an update changes its format (last 5 kept) |
 | `data\cache\` | Downloaded game data and images (safe to delete; re-downloaded). *Settings* shows its size and can clear the images. |
 | `data\logs\` | Daily rolling logs (10 days) |
 
 If the application folder isn't writable (e.g. under Program Files), `%LOCALAPPDATA%\RosterControl` is used instead.
 `RosterControl.exe --data <folder>` stores data elsewhere. Copy the `data` folder (with the app closed) to move your
 rosters, or use **Settings → Export**.
+
+### Updates and your data
+
+Updates never touch `data\`. When a new version changes the database format, it upgrades your existing data in place
+on first start (nothing is re-entered or lost) and first saves the previous database as
+`data\backups\before-upgrade-<date>.db`. To go back to an older version, close the app and copy that file over
+`data\roster.db`. Backups exported by any version can be imported by any later version, and an older copy of the app
+warns if it opens data written by a newer one.
+
+Every release is tested against databases and backups from each earlier release (`tests/RosterControl.Tests/UpgradeTests.cs`);
+a new database migration fails the tests until it's added there.
 
 ### Caching and patches
 

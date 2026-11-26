@@ -157,6 +157,28 @@ namespace RosterControl.Data.Migrations
                     b.ToTable("Preferences", (string)null);
                 });
 
+            modelBuilder.Entity("RosterControl.Core.Model.Roster", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Rosters", (string)null);
+                });
+
             modelBuilder.Entity("RosterControl.Core.Model.RosterEntry", b =>
                 {
                     b.Property<int>("Id")
@@ -214,10 +236,15 @@ namespace RosterControl.Data.Migrations
                     b.Property<int?>("Role")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("RosterId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("RosterId");
 
                     b.ToTable("RosterGroups", (string)null);
                 });
@@ -227,6 +254,15 @@ namespace RosterControl.Data.Migrations
                     b.HasOne("RosterControl.Core.Model.RosterGroup", null)
                         .WithMany("Entries")
                         .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RosterControl.Core.Model.RosterGroup", b =>
+                {
+                    b.HasOne("RosterControl.Core.Model.Roster", null)
+                        .WithMany()
+                        .HasForeignKey("RosterId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

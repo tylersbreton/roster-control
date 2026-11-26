@@ -70,6 +70,9 @@ public static class Dnd
 
     public static bool IsDragging => _session?.Active == true;
 
+    /// <summary>Keys held during the click that ran the current <c>ClickCommand</c> (Ctrl/Shift-click to select).</summary>
+    public static KeyModifiers LastClickModifiers { get; private set; }
+
     /// <summary>Recent drag events (diagnostics for tests).</summary>
     internal static readonly List<string> Diagnostics = [];
 
@@ -192,7 +195,15 @@ public static class Dnd
             if (e.InitialPressMouseButton == MouseButton.Left && GetClickCommand(s.Source) is { } command)
             {
                 var parameter = s.Source.DataContext;
-                if (command.CanExecute(parameter)) command.Execute(parameter);
+                LastClickModifiers = e.KeyModifiers;
+                try
+                {
+                    if (command.CanExecute(parameter)) command.Execute(parameter);
+                }
+                finally
+                {
+                    LastClickModifiers = KeyModifiers.None;
+                }
             }
         }
     }
@@ -371,32 +382,70 @@ public static class Dnd
         }
     }
 
+    // Edge scrolling: within EdgeZone of a scroll area's edge it scrolls, faster the closer to (and further past) the edge.
+    private const double EdgeZone = 48, MinStep = 4, StepPerPixel = 0.45, MaxStep = 38;
+
+    /// <summary>Runs every 40 ms while dragging: scrolls the scroll area under (or just left by) the pointer.</summary>
     private static void AutoScroll(Session s)
     {
         if (!s.Active) return;
-        var hit = s.Root.InputHitTest(s.LastPosition) as Visual;
-        var scroller = hit?.FindAncestorOfType<ScrollViewer>(includeSelf: true);
-        while (scroller is not null)
+        var pos = s.LastPosition;
+        // The pointer may be outside the window (the drag keeps the capture): look at the nearest point inside it.
+        var size = s.Root.Bounds.Size;
+        var probe = new Point(Math.Clamp(pos.X, 2, Math.Max(2, size.Width - 2)), Math.Clamp(pos.Y, 2, Math.Max(2, size.Height - 2)));
+        var hit = s.Root.InputHitTest(probe) as Visual;
+        var remembered = false;
+        for (var scroller = hit?.FindAncestorOfType<ScrollViewer>(includeSelf: true); scroller is not null;
+             scroller = scroller.GetVisualParent()?.FindAncestorOfType<ScrollViewer>(includeSelf: true))
         {
-            var p = s.Root.TranslatePoint(s.LastPosition, scroller);
-            if (p is { } local)
+            var scrollable = scroller.Extent.Height > scroller.Viewport.Height || scroller.Extent.Width > scroller.Viewport.Width;
+            if (!remembered && scrollable && s.Root.TranslatePoint(pos, scroller) is { } inside
+                && inside.X >= 0 && inside.Y >= 0 && inside.X <= scroller.Bounds.Width && inside.Y <= scroller.Bounds.Height)
             {
-                const double edge = 36, step = 14;
-                var dy = local.Y < edge ? -step : local.Y > scroller.Bounds.Height - edge ? step : 0;
-                var dx = local.X < edge ? -step : local.X > scroller.Bounds.Width - edge ? step : 0;
-                var canV = scroller.Extent.Height > scroller.Viewport.Height && dy != 0;
-                var canH = scroller.Extent.Width > scroller.Viewport.Width && dx != 0;
-                if (canV || canH)
-                {
-                    scroller.Offset = new Vector(
-                        Math.Clamp(scroller.Offset.X + (canH ? dx : 0), 0, Math.Max(0, scroller.Extent.Width - scroller.Viewport.Width)),
-                        Math.Clamp(scroller.Offset.Y + (canV ? dy : 0), 0, Math.Max(0, scroller.Extent.Height - scroller.Viewport.Height)));
-                    Update(s);
-                    return;
-                }
+                s.ScrollTarget = scroller; // the innermost scroll area the pointer is in
+                remembered = true;
             }
-            scroller = scroller.GetVisualParent()?.FindAncestorOfType<ScrollViewer>(includeSelf: true);
+            if (TryScroll(s, scroller, pos, requireInside: false))
+            {
+                s.ScrollTarget = scroller;
+                return;
+            }
         }
+        // Dragged just past a column (e.g. over its header): keep scrolling the area it came from.
+        if (s.ScrollTarget is { } last && last.IsEffectivelyVisible) TryScroll(s, last, pos, requireInside: true);
+    }
+
+    /// <param name="requireInside">Only scroll along an axis when the pointer is within the area's span on the other axis.</param>
+    private static bool TryScroll(Session s, ScrollViewer scroller, Point pos, bool requireInside)
+    {
+        if (s.Root.TranslatePoint(pos, scroller) is not { } local) return false;
+        var bounds = scroller.Bounds.Size;
+        var dy = Speed(local.Y, bounds.Height);
+        var dx = Speed(local.X, bounds.Width);
+        if (requireInside)
+        {
+            if (local.X < 0 || local.X > bounds.Width) dy = 0;
+            if (local.Y < 0 || local.Y > bounds.Height) dx = 0;
+        }
+        var maxX = Math.Max(0, scroller.Extent.Width - scroller.Viewport.Width);
+        var maxY = Math.Max(0, scroller.Extent.Height - scroller.Viewport.Height);
+        var canV = dy != 0 && maxY > 0 && (dy < 0 ? scroller.Offset.Y > 0 : scroller.Offset.Y < maxY);
+        var canH = dx != 0 && maxX > 0 && (dx < 0 ? scroller.Offset.X > 0 : scroller.Offset.X < maxX);
+        if (!canV && !canH) return false;
+        scroller.Offset = new Vector(
+            Math.Clamp(scroller.Offset.X + (canH ? dx : 0), 0, maxX),
+            Math.Clamp(scroller.Offset.Y + (canV ? dy : 0), 0, maxY));
+        Update(s);
+        return true;
+    }
+
+    /// <summary>Scroll step for one axis: negative near/before the start, positive near/after the end, 0 in between.</summary>
+    public static double Speed(double position, double length)
+    {
+        if (length <= EdgeZone * 2) return 0;
+        if (position < EdgeZone) return -Math.Min(MaxStep, MinStep + (EdgeZone - position) * StepPerPixel);
+        if (position > length - EdgeZone) return Math.Min(MaxStep, MinStep + (position - (length - EdgeZone)) * StepPerPixel);
+        return 0;
     }
 
     private static void End(Session s)
@@ -469,5 +518,7 @@ public static class Dnd
         public List<Control> Highlighted { get; } = [];
         public List<(InputElement Element, bool WasSet, Cursor? Cursor)> SavedCursors { get; } = [];
         public DispatcherTimer? ScrollTimer { get; set; }
+        /// <summary>The scroll area last scrolled by this drag (keeps scrolling when the pointer slips just past it).</summary>
+        public ScrollViewer? ScrollTarget { get; set; }
     }
 }

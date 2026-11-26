@@ -3,10 +3,33 @@ namespace RosterControl.Core.Model;
 // Persistent user data. These are plain classes; the Data project maps them with EF Core (SQLite).
 // Champions, items, runes and spells are referenced by their stable Data Dragon identifiers.
 
+/// <summary>
+/// A named set of roster groups, e.g. "Solo/Duo", "Flex" or "ARAM". Builds, matchups, notes and tags belong to the
+/// champion and are shared by every roster.
+/// </summary>
+public sealed class Roster
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public int SortOrder { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>How a new roster starts.</summary>
+public enum RosterTemplate
+{
+    /// <summary>One group per role (Top, Jungle, Middle, Bottom, Support).</summary>
+    Roles,
+    Empty,
+    /// <summary>A copy of another roster's groups and placements.</summary>
+    Copy,
+}
+
 /// <summary>A named group of champions (by default one per role).</summary>
 public sealed class RosterGroup
 {
     public int Id { get; set; }
+    public int RosterId { get; set; }
     public string Name { get; set; } = "";
     /// <summary>Optional role the group represents (drives the group icon and the role of new builds).</summary>
     public Position? Role { get; set; }

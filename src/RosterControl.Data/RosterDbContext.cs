@@ -15,6 +15,7 @@ public sealed class RosterDbContext(DbContextOptions<RosterDbContext> options) :
 {
     internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.General);
 
+    public DbSet<Roster> Rosters => Set<Roster>();
     public DbSet<RosterGroup> Groups => Set<RosterGroup>();
     public DbSet<RosterEntry> Entries => Set<RosterEntry>();
     public DbSet<ChampionProfile> Profiles => Set<ChampionProfile>();
@@ -24,9 +25,18 @@ public sealed class RosterDbContext(DbContextOptions<RosterDbContext> options) :
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        b.Entity<Roster>(e =>
+        {
+            e.ToTable("Rosters");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(60).IsRequired();
+            e.HasMany<RosterGroup>().WithOne().HasForeignKey(x => x.RosterId).OnDelete(DeleteBehavior.Cascade);
+        });
+
         b.Entity<RosterGroup>(e =>
         {
             e.ToTable("RosterGroups");
+            e.HasIndex(x => x.RosterId);
             e.HasKey(x => x.Id);
             e.Property(x => x.Name).HasMaxLength(80).IsRequired();
             e.Property(x => x.Color).HasMaxLength(9);
