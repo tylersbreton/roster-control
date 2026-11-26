@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:RosterControl.Desktop.ViewModels"
              xmlns:c="using:RosterControl.Desktop.Controls"
+             xmlns:v="using:RosterControl.Desktop.Views"
              x:Class="RosterControl.Desktop.Views.SpellsSkillsView"
              x:DataType="vm:SpellsSkillsViewModel">
   <ScrollViewer>
@@ -144,10 +145,13 @@
                     <StackPanel Orientation="Horizontal">
                       <Grid Width="196" ColumnDefinitions="Auto,*,Auto">
                         <ToolTip.Tip>
-                          <StackPanel Spacing="4" MaxWidth="340">
-                            <TextBlock Text="{Binding AbilityName}" FontWeight="Bold" Foreground="{StaticResource Brush.GoldLight}" />
-                            <TextBlock c:RiotText.Markup="{Binding AbilityDescription}" TextWrapping="Wrap" Classes="secondary" />
-                          </StackPanel>
+                          <Panel MaxWidth="420">
+                            <v:AbilityDetailView DataContext="{Binding Detail}" IsVisible="{Binding $parent[Panel].((vm:SkillRowViewModel)DataContext).HasDetail}" />
+                            <StackPanel Spacing="4" IsVisible="{Binding !HasDetail}">
+                              <TextBlock Text="{Binding AbilityName}" FontWeight="Bold" Foreground="{StaticResource Brush.GoldLight}" />
+                              <TextBlock c:RiotText.Markup="{Binding AbilityDescription}" TextWrapping="Wrap" Classes="secondary" />
+                            </StackPanel>
+                          </Panel>
                         </ToolTip.Tip>
                         <Panel Width="30" Height="30">
                           <c:AssetImage Source="{Binding IconUrl}" Width="30" Height="30" CornerRadius="4" FallbackText="{Binding Key}" Ring="{Binding Accent}" RingThickness="1" />
@@ -185,7 +189,10 @@
             <TextBlock Text="Outlined cells break the usual rank limits (basic abilities: max rank ≤ half your level; ultimate at 6 / 11 / 16)." Classes="caption" Foreground="{StaticResource Brush.Warning}" />
           </StackPanel>
 
-          <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding HasPassive}">
+          <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding HasPassive}" Background="Transparent">
+            <ToolTip.Tip>
+              <v:AbilityDetailView DataContext="{Binding PassiveDetail}" MaxWidth="420" />
+            </ToolTip.Tip>
             <c:AssetImage Source="{Binding PassiveIconUrl}" Width="24" Height="24" CornerRadius="4" />
             <TextBlock Text="{Binding Passive.Name, FallbackValue=''}" VerticalAlignment="Center" FontSize="12" Classes="secondary" />
             <TextBlock Text="(passive)" VerticalAlignment="Center" Classes="caption" />

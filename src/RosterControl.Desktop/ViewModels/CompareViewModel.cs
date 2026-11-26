@@ -172,6 +172,7 @@ public sealed partial class CompareSideViewModel : ObservableObject
     [ObservableProperty] private IReadOnlyList<CompareIcon> _spells = [];
     [ObservableProperty] private string _skillOrder = "";
     [ObservableProperty] private string _runeTrees = "";
+    [ObservableProperty] private string _coreTotals = "";
 
     public bool HasPlacements => Placements.Count > 0;
     public bool HasGood => Good.Count > 0;
@@ -223,7 +224,7 @@ public sealed partial class CompareSideViewModel : ObservableObject
         {
             PrimaryRunes = SecondaryRunes = Shards = Spells = [];
             Blocks = [];
-            SkillOrder = RuneTrees = "";
+            SkillOrder = RuneTrees = CoreTotals = "";
             return;
         }
         var runes = build.Runes;
@@ -235,6 +236,7 @@ public sealed partial class CompareSideViewModel : ObservableObject
         Blocks = build.Items.Blocks.Where(b => b.Items.Count > 0).Select(b => new CompareBlock(b.Name,
             b.Items.Select(id => new CompareIcon(AssetUrls.Item(Game.Item(id) is null ? build.GameVersion ?? Game.Version : Game.Version, id), Game.Item(id)?.Name ?? $"Removed item {id}")).ToList())).ToList();
         Spells = build.SummonerSpells.Select(Game.Spell).OfType<SummonerSpellInfo>().Select(s => new CompareIcon(AssetUrls.Spell(Game.Version, s.ImageFile), s.Name)).ToList();
+        CoreTotals = ItemStats.Core(build, Game) is { } totals ? "Core: " + totals.Summary(8) : "";
         var order = SkillOrderRules.MaxOrder(build.SkillOrder);
         SkillOrder = order.Count == 0 ? "" : "Max " + string.Join(" › ", order);
     }

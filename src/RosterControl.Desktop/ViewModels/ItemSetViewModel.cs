@@ -29,6 +29,16 @@ public sealed partial class ItemSetViewModel : ObservableObject, IDropTarget
         foreach (var b in data.Blocks) Blocks.Add(new ItemBlockViewModel(this, b.Name, b.Items));
         SelectedBlock = Blocks.FirstOrDefault(b => b.Items.Count == 0) ?? Blocks.FirstOrDefault();
         Shop = new ItemShopViewModel(game, this, shell?.Preferences);
+        RefreshCore();
+    }
+
+    /// <summary>Marks the core block (as <see cref="BuildSelection.CoreBlock"/> picks it) and sums its stats.</summary>
+    private void RefreshCore()
+    {
+        var core = Blocks.FirstOrDefault(b => b.Name.Contains("core", StringComparison.OrdinalIgnoreCase) && b.Items.Count > 0)
+                   ?? Blocks.FirstOrDefault(b => b.Items.Count > 0);
+        foreach (var b in Blocks)
+            b.CoreTotals = ReferenceEquals(b, core) ? ItemStats.Sum(b.Items.Select(i => i.ItemId), _game) : null;
     }
 
     // ── Whole-set actions (with Undo) ─────────────────────────────────────────────────────────────
@@ -156,6 +166,7 @@ public sealed partial class ItemSetViewModel : ObservableObject, IDropTarget
         OnPropertyChanged(nameof(ItemCount));
         OnPropertyChanged(nameof(HasMissingItems));
         NotifyChanges();
+        RefreshCore();
         _changed();
     }
 
@@ -253,6 +264,15 @@ public sealed partial class ItemBlockViewModel : ObservableObject, IDropTarget
 
     [ObservableProperty]
     private bool _isSelected;
+
+    /// <summary>Gold and combined stats, set on the build's core block only (the one summarised in previews).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCore), nameof(CoreStats), nameof(HasCoreStats))]
+    private BuildTotals? _coreTotals;
+
+    public bool IsCore => CoreTotals is not null;
+    public IReadOnlyList<StatTotal> CoreStats => CoreTotals?.Stats ?? [];
+    public bool HasCoreStats => CoreStats.Count > 0;
 
     partial void OnNameChanged(string value) => _owner.Commit();
 

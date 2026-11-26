@@ -227,11 +227,35 @@ public static class GameDataParser
                 if (index >= slots.Length) break;
                 var img = sp.TryGetProperty("image", out var si) ? Str(si, "full") ?? "" : "";
                 var maxRank = sp.TryGetProperty("maxrank", out var mr) && mr.TryGetInt32(out var r) ? r : slots[index] == 'R' ? 3 : 5;
-                abilities.Add(new AbilityInfo(slots[index], Str(sp, "name") ?? slots[index].ToString(), Str(sp, "description") ?? "", AssetUrls.Spell(version, img), maxRank));
+                abilities.Add(new AbilityInfo(slots[index], Str(sp, "name") ?? slots[index].ToString(), Str(sp, "description") ?? "", AssetUrls.Spell(version, img), maxRank,
+                    CooldownText(Str(sp, "cooldownBurn")), CostText(sp, Str(champ, "partype")), RangeText(Str(sp, "rangeBurn"))));
                 index++;
             }
         }
         return new ChampionAbilities(championId, abilities);
+    }
+
+    internal static string CooldownText(string? burn) => string.IsNullOrWhiteSpace(burn) || burn.Trim() == "0" ? "" : burn.Trim() + "s";
+
+    /// <summary>The cost line, e.g. "80/85/90/95/100 Mana". Data Dragon's <c>resource</c> is a template like "{{ cost }} {{ abilityresourcename }}".</summary>
+    internal static string CostText(JsonElement spell, string? resourceName)
+    {
+        var burn = Str(spell, "costBurn")?.Trim() ?? "0";
+        var resource = (Str(spell, "resource") ?? "").Trim();
+        var name = string.IsNullOrWhiteSpace(resourceName) || resourceName == "None" ? "" : resourceName.Trim();
+        if (resource.Length == 0) return burn == "0" ? "" : $"{burn} {name}".Trim();
+        if (resource.Equals("No Cost", StringComparison.OrdinalIgnoreCase)) return "No cost";
+        var text = resource.Replace("{{ cost }}", burn, StringComparison.Ordinal).Replace("{{ abilityresourcename }}", name, StringComparison.Ordinal).Trim();
+        if (text.Contains("{{", StringComparison.Ordinal))
+            text = burn == "0" ? "" : $"{burn} {name}".Trim(); // other placeholders (e.g. mana per second) aren't published
+        return text == "0" || text.StartsWith("0 ", StringComparison.Ordinal) && burn == "0" ? "No cost" : text;
+    }
+
+    internal static string RangeText(string? burn)
+    {
+        if (string.IsNullOrWhiteSpace(burn) || burn.Trim() == "0") return "";
+        var parts = burn.Trim().Split('/');
+        return parts.All(p => double.TryParse(p, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && v >= 20000) ? "Global" : burn.Trim();
     }
 
     private static string? Str(JsonElement e, string name) =>

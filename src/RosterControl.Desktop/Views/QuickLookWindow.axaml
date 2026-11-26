@@ -1,0 +1,220 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:RosterControl.Desktop.ViewModels"
+        xmlns:v="using:RosterControl.Desktop.Views"
+        xmlns:c="using:RosterControl.Desktop.Controls"
+        x:Class="RosterControl.Desktop.Views.QuickLookWindow"
+        x:DataType="vm:QuickLookViewModel"
+        Title="Quick look · Roster Control"
+        Icon="avares://RosterControl/Assets/roster.ico"
+        Width="440" Height="700" MinWidth="360" MinHeight="380"
+        FontFamily="{StaticResource Font.UI}"
+        Background="{StaticResource Brush.AppBackground}"
+        Topmost="{Binding IsPinned}">
+  <Grid RowDefinitions="Auto,*">
+
+    <!-- ── Search, pin, open in app ─────────────────────────────────────────────────── -->
+    <Border Padding="12,12,12,10" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="6">
+        <Grid ColumnDefinitions="*,Auto,Auto">
+          <TextBox Name="SearchBox" Classes="search" Text="{Binding Search}" PlaceholderText="Champion… (Enter picks the first)"
+                   c:InputHelpers.EnterCommand="{Binding PickFirstCommand}" />
+          <ToggleButton Grid.Column="1" Classes="chip" IsChecked="{Binding IsPinned}" Margin="8,0,0,0" Height="30"
+                        ToolTip.Tip="Keep this window on top of other windows (works over the game in borderless mode)">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <c:LucideIcon Kind="layers" Width="13" Height="13" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+              <TextBlock Text="On top" FontSize="12" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+            </StackPanel>
+          </ToggleButton>
+          <Button Grid.Column="2" Classes="ghost icon" Width="30" Height="30" Margin="4,0,0,0" Command="{Binding OpenInAppCommand}" IsEnabled="{Binding HasChampion}"
+                  ToolTip.Tip="Open this champion in Roster Control">
+            <c:LucideIcon Kind="external-link" Width="15" Height="15" />
+          </Button>
+        </Grid>
+        <!-- Search results -->
+        <ItemsControl ItemsSource="{Binding Results}" IsVisible="{Binding HasResults}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:QuickLookResult">
+              <Button Classes="plain" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="6,4"
+                      Command="{Binding $parent[Window].((vm:QuickLookViewModel)DataContext).PickCommand}" CommandParameter="{Binding}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <c:AssetImage Source="{Binding IconUrl}" Width="26" Height="26" CornerRadius="4" Zoom="1.08" />
+                  <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="13" />
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
+    <ScrollViewer Grid.Row="1">
+      <StackPanel Margin="14,12,14,16" Spacing="14">
+
+        <!-- Nothing picked yet -->
+        <StackPanel Spacing="8" IsVisible="{Binding ShowIntro}" Margin="0,24,0,0" HorizontalAlignment="Center" MaxWidth="320">
+          <c:LucideIcon Kind="search" Width="30" Height="30" Foreground="{StaticResource Brush.GoldDark}" HorizontalAlignment="Center" />
+          <TextBlock Text="Type a champion to see your build" Classes="title" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+          <TextBlock Text="Runes, items, summoner spells and skill order, at a glance during champ select." Classes="secondary" TextAlignment="Center" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding ShortcutHint}" Classes="caption" TextAlignment="Center" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <!-- Champion and build switcher -->
+        <StackPanel Spacing="10" IsVisible="{Binding HasChampion}">
+          <Grid ColumnDefinitions="Auto,*">
+            <c:AssetImage Source="{Binding PortraitUrl}" Width="46" Height="46" CornerRadius="7" Zoom="1.08" Ring="{StaticResource Brush.GoldDark}" RingThickness="1" />
+            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Spacing="1">
+              <TextBlock Text="{Binding ChampionName}" FontWeight="Bold" FontSize="17" Foreground="{StaticResource Brush.GoldLight}" />
+              <TextBlock Text="{Binding ChampionTitle}" Classes="caption" />
+            </StackPanel>
+          </Grid>
+          <ItemsControl ItemsSource="{Binding Builds}" IsVisible="{Binding HasSeveralBuilds}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="5" LineSpacing="5" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:QuickLookBuildChoice">
+                <Button Classes="chip" Classes.selected="{Binding IsSelected}"
+                        Command="{Binding $parent[Window].((vm:QuickLookViewModel)DataContext).SelectBuildCommand}" CommandParameter="{Binding}">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <c:LucideIcon Kind="star" Width="11" Height="11" Foreground="{StaticResource Brush.Gold}" Fill="{StaticResource Brush.Gold}" IsVisible="{Binding IsDefault}" VerticalAlignment="Center" />
+                    <c:AssetImage Source="{Binding RoleIconUrl}" Width="13" Height="13" IsVisible="{Binding HasRole}" ShowPlaceholder="False" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Name}" FontSize="12" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Border Classes="card" Padding="14,12" IsVisible="{Binding HasNoBuilds}">
+            <StackPanel Spacing="8">
+              <TextBlock Text="{Binding ChampionName, StringFormat='No builds for {0} yet.'}" Classes="secondary" TextWrapping="Wrap" />
+              <Button Classes="small" Command="{Binding OpenInAppCommand}" HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <c:LucideIcon Kind="plus" Width="13" Height="13" />
+                  <TextBlock Text="Add one in Roster Control" FontSize="12" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- Runes -->
+        <StackPanel Spacing="8" IsVisible="{Binding HasRunes}">
+          <TextBlock Text="RUNES" Classes="overline" />
+          <Grid ColumnDefinitions="Auto,*">
+            <c:AssetImage Source="{Binding KeystoneUrl}" Width="46" Height="46" CornerRadius="23" ShowPlaceholder="True" VerticalAlignment="Top" />
+            <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="6">
+              <StackPanel Spacing="0">
+                <TextBlock Text="{Binding KeystoneName}" FontWeight="SemiBold" FontSize="13" />
+                <TextBlock Text="{Binding RuneTrees}" Classes="caption" />
+              </StackPanel>
+              <ItemsControl ItemsSource="{Binding PrimaryRunes}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="5" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:CompareIcon">
+                    <c:AssetImage Source="{Binding Url}" Width="28" Height="28" CornerRadius="14" ShowPlaceholder="True" ToolTip.Tip="{Binding Tip}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <ItemsControl ItemsSource="{Binding SecondaryRunes}">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="5" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CompareIcon">
+                      <c:AssetImage Source="{Binding Url}" Width="24" Height="24" CornerRadius="12" ShowPlaceholder="True" ToolTip.Tip="{Binding Tip}" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <ItemsControl ItemsSource="{Binding Shards}" VerticalAlignment="Center">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CompareIcon">
+                      <c:AssetImage Source="{Binding Url}" Width="18" Height="18" CornerRadius="9" ShowPlaceholder="True" ToolTip.Tip="{Binding Tip}" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+
+        <!-- Items -->
+        <StackPanel Spacing="8" IsVisible="{Binding HasBlocks}">
+          <TextBlock Text="ITEMS" Classes="overline" />
+          <ItemsControl ItemsSource="{Binding Blocks}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:QuickLookBlock">
+                <StackPanel Spacing="4">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="{Binding Name}" Classes="caption" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <Border Classes="pill" Padding="5,0" IsVisible="{Binding IsCore}" VerticalAlignment="Center">
+                      <TextBlock Text="CORE" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Brush.Gold}" />
+                    </Border>
+                  </StackPanel>
+                  <ItemsControl ItemsSource="{Binding Items}">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="4" LineSpacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:CompareIcon">
+                        <Border Classes="itemframe" ToolTip.Tip="{Binding Tip}">
+                          <c:AssetImage Source="{Binding Url}" Width="34" Height="34" CornerRadius="2" FallbackText="?" />
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Text="{Binding CoreTotals}" FontSize="12" Foreground="{StaticResource Brush.Gold}" TextWrapping="Wrap" IsVisible="{Binding HasCoreTotals}"
+                     ToolTip.Tip="Gold and stats of the core block" />
+        </StackPanel>
+
+        <!-- Spells and skill order -->
+        <StackPanel Spacing="8" IsVisible="{Binding HasBuilds}">
+          <TextBlock Text="SPELLS &amp; SKILLS" Classes="overline" />
+          <StackPanel Orientation="Horizontal" Spacing="14">
+            <ItemsControl ItemsSource="{Binding Spells}" IsVisible="{Binding HasSpells}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CompareIcon">
+                  <c:AssetImage Source="{Binding Url}" Width="32" Height="32" CornerRadius="4" ToolTip.Tip="{Binding Tip}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <!-- Max order with ability icons (hover for the ability's numbers) -->
+            <ItemsControl ItemsSource="{Binding MaxOrder}" VerticalAlignment="Center">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:QuickLookMaxStep">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Panel Width="30" Height="30" Background="Transparent">
+                      <ToolTip.Tip>
+                        <v:AbilityDetailView DataContext="{Binding Ability}" MaxWidth="400" />
+                      </ToolTip.Tip>
+                      <c:AssetImage Source="{Binding IconUrl}" Width="30" Height="30" CornerRadius="4" FallbackText="{Binding Key}" Ring="{Binding Accent}" RingThickness="1" />
+                      <Border CornerRadius="3" Background="#E6060A11" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-3,0,0,-3" Padding="3,0">
+                        <TextBlock Text="{Binding Key}" FontSize="10" FontWeight="Bold" Foreground="{Binding Accent}" />
+                      </Border>
+                    </Panel>
+                    <TextBlock Text="›" Classes="secondary" VerticalAlignment="Center" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+          <!-- Levels 1–18 -->
+          <ItemsControl ItemsSource="{Binding SkillCells}" IsVisible="{Binding HasSkillOrder}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="3" LineSpacing="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:QuickLookSkillCell">
+                <Border Width="19" Height="22" CornerRadius="3" BorderBrush="{Binding Accent}" BorderThickness="1" Background="#0A0F17" ToolTip.Tip="{Binding Tip}">
+                  <TextBlock Text="{Binding Text}" FontSize="11" FontWeight="Bold" Foreground="{Binding Accent}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</Window>

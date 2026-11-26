@@ -24,6 +24,7 @@ public sealed class GameDataService : IGameDataService
     private readonly ILogger<GameDataService> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly ConcurrentDictionary<string, Task<ChampionAbilities?>> _abilities = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, Task<AbilityNumbers?>> _abilityNumbers = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, Task<IReadOnlyDictionary<string, ItemInfo>?>> _itemsByVersion = new();
 
     public GameDataService(GameDataClient client, IAssetCache assets, ILogger<GameDataService> logger)
@@ -53,6 +54,7 @@ public sealed class GameDataService : IGameDataService
             Current = snapshot;
             Status = new GameDataStatus(snapshot.Version, GameDataSource.StartupCache, DateTimeOffset.Now, warnings);
             _abilities.Clear();
+            _abilityNumbers.Clear();
             _logger.LogInformation("Game data {Version} loaded from cache for a fast start", snapshot.Version);
             return snapshot;
         }
@@ -125,6 +127,7 @@ public sealed class GameDataService : IGameDataService
             Current = snapshot;
             Status = new GameDataStatus(snapshot.Version, source, DateTimeOffset.Now, warnings);
             _abilities.Clear();
+            _abilityNumbers.Clear();
             _logger.LogInformation("Game data {Version} loaded ({Source}): {Champions} champions ({New} new), {Items} shop items, {Trees} rune paths, {Shards} shard rows",
                 snapshot.Version, source, snapshot.Champions.Count, snapshot.NewChampionIds.Count, snapshot.ShopItems.Count, snapshot.RuneTrees.Count, snapshot.ShardRows.Count);
             if (source == GameDataSource.Online) Prune(versions, snapshot.Version);
@@ -284,6 +287,31 @@ public sealed class GameDataService : IGameDataService
             {
                 _logger.LogWarning("Abilities for {Champion} unavailable: {Message}", id, ex.Message);
                 _abilities.TryRemove(id, out _);
+                return null;
+            }
+        })).WaitAsync(cancellationToken);
+    }
+
+    public Task<AbilityNumbers?> GetAbilityNumbersAsync(string championId, CancellationToken cancellationToken)
+    {
+        var version = Current?.Version;
+        if (version is null) return Task.FromResult<AbilityNumbers?>(null);
+        return _abilityNumbers.GetOrAdd(championId, id => Task.Run(async () =>
+        {
+            try
+            {
+                var abilities = await GetAbilitiesAsync(id, CancellationToken.None).ConfigureAwait(false);
+                var ranks = abilities?.Abilities.Where(a => a.MaxRank > 0).ToDictionary(a => a.Slot, a => a.MaxRank);
+                var (doc, patch) = await _client.GetCharacterDataAsync(id, version, CancellationToken.None).ConfigureAwait(false);
+                using (doc)
+                {
+                    return (AbilityNumbers?)new AbilityNumbers(id, patch, AbilityCalculations.Parse(doc.RootElement, ranks));
+                }
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or IOException or InvalidOperationException)
+            {
+                _logger.LogWarning("Ability numbers for {Champion} unavailable: {Message}", id, ex.Message);
+                _abilityNumbers.TryRemove(id, out _);
                 return null;
             }
         })).WaitAsync(cancellationToken);

@@ -76,7 +76,7 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <TextBlock Classes="caption" TextWrapping="Wrap" Text="Champions, items, runes and spells come from Riot's Data Dragon; stat shards and rune page art from Community Dragon; champion positions from Meraki Analytics (all public and keyless). The app opens from the local cache, then checks for a new patch in the background (and every 2 hours). Patch data and icons are cached per patch (the newest 3 are kept); splash and rune art is re-checked weekly. Builds saved on an older patch flag items that changed since." />
+            <TextBlock Classes="caption" TextWrapping="Wrap" Text="Champions, items, runes and spells come from Riot's Data Dragon; stat shards, rune page art and ability numbers (from the game files) from Community Dragon; champion positions from Meraki Analytics (all public and keyless). The app opens from the local cache, then checks for a new patch in the background (and every 2 hours). Patch data and icons are cached per patch (the newest 3 are kept); splash and rune art is re-checked weekly. Builds saved on an older patch flag items that changed since." />
             <StackPanel Orientation="Horizontal" Spacing="8">
               <c:LucideIcon Kind="hard-drive" Width="13" Height="13" Foreground="{StaticResource Brush.TextMuted}" VerticalAlignment="Center" />
               <TextBlock Text="{Binding CacheText}" Classes="caption" VerticalAlignment="Center" />
@@ -170,6 +170,39 @@
         </Grid>
       </Border>
 
+      <!-- Quick look -->
+      <Border Classes="card" Padding="18,16">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Brush.TealSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
+            <c:LucideIcon Kind="eye" Width="18" Height="18" Foreground="{StaticResource Brush.Teal}" />
+          </Border>
+          <StackPanel Grid.Column="1" Spacing="8">
+            <TextBlock Text="Quick look" Classes="title" />
+            <TextBlock Classes="secondary" TextWrapping="Wrap"
+                       Text="A small always-on-top window with one champion's build: runes, items, summoner spells and skill order. Open it from a champion page, a roster card's right-click menu, Ctrl+K, or the shortcut below from any app (e.g. during champ select)." />
+            <CheckBox Content="Global shortcut opens quick look from anywhere" IsChecked="{Binding Shell.QuickLookHotkeyEnabled}" />
+            <StackPanel Orientation="Horizontal" Spacing="8" IsEnabled="{Binding Shell.QuickLookHotkeyEnabled}">
+              <Button Classes="small" Command="{Binding Shell.RecordHotkeyCommand}" MinWidth="150" ToolTip.Tip="Click, then press the new shortcut">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <c:LucideIcon Kind="keyboard" Width="13" Height="13" />
+                  <TextBlock Text="{Binding Shell.HotkeyButtonText}" FontSize="12" FontFamily="Consolas, Cascadia Mono, monospace" />
+                </StackPanel>
+              </Button>
+              <Button Classes="ghost small" Command="{Binding Shell.ResetHotkeyCommand}">
+                <TextBlock Text="Reset" FontSize="12" Classes="secondary" />
+              </Button>
+              <Button Classes="ghost small" Command="{Binding OpenQuickLookCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <c:LucideIcon Kind="external-link" Width="13" Height="13" />
+                  <TextBlock Text="Open quick look" FontSize="12" Classes="secondary" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+            <TextBlock Text="{Binding Shell.HotkeyStatus}" IsVisible="{Binding Shell.HasHotkeyStatus}" FontSize="12" Foreground="{StaticResource Brush.Warning}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
       <!-- Keyboard -->
       <Border Classes="card" Padding="18,16">
         <Grid ColumnDefinitions="Auto,*">
@@ -178,7 +211,7 @@
           </Border>
           <StackPanel Grid.Column="1" Spacing="8">
             <TextBlock Text="Keyboard shortcuts" Classes="title" />
-            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
               <TextBlock Grid.Row="0" Text="Ctrl+K" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
               <TextBlock Grid.Row="0" Grid.Column="1" Text="Search champions, pages and actions" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
               <TextBlock Grid.Row="1" Text="Ctrl+1 … 4" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
@@ -205,6 +238,8 @@
               <TextBlock Grid.Row="11" Grid.Column="1" Text="Select roster cards (then 0–5 rates, Delete removes, Esc clears)" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
               <TextBlock Grid.Row="12" Text="Ctrl+B · Enter · Esc (notes)" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
               <TextBlock Grid.Row="12" Grid.Column="1" Text="Bold · continue a list · finish editing" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="13" Text="{Binding Shell.QuickLookHotkey}" IsVisible="{Binding Shell.QuickLookHotkeyEnabled}" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="13" Grid.Column="1" Text="Show or hide quick look, from any app" IsVisible="{Binding Shell.QuickLookHotkeyEnabled}" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
             </Grid>
           </StackPanel>
         </Grid>

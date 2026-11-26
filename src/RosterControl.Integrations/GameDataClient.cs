@@ -71,6 +71,36 @@ public sealed class GameDataClient
         return GetCachedAsync(new Uri(CommunityDragonBase, file), path, maxAge, ct);
     }
 
+    public static readonly Uri CommunityDragonLatest = new("https://raw.communitydragon.org/latest/");
+    private static readonly TimeSpan CommunityDragonPatchMaxAge = TimeSpan.FromHours(6);
+
+    /// <summary>
+    /// A champion's game data (<c>{id}.bin.json</c>, ability formulas) from Community Dragon, with the game patch it
+    /// is from (e.g. "16.23"). Cached per Data Dragon version and Community Dragon patch, so it's re-downloaded once
+    /// Community Dragon catches up with a new patch.
+    /// </summary>
+    public async Task<(JsonDocument Doc, string Patch)> GetCharacterDataAsync(string championId, string version, CancellationToken ct)
+    {
+        string patch;
+        using (var meta = await GetCachedAsync(new Uri(CommunityDragonLatest, "content-metadata.json"), Path.Combine(_cacheRoot, "cdragon", "content-metadata.json"),
+                   CommunityDragonPatchMaxAge, ct).ConfigureAwait(false))
+        {
+            patch = PatchOf(meta.RootElement.TryGetProperty("version", out var v) ? v.GetString() : null) ?? "latest";
+        }
+        var id = championId.ToLowerInvariant();
+        var doc = await GetCachedAsync(new Uri(CommunityDragonLatest, $"game/data/characters/{id}/{id}.bin.json"),
+            Path.Combine(_cacheRoot, version, "cdragon-game", patch, id + ".bin.json"), maxAge: null, ct).ConfigureAwait(false);
+        return (doc, patch);
+    }
+
+    /// <summary>"16.23.8418428+branch.releases-16-23.content.release" → "16.23".</summary>
+    internal static string? PatchOf(string? contentVersion)
+    {
+        if (string.IsNullOrEmpty(contentVersion)) return null;
+        var parts = contentVersion.Split('.', '+');
+        return parts.Length >= 2 && int.TryParse(parts[0], out _) && int.TryParse(parts[1], out _) ? $"{parts[0]}.{parts[1]}" : null;
+    }
+
     /// <summary>The patch list as last downloaded (newest first), without any network access.</summary>
     public IReadOnlyList<string> ReadCachedVersions()
     {

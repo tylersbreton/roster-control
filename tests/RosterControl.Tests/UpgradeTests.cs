@@ -32,6 +32,7 @@ public class UpgradeTests
         new object[] { "1.0.0", "20261125171225_MatchupRole" },
         new object[] { "1.1.0", "20261125171225_MatchupRole" },
         new object[] { "1.2.0", "20261125212436_BuildDefault" },
+        new object[] { "1.3.0", "20261126145204_Rosters" },
     ];
 
     private string _root = "";
@@ -77,11 +78,12 @@ public class UpgradeTests
         await using var db = _factory.CreateDbContext();
         await db.GetService<IMigrator>().MigrateAsync(lastMigration);
         var hasIsDefault = string.CompareOrdinal(lastMigration, "20261125212436_BuildDefault") >= 0;
+        var hasRosters = string.CompareOrdinal(lastMigration, "20261126145204_Rosters") >= 0;
         string[] sql =
         [
             // Groups: one custom group and one role group, in a custom order and colours.
-            "INSERT INTO RosterGroups (Id, Name, Role, SortOrder, Color, CreatedAt) VALUES (3, 'Middle', 2, 1, '#6FA8F5', '2026-11-25 10:00:00+00:00')",
-            "INSERT INTO RosterGroups (Id, Name, Role, SortOrder, Color, CreatedAt) VALUES (9, 'Pocket picks', NULL, 0, '#B98CFF', '2026-11-25 10:00:00+00:00')",
+            $"INSERT INTO RosterGroups (Id, Name, Role, SortOrder, Color, CreatedAt{(hasRosters ? ", RosterId" : "")}) VALUES (3, 'Middle', 2, 1, '#6FA8F5', '2026-11-25 10:00:00+00:00'{(hasRosters ? ", 1" : "")})",
+            $"INSERT INTO RosterGroups (Id, Name, Role, SortOrder, Color, CreatedAt{(hasRosters ? ", RosterId" : "")}) VALUES (9, 'Pocket picks', NULL, 0, '#B98CFF', '2026-11-25 10:00:00+00:00'{(hasRosters ? ", 1" : "")})",
             "INSERT INTO RosterEntries (Id, GroupId, ChampionId, SortOrder, Proficiency, Priority, AddedAt) VALUES (1, 3, 'Ahri', 0, 5, 0, '2026-11-25 10:00:00+00:00')",
             "INSERT INTO RosterEntries (Id, GroupId, ChampionId, SortOrder, Proficiency, Priority, AddedAt) VALUES (2, 3, 'Syndra', 1, 2, 3, '2026-11-25 10:00:00+00:00')",
             "INSERT INTO RosterEntries (Id, GroupId, ChampionId, SortOrder, Proficiency, Priority, AddedAt) VALUES (3, 9, 'Teemo', 0, 4, 2, '2026-11-25 10:00:00+00:00')",
@@ -102,6 +104,18 @@ public class UpgradeTests
             "INSERT INTO Preferences (Key, ValueJson) VALUES ('ui.section', '0')",
             "INSERT INTO Preferences (Key, ValueJson) VALUES ('rosters.pool', '{\"Search\":\"ah\",\"Role\":2,\"Class\":\"Mage\"}')",
         ];
+        if (hasRosters)
+        {
+            // 1.3: a second roster with its own group (1.3 writes RosterId explicitly; the column has no default after the table rebuild).
+            sql =
+            [
+                .. sql,
+                "INSERT INTO Rosters (Id, Name, SortOrder, CreatedAt) VALUES (2, 'Clash', 1, '2026-11-26 10:00:00+00:00')",
+                "INSERT INTO RosterGroups (Id, Name, Role, SortOrder, Color, CreatedAt, RosterId) VALUES (12, 'Top', 0, 0, NULL, '2026-11-26 10:00:00+00:00', 2)",
+                "INSERT INTO RosterEntries (Id, GroupId, ChampionId, SortOrder, Proficiency, Priority, AddedAt) VALUES (4, 12, 'Garen', 0, 3, 1, '2026-11-26 10:00:00+00:00')",
+                "INSERT INTO Preferences (Key, ValueJson) VALUES ('roster.active', '1')",
+            ];
+        }
         var connection = db.Database.GetDbConnection();
         await connection.OpenAsync();
         foreach (var statement in sql)
@@ -122,11 +136,20 @@ public class UpgradeTests
         // Schema is current, and the old database was kept.
         await using (var db = _factory.CreateDbContext())
             Assert.That(await db.Database.GetPendingMigrationsAsync(), Is.Empty);
-        Assert.That(repo.UpgradeBackupPath, Is.Not.Null.And.Matches<string>(File.Exists), "a copy of the old database is saved before upgrading");
+        if (lastMigration == Migrations[^1])
+            Assert.That(repo.UpgradeBackupPath, Is.Null, "same schema: nothing to upgrade, so no copy");
+        else
+            Assert.That(repo.UpgradeBackupPath, Is.Not.Null.And.Matches<string>(File.Exists), "a copy of the old database is saved before upgrading");
         Assert.That(repo.DatabaseFromNewerVersion, Is.False);
 
         // Groups and placements, in order, inside the first roster.
-        Assert.That((await repo.GetRostersAsync()).Select(r => r.Name), Is.EqualTo(new[] { "My roster" }));
+        var hasRosters = string.CompareOrdinal(lastMigration, "20261126145204_Rosters") >= 0;
+        Assert.That((await repo.GetRostersAsync()).Select(r => r.Name), Is.EqualTo(hasRosters ? new[] { "My roster", "Clash" } : new[] { "My roster" }));
+        if (hasRosters)
+        {
+            var clash = await repo.GetGroupsAsync(2);
+            Assert.That(clash.Single().Entries.Single().ChampionId, Is.EqualTo("Garen"), "other rosters keep their groups");
+        }
         var groups = await repo.GetGroupsAsync();
         Assert.That(groups.Select(g => (g.Name, g.Role, g.Color)), Is.EqualTo(new[]
         {
@@ -155,7 +178,7 @@ public class UpgradeTests
         Assert.That(standard.SummonerSpells, Is.EqualTo(new[] { "SummonerFlash", "SummonerDot" }));
         Assert.That(standard.SkillOrder, Is.EqualTo("QWEQQRQWQW"));
         Assert.That(standard.Notes, Is.EqualTo("- poke with Q\n[x] ward river"));
-        Assert.That(standard.IsDefault, Is.EqualTo(version == "1.2.0"), "the default flag is kept where it existed");
+        Assert.That(standard.IsDefault, Is.EqualTo(version is not ("1.0.0" or "1.1.0")), "the default flag is kept where it existed");
         Assert.That(builds[1].Runes.PrimaryPerks, Is.EqualTo(new[] { 0, 0, 0, 0 }), "empty JSON gets the defaults");
 
         // Matchups, notes, tags and preferences.

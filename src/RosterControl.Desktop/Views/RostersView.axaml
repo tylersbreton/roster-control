@@ -362,6 +362,7 @@
                                         </DataTemplate>
                                       </ItemsControl.ItemTemplate>
                                     </ItemsControl>
+                                    <TextBlock Text="{Binding CoreText}" FontSize="11.5" Foreground="{StaticResource Brush.Gold}" TextWrapping="Wrap" MaxWidth="300" HorizontalAlignment="Left" IsVisible="{Binding HasCoreText}" />
                                     <ItemsControl ItemsSource="{Binding Spells}" IsVisible="{Binding HasSpells}">
                                       <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                       <ItemsControl.ItemTemplate>
@@ -378,6 +379,7 @@
                                 <ContextMenu Opening="OnCardMenuOpening">
                                   <MenuItem Header="Open builds" Command="{Binding OpenCommand}"><MenuItem.Icon><c:LucideIcon Kind="book-open" /></MenuItem.Icon></MenuItem>
                                   <MenuItem Header="Open matchups" Command="{Binding OpenMatchupsCommand}"><MenuItem.Icon><c:LucideIcon Kind="swords" /></MenuItem.Icon></MenuItem>
+                                  <MenuItem Header="Quick look (always on top)" Command="{Binding QuickLookCommand}"><MenuItem.Icon><c:LucideIcon Kind="eye" /></MenuItem.Icon></MenuItem>
                                   <Separator />
                                   <MenuItem Header="Main" Command="{Binding SetPriorityCommand}" CommandParameter="{x:Static m:ChampionPriority.Main}" />
                                   <MenuItem Header="Secondary" Command="{Binding SetPriorityCommand}" CommandParameter="{x:Static m:ChampionPriority.Secondary}" />

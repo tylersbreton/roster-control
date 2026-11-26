@@ -76,10 +76,24 @@ public sealed partial class SpellsSkillsViewModel : ObservableObject
         if (abilities is null) return;
         Passive = abilities['P'];
         foreach (var row in SkillRows) row.Ability = abilities[row.Slot];
+        AbilityDetails = abilities.Abilities.Select(a => new AbilityDetailViewModel(a)).ToList();
+        foreach (var row in SkillRows) row.Detail = AbilityDetails.FirstOrDefault(d => d.Slot == row.Slot);
+        PassiveDetail = AbilityDetails.FirstOrDefault(d => d.Slot == 'P');
         _basicMaxRank = abilities['Q']?.MaxRank is > 0 and var q ? q : 5;
         _ultimateMaxRank = abilities['R']?.MaxRank is > 0 and var r ? r : 3;
         RefreshSkills();
     }
+
+    /// <summary>Damage etc. per rank from the game files, shown in the ability tooltips.</summary>
+    public void SetNumbers(AbilityNumbers? numbers) => AbilitiesViewModel.Apply(AbilityDetails, numbers);
+
+    public IReadOnlyList<AbilityDetailViewModel> AbilityDetails { get; private set; } = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPassiveDetail))]
+    private AbilityDetailViewModel? _passiveDetail;
+
+    public bool HasPassiveDetail => PassiveDetail is not null;
 
     [RelayCommand]
     private void SelectSlot(SpellSlotViewModel slot) => ActiveSlot = slot;
@@ -240,6 +254,12 @@ public sealed partial class SkillRowViewModel : ObservableObject
     [ObservableProperty]
     private string _rankText = "";
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDetail))]
+    private AbilityDetailViewModel? _detail;
+
+    public bool HasDetail => Detail is not null;
+
     public string? IconUrl => Ability?.ImageUrl;
     public bool HasIcon => Ability is not null;
     public string AbilityName => Ability?.Name ?? Key;
@@ -362,6 +382,7 @@ public sealed partial class BuildViewModel : ObservableObject
     {
         var abilities = await _shell.GameData.GetAbilitiesAsync(Model.ChampionId, CancellationToken.None);
         spells.SetAbilities(abilities);
+        if (abilities is not null) spells.SetNumbers(await _shell.GameData.GetAbilityNumbersAsync(Model.ChampionId, CancellationToken.None));
     }
 
     [ObservableProperty]

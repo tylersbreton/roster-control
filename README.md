@@ -51,6 +51,13 @@ It never restarts on its own, and your data is untouched by updates.
 - **Proficiency & priority per placement** — 1–5 stars and Main / Secondary / Pocket / Learning, separately for each
   group (great Pantheon support, weak Pantheon top). Hover a card and press **1–5** to rate it (0 clears); click the
   priority label to change it.
+- **Quick look** — a small always-on-top window with one champion's build (runes, items, spells, skill order) and a
+  switcher for your builds, for a glance during champ select. Open it from anywhere with **Ctrl+Shift+Space**
+  (changeable or off in *Settings → Quick look*), from a champion's page, a roster card's right-click menu or Ctrl+K.
+  You pick the champion yourself; nothing is read from the League client.
+- **Abilities** — a tab on each champion with cooldown, cost and range (Data Dragon) and damage, shields and heals per
+  rank with their ratios, read from the current patch's game files (Community Dragon). Hovering an ability in the
+  skill order shows the same numbers.
 - **Builds** — any number per champion (e.g. *Standard*, *vs AP*), each with:
   - a **rune page** laid out like the client: path icons, keystones, grayscale unselected runes, coloured selection rings,
     the client's rune-tree artwork, stat shards and full descriptions on hover. Selection rules match the client
@@ -58,7 +65,8 @@ It never restarts on its own, and your data is untouched by updates.
   - an **item set** like the client's editor: named blocks, drag items in from a shop grouped by tier (Starter, Boots,
     Basic, Epic, Legendary…), stat filters, Summoner's Rift / ARAM toggle, search with nicknames (`ie`, `bork`, `dcap`),
     gold totals and full item tooltips with the **build path** (recipe tree with component costs, combine cost) and
-    what each item **builds into**. Items removed in a later patch are flagged in red.
+    what each item **builds into**. Items removed in a later patch are flagged in red. The **core** block also shows
+    its combined stats (AD, AP, ability haste, health…), added up from the items' descriptions.
   - **summoner spells** (D/F slots) and an 18-level **skill order** grid with the champion's ability icons, rank limits,
     a "max order" summary and one-click fill (R at 6/11/16).
   - notes and a role tag.
@@ -118,6 +126,7 @@ It never restarts on its own, and your data is untouched by updates.
 | Ctrl+← / Ctrl+→ | Previous / next champion in the list it was opened from |
 | Ctrl+B, Enter, Esc (in notes) | Bold, continue a list, finish editing |
 | Ctrl+click, Shift+click, Ctrl+A | Select roster cards (then 0–5 rates, Delete removes, Esc clears) |
+| Ctrl+Shift+Space (from any app) | Show or hide quick look (changeable in Settings) |
 
 ## Data storage
 
@@ -158,6 +167,7 @@ Everything that can be cached is, but champions are occasionally added and items
 | Splash art, rune/shard/role icons (unversioned) | Re-validated after 7 days with ETag / If-Modified-Since (304 = keep); the cached copy is shown meanwhile. |
 | Stat shards (Community Dragon) | Re-downloaded whenever the patch changes, otherwise daily. |
 | Champion positions (Meraki) | Weekly, or sooner when a champion is missing (a new release; retried every 12 h until Meraki has it). |
+| Ability numbers (Community Dragon game files) | Downloaded per champion when first shown, cached per patch; Community Dragon's patch is re-checked every 6 hours, so numbers update once it has the new patch. |
 
 New champions get a **NEW** badge. Builds saved on an older patch say so in the build list, and the item editor marks
 items whose cost, stats or recipe changed since (and items removed from the game). Editing a build saves it on the

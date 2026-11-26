@@ -92,6 +92,16 @@ public class AppScreenTests
         }
     }
 
+    private static string CaptureWindow(Window window, string name)
+    {
+        WaitForImages();
+        var frame = window.CaptureRenderedFrame();
+        var path = Path.Combine(UiTestHost.ScreenshotDirectory, name + ".png");
+        frame?.Save(path);
+        TestContext.Out.WriteLine(path);
+        return path;
+    }
+
     private static string Capture(string name)
     {
         WaitForImages();
@@ -270,6 +280,10 @@ public class AppScreenTests
         var page = (ChampionDetailViewModel)Vm.CurrentPage!;
         page.SelectedBuild!.EditorTab = 1;
         Assert.That(page.SelectedBuild.Items.ItemCount, Is.EqualTo(11));
+        var core = page.SelectedBuild.Items.Blocks.Single(b => b.IsCore);
+        Assert.That(core.Name, Is.EqualTo("Core Build"), "the core block carries the totals");
+        Assert.That(core.CoreStats.Select(st => st.Name), Does.Contain("Ability Power"));
+        Assert.That(core.CoreTotals!.Gold, Is.EqualTo(core.Items.Sum(i => i.Item!.TotalGold)));
         Capture("04-champion-items");
     }
 
@@ -934,5 +948,120 @@ public class AppScreenTests
             library.OnlyRoster = false;
             library.NotInRoster = false;
         }
+    }
+
+    [AvaloniaTest, Order(34)]
+    public void Abilities_tab_shows_numbers_from_the_game_files()
+    {
+        Window();
+        Vm.OpenChampion("Ahri", ChampionTab.Abilities);
+        UiTestHost.Settle(5);
+        var page = (ChampionDetailViewModel)Vm.CurrentPage!;
+        Assert.That(page.IsAbilitiesTab, Is.True);
+        var abilities = page.Abilities;
+        for (var i = 0; i < 300 && !abilities.Abilities.Any(a => a.HasValues); i++)
+        {
+            Thread.Sleep(30);
+            UiTestHost.Settle(1);
+        }
+        Assert.That(abilities.Abilities.Select(a => a.Slot), Is.EqualTo(new[] { 'P', 'Q', 'W', 'E', 'R' }));
+        var q = abilities.Abilities.Single(a => a.Slot == 'Q');
+        Assert.That(q.Stats.Select(st => st.Label), Is.EqualTo(new[] { "Cooldown", "Cost", "Range" }));
+        Assert.That(q.Values.Select(v => v.Text), Has.Some.Contains("% AP"), "damage with its AP ratio");
+        Assert.That(abilities.Note, Does.Contain("game files"));
+        Capture("34-champion-abilities");
+
+        // The same numbers show in the skill order tooltips.
+        page.SelectedTab = (int)ChampionTab.Builds;
+        page.SelectedBuild!.EditorTab = 2;
+        var spells = page.SelectedBuild.SpellsSkills;
+        for (var i = 0; i < 200 && spells.SkillRows[0].Detail?.HasValues != true; i++)
+        {
+            Thread.Sleep(20);
+            UiTestHost.Settle(1);
+        }
+        Assert.That(spells.SkillRows[0].Detail!.Values, Is.Not.Empty);
+        page.SelectedBuild.EditorTab = 0;
+        page.SelectedTab = (int)ChampionTab.Builds;
+    }
+
+    [AvaloniaTest, Order(35)]
+    public void Quick_look_window_shows_the_default_build()
+    {
+        var window = Window();
+        Vm.OpenQuickLook("Ahri", Position.Middle);
+        UiTestHost.Settle(10);
+        var quick = Vm.QuickLook;
+        for (var i = 0; i < 200 && quick.SelectedBuild is null; i++)
+        {
+            Thread.Sleep(20);
+            UiTestHost.Settle(1);
+        }
+        var ql = window.QuickLookWindow!;
+        Assert.That(ql.IsVisible, Is.True);
+        Assert.That(ql.Topmost, Is.True, "always on top by default");
+        Assert.That(quick.ChampionName, Is.EqualTo("Ahri"));
+        var expected = BuildSelection.PickDefault(UiTestHost.Run(() => Repo.GetBuildsAsync("Ahri")), Position.Middle)!;
+        Assert.That(quick.SelectedBuild!.Build.Id, Is.EqualTo(expected.Id), "the Mid default, like opening Ahri from the Mid group");
+        Assert.That(quick.Builds, Has.Count.GreaterThan(1), "build switcher");
+
+        // Switch to the full build (the seeded default "vs Assassins" has no skill order).
+        quick.SelectBuildCommand.Execute(quick.Builds.First(b => b.Build.Name == "Standard"));
+        Assert.That(quick.SelectedBuild!.Build.Name, Is.EqualTo("Standard"));
+        for (var i = 0; i < 200 && !quick.MaxOrder.Any(m => m.HasAbility); i++)
+        {
+            Thread.Sleep(20);
+            UiTestHost.Settle(1);
+        }
+        Assert.That(quick.Blocks.Single(b => b.IsCore).Name, Is.EqualTo("Core Build"));
+        Assert.That(quick.CoreTotals, Does.Contain("gold"));
+        Assert.That(quick.SkillCells, Has.Count.EqualTo(18));
+        Assert.That(quick.MaxOrder.First().Slot, Is.EqualTo('Q'));
+        Assert.That(quick.MaxOrder.First().Ability!.Values, Is.Not.Empty, "hover shows the ability's numbers");
+        UiTestHost.Settle(5);
+        CaptureWindow(ql, "35-quick-look");
+
+        quick.Search = "lux";
+        Assert.That(quick.Results.First().Name, Is.EqualTo("Lux"));
+        UiTestHost.Run(() => quick.PickFirstCommand.ExecuteAsync(null));
+        Assert.That(quick.ChampionName, Is.EqualTo("Lux"));
+        Assert.That(quick.Builds, Has.Count.EqualTo(UiTestHost.Run(() => Repo.GetBuildsAsync("Lux")).Count));
+        Assert.That(quick.Search, Is.Empty);
+        ql.Hide();
+        Window();
+    }
+
+    [AvaloniaTest, Order(36)]
+    public void Quick_look_shortcut_can_be_changed()
+    {
+        Window();
+        Assert.That(Vm.QuickLookHotkey, Is.EqualTo(MainWindowViewModel.DefaultQuickLookHotkey));
+        Vm.RecordHotkeyCommand.Execute(null);
+        Assert.That(Vm.IsRecordingHotkey, Is.True);
+        Vm.RecordHotkeyKey(Key.LeftCtrl, KeyModifiers.Control);
+        Assert.That(Vm.IsRecordingHotkey, Is.True, "modifiers alone: still waiting");
+        Vm.RecordHotkeyKey(Key.Q, KeyModifiers.None);
+        Assert.That(Vm.HotkeyStatus, Does.Contain("Ctrl, Alt or Win"), "a shortcut needs a modifier");
+        Vm.RecordHotkeyKey(Key.F9, KeyModifiers.Control | KeyModifiers.Alt);
+        Assert.That(Vm.IsRecordingHotkey, Is.False);
+        Assert.That(Vm.QuickLookHotkey, Is.EqualTo("Ctrl+Alt+F9"));
+        Assert.That(Vm.Preferences.Get("quicklook.hotkey", ""), Is.EqualTo("Ctrl+Alt+F9"));
+        Vm.RecordHotkeyCommand.Execute(null);
+        Vm.RecordHotkeyKey(Key.Escape, KeyModifiers.None);
+        Assert.That(Vm.QuickLookHotkey, Is.EqualTo("Ctrl+Alt+F9"), "Esc cancels");
+        Vm.ResetHotkeyCommand.Execute(null);
+        Assert.That(Vm.QuickLookHotkey, Is.EqualTo("Ctrl+Shift+Space"));
+
+        Assert.That(GlobalHotkey.TryParse("Ctrl+Shift+Space", out var gesture), Is.True);
+        Assert.That(GlobalHotkey.Format(gesture), Is.EqualTo("Ctrl+Shift+Space"));
+        Assert.That(GlobalHotkey.TryParse("Q", out _), Is.False);
+        Assert.That(GlobalHotkey.TryParse("nonsense+", out _), Is.False);
+        Assert.That(GlobalHotkey.VirtualKey(Key.A), Is.EqualTo(0x41u));
+        Assert.That(GlobalHotkey.VirtualKey(Key.F1), Is.EqualTo(0x70u));
+        Assert.That(GlobalHotkey.VirtualKey(Key.D5), Is.EqualTo(0x35u));
+
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Settings));
+        Capture("36-settings-quick-look");
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
     }
 }

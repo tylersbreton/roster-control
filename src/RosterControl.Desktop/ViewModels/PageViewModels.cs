@@ -312,6 +312,12 @@ public sealed partial class SettingsViewModel : ObservableObject, IPage
 
     // ── Display options (stored by the shell) ──────────────────────────────────────────────────────
 
+    /// <summary>The shell, for settings it stores itself (e.g. the quick-look shortcut).</summary>
+    public MainWindowViewModel Shell => _main;
+
+    [RelayCommand]
+    private void OpenQuickLook() => _main.OpenQuickLook();
+
     public bool ReduceMotion
     {
         get => _main.ReduceMotion;

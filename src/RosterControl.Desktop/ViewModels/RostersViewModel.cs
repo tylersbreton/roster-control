@@ -873,6 +873,10 @@ public sealed partial class RosterEntryViewModel : ObservableObject
     [RelayCommand]
     private void OpenMatchups() => Group.Owner.Shell.OpenChampion(ChampionId, ChampionTab.Matchups, Group.Sequence);
 
+    /// <summary>The always-on-top quick-look window, with this group's default build.</summary>
+    [RelayCommand]
+    private void QuickLook() => Group.Owner.Shell.OpenQuickLook(ChampionId, Group.Role);
+
     // ── Hover preview: the build that opens first for this group's role ────────────────────────────
 
     [ObservableProperty]
@@ -913,9 +917,11 @@ public sealed record BuildPreview(
     string RuneText,
     IReadOnlyList<CompareIcon> Items,
     IReadOnlyList<CompareIcon> Spells,
-    string Footer)
+    string Footer,
+    string CoreText = "")
 {
     public bool HasItems => Items.Count > 0;
+    public bool HasCoreText => CoreText.Length > 0;
     public bool HasSpells => Spells.Count > 0;
 
     public static BuildPreview Create(GameDataSnapshot game, ChampionInfo champion, Build? build, int buildCount, Position? role)
@@ -939,6 +945,6 @@ public sealed record BuildPreview(
         return new BuildPreview(champion.Name, true, build.Name, build.IsDefault, defaultText,
             keystone is not null ? AssetUrls.Rune(keystone.IconPath) : primary is not null ? AssetUrls.Rune(primary.IconPath) : null,
             secondary is not null ? AssetUrls.Rune(secondary.IconPath) : null,
-            runeText.Length > 0 ? runeText : "No runes chosen", items, spells, footer);
+            runeText.Length > 0 ? runeText : "No runes chosen", items, spells, footer, Core.Rules.ItemStats.Core(build, game)?.Summary() ?? "");
     }
 }

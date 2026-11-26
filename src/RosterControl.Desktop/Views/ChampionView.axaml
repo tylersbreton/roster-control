@@ -141,13 +141,27 @@
           <TextBlock Text="NOTES &amp; TAGS" LetterSpacing="1.2" FontWeight="Bold" FontSize="12" Foreground="{Binding $parent[RadioButton].Foreground}" />
         </StackPanel>
       </RadioButton>
+      <RadioButton Classes="tab" GroupName="championTabs" IsChecked="{Binding IsAbilitiesTab}">
+        <StackPanel Orientation="Horizontal" Spacing="7">
+          <c:LucideIcon Kind="zap" Width="14" Height="14" Foreground="{Binding $parent[RadioButton].Foreground}" />
+          <TextBlock Text="ABILITIES" LetterSpacing="1.2" FontWeight="Bold" FontSize="12" Foreground="{Binding $parent[RadioButton].Foreground}" />
+        </StackPanel>
+      </RadioButton>
     </StackPanel>
-    <Button Grid.Column="1" Classes="small" Command="{Binding CompareCommand}" VerticalAlignment="Center" ToolTip.Tip="Compare this champion with another, side by side">
-      <StackPanel Orientation="Horizontal" Spacing="6">
-        <c:LucideIcon Kind="columns-2" Width="13" Height="13" />
-        <TextBlock Text="Compare" FontSize="12" />
-      </StackPanel>
-    </Button>
+    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+      <Button Classes="small" Command="{Binding QuickLookCommand}" ToolTip.Tip="Show this build in a small always-on-top window (e.g. next to champ select)">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <c:LucideIcon Kind="eye" Width="13" Height="13" />
+          <TextBlock Text="Quick look" FontSize="12" />
+        </StackPanel>
+      </Button>
+      <Button Classes="small" Command="{Binding CompareCommand}" ToolTip.Tip="Compare this champion with another, side by side">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <c:LucideIcon Kind="columns-2" Width="13" Height="13" />
+          <TextBlock Text="Compare" FontSize="12" />
+        </StackPanel>
+      </Button>
+    </StackPanel>
     </Grid>
 
     <!-- ── Builds ───────────────────────────────────────────────────────────────────────── -->
@@ -255,6 +269,30 @@
 
     <!-- ── Matchups ─────────────────────────────────────────────────────────────────────── -->
     <v:MatchupsView Grid.Row="2" DataContext="{Binding Matchups}" IsVisible="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).IsMatchupsTab}" />
+
+    <!-- ── Abilities ────────────────────────────────────────────────────────────────────── -->
+    <ScrollViewer Grid.Row="2" IsVisible="{Binding IsAbilitiesTab}">
+      <StackPanel DataContext="{Binding Abilities}" x:DataType="vm:AbilitiesViewModel" Spacing="10" MaxWidth="1100" HorizontalAlignment="Left" Margin="0,0,8,8">
+        <TextBlock Text="Loading abilities…" Classes="secondary" IsVisible="{Binding IsLoading}" Margin="4,4" />
+        <ItemsControl ItemsSource="{Binding Abilities}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="10" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:AbilityDetailViewModel">
+              <Border Classes="card" Padding="16,14">
+                <Grid ColumnDefinitions="Auto,*">
+                  <c:AssetImage Source="{Binding IconUrl}" Width="52" Height="52" CornerRadius="6" Ring="{Binding Accent}" RingThickness="1" FallbackText="{Binding Key}" VerticalAlignment="Top" />
+                  <v:AbilityDetailView Grid.Column="1" Margin="16,0,0,0" />
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding Note, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="4,0">
+          <c:LucideIcon Kind="info" Width="13" Height="13" Foreground="{StaticResource Brush.TextMuted}" VerticalAlignment="Top" Margin="0,1,8,0" />
+          <TextBlock Grid.Column="1" Text="{Binding Note}" Classes="caption" TextWrapping="Wrap" />
+        </Grid>
+      </StackPanel>
+    </ScrollViewer>
 
     <!-- ── Notes & tags ─────────────────────────────────────────────────────────────────── -->
     <Grid Grid.Row="2" ColumnDefinitions="*,12,340" IsVisible="{Binding IsNotesTab}">

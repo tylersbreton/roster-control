@@ -92,7 +92,23 @@ public sealed record StatShardRow(string Label, IReadOnlyList<StatShardInfo> Opt
 
 public sealed record SummonerSpellInfo(string Id, string Name, string Description, double Cooldown, string ImageFile, bool OnSummonersRift, bool OnAram);
 
-public sealed record AbilityInfo(char Slot, string Name, string Description, string ImageUrl, int MaxRank);
+/// <param name="CooldownText">Per rank, e.g. "11/10/9/8/7" (Data Dragon); empty when none.</param>
+/// <param name="CostText">e.g. "80/85/90/95/100 Mana", "No cost"; empty when unknown.</param>
+/// <param name="RangeText">e.g. "1075", "Global"; empty when none.</param>
+public sealed record AbilityInfo(char Slot, string Name, string Description, string ImageUrl, int MaxRank,
+    string CooldownText = "", string CostText = "", string RangeText = "")
+{
+    public string Key => Slot == 'P' ? "Passive" : Slot.ToString();
+}
+
+/// <summary>One number of an ability from the game files, e.g. "Total damage: 35/60/85/110/135 (+50% AP)".</summary>
+public sealed record AbilityValue(string Label, string Text);
+
+/// <summary>Ability numbers per slot (P, Q, W, E, R) from the game files, for the game patch <paramref name="Patch"/>.</summary>
+public sealed record AbilityNumbers(string ChampionId, string Patch, IReadOnlyDictionary<char, IReadOnlyList<AbilityValue>> Values)
+{
+    public IReadOnlyList<AbilityValue> this[char slot] => Values.TryGetValue(slot, out var v) ? v : [];
+}
 
 public sealed record ChampionAbilities(string ChampionId, IReadOnlyList<AbilityInfo> Abilities)
 {

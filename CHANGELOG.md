@@ -2,6 +2,12 @@
 
 What's new in each version of Roster Control. The app shows this after an update (also under Settings → About).
 
+## 1.4.0
+
+- **Quick look** — a small always-on-top window with one champion's build: runes, items, summoner spells and skill order, with a switcher for your builds. Open it from anywhere with **Ctrl+Shift+Space** (change it in Settings → Quick look), from a champion's page, a roster card's right-click menu or Ctrl+K.
+- **Abilities tab** on each champion: cooldown, cost and range, plus damage, shields and heals per rank with their ratios (e.g. 35/60/85/110/135 (+50% AP)), taken from this patch's game files. Hover an ability in the skill order to see the same numbers.
+- **Build totals** — the core block shows its combined stats (AD, AP, ability haste, health…) next to its gold cost; the card preview, Compare and quick look show them too.
+
 ## 1.3.0
 
 - **Several rosters** — keep separate rosters for Solo/Duo, Flex, Clash or ARAM. Click the roster name on the Rosters page to switch, create (one group per role, empty, or a copy of the current one), rename or delete. Builds, matchups and notes are shared by every roster.

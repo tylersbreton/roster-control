@@ -3,6 +3,7 @@
              xmlns:vm="using:RosterControl.Desktop.ViewModels"
              xmlns:c="using:RosterControl.Desktop.Controls"
              xmlns:v="using:RosterControl.Desktop.Views"
+             xmlns:r="using:RosterControl.Core.Rules"
              x:Class="RosterControl.Desktop.Views.ItemSetView"
              x:DataType="vm:ItemSetViewModel">
   <Grid ColumnDefinitions="*,14,456">
@@ -47,13 +48,17 @@
               <Border Classes="dropzone itemblock" Classes.selected="{Binding IsSelected}" c:Dnd.Target="{Binding}" c:Dnd.Orientation="Horizontal"
                       CornerRadius="8" BorderThickness="1" Padding="12,8,10,12" Tapped="OnBlockTapped">
                 <StackPanel Spacing="8">
-                  <Grid ColumnDefinitions="*,Auto,Auto">
+                  <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                     <TextBox Classes="inline" Text="{Binding Name}" FontWeight="Bold" FontSize="13" Foreground="{StaticResource Brush.GoldLight}" MaxWidth="320" HorizontalAlignment="Left" Margin="-6,0,0,0" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center" Margin="8,0" ToolTip.Tip="Total cost of this block">
+                    <Border Grid.Column="1" Classes="pill" IsVisible="{Binding IsCore}" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="6,0,0,0" Padding="6,1"
+                            ToolTip.Tip="The core block: its items are shown in previews, and its stats are added up below">
+                      <TextBlock Text="CORE" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Brush.Gold}" />
+                    </Border>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center" Margin="8,0" ToolTip.Tip="Total cost of this block">
                       <c:LucideIcon Kind="coins" Width="13" Height="13" Foreground="{StaticResource Brush.Gold}" />
                       <TextBlock Text="{Binding TotalGoldText}" FontSize="12" Foreground="{StaticResource Brush.Gold}" Classes="num" />
                     </StackPanel>
-                    <Button Grid.Column="2" Classes="ghost icon" Width="24" Height="24" ToolTip.Tip="Block options">
+                    <Button Grid.Column="3" Classes="ghost icon" Width="24" Height="24" ToolTip.Tip="Block options">
                       <c:LucideIcon Kind="ellipsis" Width="15" Height="15" />
                       <Button.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedRight">
@@ -109,6 +114,20 @@
                       </StackPanel>
                     </Border>
                   </Panel>
+                  <!-- Combined stats of the core block -->
+                  <ItemsControl ItemsSource="{Binding CoreStats}" IsVisible="{Binding HasCoreStats}" ToolTip.Tip="Stats added up from the items' descriptions (item passives not included)">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="5" LineSpacing="5" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="r:StatTotal">
+                        <Border Classes="pill" Padding="7,2">
+                          <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="{Binding ValueText}" FontSize="11.5" FontWeight="SemiBold" Foreground="{StaticResource Brush.GoldLight}" Classes="num" />
+                            <TextBlock Text="{Binding Name}" FontSize="11.5" Classes="secondary" />
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
                 </StackPanel>
               </Border>
             </DataTemplate>

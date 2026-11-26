@@ -5,6 +5,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using RosterControl.Data;
+using RosterControl.Desktop.Services;
 using RosterControl.Desktop.ViewModels;
 
 namespace RosterControl.Desktop.Views;
@@ -31,6 +32,12 @@ public partial class MainWindow : Window
     private void OnShortcutKeyDown(object? sender, KeyEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm) return;
+        if (vm.IsRecordingHotkey)
+        {
+            vm.RecordHotkeyKey(e.Key, e.KeyModifiers); // Settings → quick look shortcut: the next key combination
+            e.Handled = true;
+            return;
+        }
         if (vm.Palette.IsOpen)
         {
             OnPaletteKeyDown(sender, e);
@@ -92,6 +99,7 @@ public partial class MainWindow : Window
         if (DataContext is not MainWindowViewModel vm) return;
         vm.AttachTopLevel(() => this);
         vm.PagesReset += (_, _) => Pages.Clear();
+        vm.QuickLookRequested += (_, request) => ShowQuickLook(vm, request);
         vm.Palette.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(CommandPaletteViewModel.IsOpen) && vm.Palette.IsOpen)
@@ -112,6 +120,50 @@ public partial class MainWindow : Window
             ExitFullScreenButton.IsVisible = WindowState == WindowState.FullScreen;
             UpdateCaptionArea();
         }
+    }
+
+    // ── Quick look window and its global shortcut ──────────────────────────────────────────────────
+
+    private QuickLookWindow? _quickLook;
+    private GlobalHotkey? _hotkey;
+
+    public QuickLookWindow? QuickLookWindow => _quickLook;
+
+    private void ShowQuickLook(MainWindowViewModel vm, MainWindowViewModel.QuickLookRequest request)
+    {
+        _quickLook ??= new QuickLookWindow(_preferences ?? vm.Preferences) { DataContext = vm.QuickLook };
+        if (request.Toggle && _quickLook.IsVisible && _quickLook.IsActive)
+        {
+            _quickLook.Hide();
+            return;
+        }
+        if (!_quickLook.IsVisible) _quickLook.Show();
+        if (_quickLook.WindowState == WindowState.Minimized) _quickLook.WindowState = WindowState.Normal;
+        _quickLook.Activate();
+        if (request.FocusSearch) _quickLook.FocusSearch();
+    }
+
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+        if (DataContext is not MainWindowViewModel vm || !OperatingSystem.IsWindows() || TryGetPlatformHandle() is not { HandleDescriptor: "HWND" }) return;
+        _hotkey = new GlobalHotkey(this, vm.ToggleQuickLook);
+        vm.AttachHotkey(text =>
+        {
+            if (text is null)
+            {
+                _hotkey.Unregister();
+                return true;
+            }
+            return GlobalHotkey.TryParse(text, out var gesture) && _hotkey.Register(gesture);
+        });
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _hotkey?.Dispose();
+        _quickLook?.CloseForGood();
+        base.OnClosed(e);
     }
 
     // ── Full screen ────────────────────────────────────────────────────────────────────────────────

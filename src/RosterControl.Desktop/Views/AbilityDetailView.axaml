@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:gd="using:RosterControl.Core.GameData"
+             xmlns:c="using:RosterControl.Desktop.Controls"
+             x:Class="RosterControl.Desktop.Views.AbilityDetailView"
+             x:DataType="vm:AbilityDetailViewModel">
+  <!-- Name, cooldown / cost / range, numbers per rank, then the description -->
+  <StackPanel Spacing="7">
+    <StackPanel Orientation="Horizontal" Spacing="8">
+      <Border CornerRadius="3" Background="#E6060A11" BorderBrush="{Binding Accent}" BorderThickness="1" Padding="5,0" VerticalAlignment="Center">
+        <TextBlock Text="{Binding KeyLabel}" FontSize="10" FontWeight="Bold" Foreground="{Binding Accent}" />
+      </Border>
+      <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" Foreground="{StaticResource Brush.GoldLight}" VerticalAlignment="Center" />
+    </StackPanel>
+    <ItemsControl ItemsSource="{Binding Stats}" IsVisible="{Binding HasStats}">
+      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="12" LineSpacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:AbilityStat">
+          <StackPanel Orientation="Horizontal" Spacing="5">
+            <TextBlock Text="{Binding Label}" FontSize="11.5" Classes="secondary" />
+            <TextBlock Text="{Binding Value}" FontSize="11.5" Classes="num" />
+          </StackPanel>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    <ItemsControl ItemsSource="{Binding Values}" IsVisible="{Binding HasValues}">
+      <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="gd:AbilityValue">
+          <TextBlock TextWrapping="Wrap" FontSize="12">
+            <Run Text="{Binding Label}" Foreground="{StaticResource Brush.TextSecondary}" />
+            <Run Text="  " />
+            <Run Text="{Binding Text}" Foreground="{StaticResource Brush.GoldLight}" FontWeight="SemiBold" />
+          </TextBlock>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    <TextBlock c:RiotText.Markup="{Binding Description}" TextWrapping="Wrap" Classes="secondary" FontSize="12" />
+  </StackPanel>
+</UserControl>

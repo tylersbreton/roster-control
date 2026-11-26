@@ -171,6 +171,10 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
+                <TextBlock Text="{Binding CoreTotals}" FontSize="12" Foreground="{StaticResource Brush.Gold}" TextWrapping="Wrap"
+                           IsVisible="{Binding CoreTotals, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           ToolTip.Tip="Gold and stats of the core block, added up from the items' descriptions" />
+
                 <!-- Spells and skill order -->
                 <StackPanel Orientation="Horizontal" Spacing="10">
                   <ItemsControl ItemsSource="{Binding Spells}">

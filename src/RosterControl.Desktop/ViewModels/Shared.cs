@@ -24,6 +24,7 @@ public enum ChampionTab
     Builds = 0,
     Matchups = 1,
     Notes = 2,
+    Abilities = 3,
 }
 
 /// <summary>Application services and navigation available to every page.</summary>
@@ -63,6 +64,15 @@ public interface IShell
 
     /// <summary>Opens the side-by-side comparison (either side may be empty and picked there).</summary>
     void OpenCompare(string? leftChampionId, string? rightChampionId);
+
+    /// <summary>The always-on-top quick-look window's content.</summary>
+    QuickLookViewModel QuickLook { get; }
+
+    /// <summary>Shows the quick-look window, with <paramref name="championId"/> (default build for <paramref name="role"/>) or the search box.</summary>
+    void OpenQuickLook(string? championId = null, Position? role = null, int? buildId = null);
+
+    /// <summary>Brings the main window to the front (e.g. "Open in app" from the quick-look window).</summary>
+    void BringToFront();
 
     /// <returns>The chosen path, or null when cancelled.</returns>
     Task<string?> PickSaveFileAsync(string title, string suggestedName, string extension, string typeName);

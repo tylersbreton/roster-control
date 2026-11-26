@@ -30,6 +30,8 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
         SplashUrl = AssetUrls.ChampionCentered(champion.Id);
         SplashFallbackUrl = AssetUrls.ChampionSplash(champion.Id);
         Matchups = new MatchupsViewModel(shell, champion);
+        Abilities = new AbilitiesViewModel(shell, champion.Id);
+        if (tab == ChampionTab.Abilities) _ = Abilities.EnsureLoadedAsync();
     }
 
     public string Title => Champion.Name;
@@ -43,6 +45,7 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
     public string SplashUrl { get; }
     public string SplashFallbackUrl { get; }
     public MatchupsViewModel Matchups { get; }
+    public AbilitiesViewModel Abilities { get; }
 
     // ── Previous / next within the list the champion was opened from ─────────────────────────────
 
@@ -73,7 +76,7 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
         var shift = modifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift);
         if (ctrl && key == Avalonia.Input.Key.Tab)
         {
-            SelectedTab = (SelectedTab + (shift ? 2 : 1)) % 3;
+            SelectedTab = (SelectedTab + (shift ? TabCount - 1 : 1)) % TabCount;
             return true;
         }
         if (ctrl && !shift && key == Avalonia.Input.Key.N)
@@ -132,12 +135,20 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
     public ObservableCollection<string> UserTags { get; } = [];
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsBuildsTab), nameof(IsMatchupsTab), nameof(IsNotesTab))]
+    [NotifyPropertyChangedFor(nameof(IsBuildsTab), nameof(IsMatchupsTab), nameof(IsNotesTab), nameof(IsAbilitiesTab))]
     private int _selectedTab;
+
+    private const int TabCount = 4;
+
+    partial void OnSelectedTabChanged(int value)
+    {
+        if (value == (int)ChampionTab.Abilities) _ = Abilities.EnsureLoadedAsync();
+    }
 
     public bool IsBuildsTab { get => SelectedTab == 0; set { if (value) SelectedTab = 0; } }
     public bool IsMatchupsTab { get => SelectedTab == 1; set { if (value) SelectedTab = 1; } }
     public bool IsNotesTab { get => SelectedTab == 2; set { if (value) SelectedTab = 2; } }
+    public bool IsAbilitiesTab { get => SelectedTab == 3; set { if (value) SelectedTab = 3; } }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedBuild))]
@@ -321,6 +332,9 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
 
     [RelayCommand]
     private void Compare() => _shell.OpenCompare(Champion.Id, null);
+
+    [RelayCommand]
+    private void QuickLook() => _shell.OpenQuickLook(Champion.Id, buildId: SelectedBuild?.Model.Id);
 
     /// <summary>Selects a build by id (e.g. from a notes search result).</summary>
     public void SelectBuildById(int buildId)

@@ -40,6 +40,9 @@ public interface IGameDataService
     Task<GameDataSnapshot> LoadAsync(bool forceRefresh, IProgress<string>? progress, CancellationToken cancellationToken);
     Task<ChampionAbilities?> GetAbilitiesAsync(string championId, CancellationToken cancellationToken);
 
+    /// <summary>Damage, ratios and other ability numbers from the game files (Community Dragon). Null if unavailable.</summary>
+    Task<AbilityNumbers?> GetAbilityNumbersAsync(string championId, CancellationToken cancellationToken);
+
     /// <summary>Checks Data Dragon for a patch newer than <see cref="Current"/>. Returns it, or null (also when offline).</summary>
     Task<string?> CheckForNewPatchAsync(CancellationToken cancellationToken);
 

@@ -173,6 +173,9 @@ public sealed partial class CommandPaletteViewModel : ObservableObject
             null, "triangle-alert", () => _main.OpenPatchReview());
         yield return new PaletteItem("Compare champions", "Page · side by side", null, "columns-2", () => _main.OpenCompare(
             (_main.CurrentPage as ChampionDetailViewModel)?.Champion.Id, null));
+        yield return new PaletteItem("Quick look", (_main.QuickLookHotkeyEnabled ? _main.QuickLookHotkey + " · " : "") + "always-on-top build window", null, "eye",
+            () => _main.OpenQuickLook((_main.CurrentPage as ChampionDetailViewModel)?.Champion.Id,
+                buildId: (_main.CurrentPage as ChampionDetailViewModel)?.SelectedBuild?.Model.Id));
         yield return new PaletteItem("What's new", "Changes in recent versions", null, "sparkles", () => _main.ShowWhatsNew());
         yield return new PaletteItem("Toggle compact roster cards", "Action", null, "list", () =>
         {
