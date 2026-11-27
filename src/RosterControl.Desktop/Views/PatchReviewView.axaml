@@ -26,11 +26,11 @@
           <DataTemplate x:DataType="vm:ReviewEntry">
             <Border Classes="card" Padding="14,12" MinWidth="760">
               <Grid ColumnDefinitions="Auto,*,Auto">
-                <c:AssetImage Source="{Binding PortraitUrl}" Width="44" Height="44" CornerRadius="7" Zoom="1.08" Ring="{StaticResource Brush.GoldDark}" RingThickness="1" VerticalAlignment="Top" />
+                <c:AssetImage Source="{Binding PortraitUrl}" Width="44" Height="44" CornerRadius="7" Zoom="1.08" Ring="{DynamicResource Brush.GoldDark}" RingThickness="1" VerticalAlignment="Top" />
                 <StackPanel Grid.Column="1" Margin="14,0,12,0" Spacing="6">
                   <StackPanel Spacing="1">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                      <TextBlock Text="{Binding ChampionName}" FontWeight="Bold" FontSize="14" Foreground="{StaticResource Brush.GoldLight}" />
+                      <TextBlock Text="{Binding ChampionName}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource Brush.GoldLight}" />
                       <TextBlock Text="·" Classes="secondary" />
                       <TextBlock Text="{Binding BuildName}" FontWeight="SemiBold" />
                     </StackPanel>
@@ -46,10 +46,10 @@
                               <c:AssetImage Source="{Binding ItemIconUrl}" Width="20" Height="20" CornerRadius="2" FallbackText="?" />
                             </Border>
                             <c:LucideIcon Kind="{Binding Icon}" Width="14" Height="14" IsVisible="{Binding !HasItemIcon}"
-                                          Foreground="{StaticResource Brush.Bad}" />
+                                          Foreground="{DynamicResource Brush.Bad}" />
                           </Panel>
                           <TextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap" FontSize="12.5" VerticalAlignment="Center"
-                                     Foreground="{StaticResource Brush.Warning}" Classes.removal="{Binding IsRemoval}" />
+                                     Foreground="{DynamicResource Brush.Warning}" Classes.removal="{Binding IsRemoval}" />
                         </Grid>
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
@@ -58,8 +58,8 @@
                 <StackPanel Grid.Column="2" Spacing="6" VerticalAlignment="Top">
                   <Button Classes="primary small" Command="{Binding $parent[UserControl].((vm:PatchReviewViewModel)DataContext).OpenBuildCommand}" CommandParameter="{Binding}" HorizontalAlignment="Stretch">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                      <c:LucideIcon Kind="external-link" Width="13" Height="13" Foreground="{StaticResource Brush.GoldLight}" />
-                      <TextBlock Text="Open build" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" />
+                      <c:LucideIcon Kind="external-link" Width="13" Height="13" Foreground="{DynamicResource Brush.GoldLight}" />
+                      <TextBlock Text="Open build" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" />
                     </StackPanel>
                   </Button>
                   <Button Classes="ghost small" Command="{Binding $parent[UserControl].((vm:PatchReviewViewModel)DataContext).MarkReviewedCommand}" CommandParameter="{Binding}" HorizontalAlignment="Stretch">
@@ -79,7 +79,7 @@
     <!-- Nothing to review -->
     <Border Grid.Row="1" Classes="card" VerticalAlignment="Top" Padding="24,28" MaxWidth="560" HorizontalAlignment="Left" IsVisible="{Binding !State.HasEntries}">
       <StackPanel Spacing="10" HorizontalAlignment="Center">
-        <c:LucideIcon Kind="circle-check" Width="34" Height="34" Foreground="{StaticResource Brush.Good}" HorizontalAlignment="Center" IsVisible="{Binding !IsScanning}" />
+        <c:LucideIcon Kind="circle-check" Width="34" Height="34" Foreground="{DynamicResource Brush.Good}" HorizontalAlignment="Center" IsVisible="{Binding !IsScanning}" />
         <TextBlock Text="{Binding EmptyText}" Classes="title" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" IsVisible="{Binding !IsScanning}" />
         <TextBlock Text="Checking your builds against this patch…" Classes="secondary" HorizontalAlignment="Center" IsVisible="{Binding IsScanning}" />
       </StackPanel>

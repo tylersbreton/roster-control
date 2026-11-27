@@ -117,6 +117,11 @@ public sealed partial class QuickLookViewModel : ObservableObject
     [RelayCommand]
     private void SelectBuild(QuickLookBuildChoice choice) => SelectedBuild = choice;
 
+    /// <summary>The shown build's items as a League client item set, for pasting in the client.</summary>
+    [RelayCommand]
+    private Task CopyItemSetAsync() =>
+        SelectedBuild?.Build is { } build && Champion is { } champion ? ItemSetClipboard.CopyAsync(_shell, build, champion) : Task.CompletedTask;
+
     /// <summary>Shows a champion: the build <paramref name="buildId"/>, else the default for <paramref name="role"/>.</summary>
     public async Task ShowChampionAsync(string championId, Position? role = null, int? buildId = null)
     {

@@ -9,12 +9,12 @@
         Icon="avares://RosterControl/Assets/roster.ico"
         Width="440" Height="700" MinWidth="360" MinHeight="380"
         FontFamily="{StaticResource Font.UI}"
-        Background="{StaticResource Brush.AppBackground}"
+        Background="{DynamicResource Brush.AppBackground}"
         Topmost="{Binding IsPinned}">
   <Grid RowDefinitions="Auto,*">
 
     <!-- ── Search, pin, open in app ─────────────────────────────────────────────────── -->
-    <Border Padding="12,12,12,10" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="0,0,0,1">
+    <Border Padding="12,12,12,10" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="0,0,0,1">
       <StackPanel Spacing="6">
         <Grid ColumnDefinitions="*,Auto,Auto">
           <TextBox Name="SearchBox" Classes="search" Text="{Binding Search}" PlaceholderText="Champion… (Enter picks the first)"
@@ -54,7 +54,7 @@
 
         <!-- Nothing picked yet -->
         <StackPanel Spacing="8" IsVisible="{Binding ShowIntro}" Margin="0,24,0,0" HorizontalAlignment="Center" MaxWidth="320">
-          <c:LucideIcon Kind="search" Width="30" Height="30" Foreground="{StaticResource Brush.GoldDark}" HorizontalAlignment="Center" />
+          <c:LucideIcon Kind="search" Width="30" Height="30" Foreground="{DynamicResource Brush.GoldDark}" HorizontalAlignment="Center" />
           <TextBlock Text="Type a champion to see your build" Classes="title" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
           <TextBlock Text="Runes, items, summoner spells and skill order, at a glance during champ select." Classes="secondary" TextAlignment="Center" TextWrapping="Wrap" />
           <TextBlock Text="{Binding ShortcutHint}" Classes="caption" TextAlignment="Center" TextWrapping="Wrap" />
@@ -63,9 +63,9 @@
         <!-- Champion and build switcher -->
         <StackPanel Spacing="10" IsVisible="{Binding HasChampion}">
           <Grid ColumnDefinitions="Auto,*">
-            <c:AssetImage Source="{Binding PortraitUrl}" Width="46" Height="46" CornerRadius="7" Zoom="1.08" Ring="{StaticResource Brush.GoldDark}" RingThickness="1" />
+            <c:AssetImage Source="{Binding PortraitUrl}" Width="46" Height="46" CornerRadius="7" Zoom="1.08" Ring="{DynamicResource Brush.GoldDark}" RingThickness="1" />
             <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Spacing="1">
-              <TextBlock Text="{Binding ChampionName}" FontWeight="Bold" FontSize="17" Foreground="{StaticResource Brush.GoldLight}" />
+              <TextBlock Text="{Binding ChampionName}" FontWeight="Bold" FontSize="17" Foreground="{DynamicResource Brush.GoldLight}" />
               <TextBlock Text="{Binding ChampionTitle}" Classes="caption" />
             </StackPanel>
           </Grid>
@@ -76,7 +76,7 @@
                 <Button Classes="chip" Classes.selected="{Binding IsSelected}"
                         Command="{Binding $parent[Window].((vm:QuickLookViewModel)DataContext).SelectBuildCommand}" CommandParameter="{Binding}">
                   <StackPanel Orientation="Horizontal" Spacing="5">
-                    <c:LucideIcon Kind="star" Width="11" Height="11" Foreground="{StaticResource Brush.Gold}" Fill="{StaticResource Brush.Gold}" IsVisible="{Binding IsDefault}" VerticalAlignment="Center" />
+                    <c:LucideIcon Kind="star" Width="11" Height="11" Foreground="{DynamicResource Brush.Gold}" Fill="{DynamicResource Brush.Gold}" IsVisible="{Binding IsDefault}" VerticalAlignment="Center" />
                     <c:AssetImage Source="{Binding RoleIconUrl}" Width="13" Height="13" IsVisible="{Binding HasRole}" ShowPlaceholder="False" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding Name}" FontSize="12" VerticalAlignment="Center" />
                   </StackPanel>
@@ -139,7 +139,16 @@
 
         <!-- Items -->
         <StackPanel Spacing="8" IsVisible="{Binding HasBlocks}">
-          <TextBlock Text="ITEMS" Classes="overline" />
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="ITEMS" Classes="overline" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Classes="ghost small" Command="{Binding CopyItemSetCommand}" Name="QuickLookCopyItemSet"
+                    ToolTip.Tip="Copy as League item set: paste it in the client (Collection → Items → import) to see this build in the in-game shop">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <c:LucideIcon Kind="shopping-bag" Width="12" Height="12" />
+                <TextBlock Text="Copy item set" FontSize="11.5" />
+              </StackPanel>
+            </Button>
+          </Grid>
           <ItemsControl ItemsSource="{Binding Blocks}">
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
@@ -148,7 +157,7 @@
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <TextBlock Text="{Binding Name}" Classes="caption" FontWeight="SemiBold" VerticalAlignment="Center" />
                     <Border Classes="pill" Padding="5,0" IsVisible="{Binding IsCore}" VerticalAlignment="Center">
-                      <TextBlock Text="CORE" FontSize="9" FontWeight="Bold" Foreground="{StaticResource Brush.Gold}" />
+                      <TextBlock Text="CORE" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource Brush.Gold}" />
                     </Border>
                   </StackPanel>
                   <ItemsControl ItemsSource="{Binding Items}">
@@ -165,7 +174,7 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-          <TextBlock Text="{Binding CoreTotals}" FontSize="12" Foreground="{StaticResource Brush.Gold}" TextWrapping="Wrap" IsVisible="{Binding HasCoreTotals}"
+          <TextBlock Text="{Binding CoreTotals}" FontSize="12" Foreground="{DynamicResource Brush.Gold}" TextWrapping="Wrap" IsVisible="{Binding HasCoreTotals}"
                      ToolTip.Tip="Gold and stats of the core block" />
         </StackPanel>
 
@@ -192,7 +201,7 @@
                         <v:AbilityDetailView DataContext="{Binding Ability}" MaxWidth="400" />
                       </ToolTip.Tip>
                       <c:AssetImage Source="{Binding IconUrl}" Width="30" Height="30" CornerRadius="4" FallbackText="{Binding Key}" Ring="{Binding Accent}" RingThickness="1" />
-                      <Border CornerRadius="3" Background="#E6060A11" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-3,0,0,-3" Padding="3,0">
+                      <Border CornerRadius="3" Background="{DynamicResource Brush.Scrim}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-3,0,0,-3" Padding="3,0">
                         <TextBlock Text="{Binding Key}" FontSize="10" FontWeight="Bold" Foreground="{Binding Accent}" />
                       </Border>
                     </Panel>
@@ -207,7 +216,7 @@
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="3" LineSpacing="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:QuickLookSkillCell">
-                <Border Width="19" Height="22" CornerRadius="3" BorderBrush="{Binding Accent}" BorderThickness="1" Background="#0A0F17" ToolTip.Tip="{Binding Tip}">
+                <Border Width="19" Height="22" CornerRadius="3" BorderBrush="{Binding Accent}" BorderThickness="1" Background="{DynamicResource Brush.SurfaceDeep}" ToolTip.Tip="{Binding Tip}">
                   <TextBlock Text="{Binding Text}" FontSize="11" FontWeight="Bold" Foreground="{Binding Accent}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
               </DataTemplate>

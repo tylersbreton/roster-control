@@ -158,7 +158,7 @@ public sealed class AssetImage : Control
             }
             else if (ShowPlaceholder)
             {
-                context.FillRectangle(PlaceholderBrush, rect);
+                context.FillRectangle(this.TryFindResource("Brush.Placeholder", ActualThemeVariant, out var ph) && ph is IBrush phBrush ? phBrush : PlaceholderBrush, rect);
                 if (!string.IsNullOrEmpty(FallbackText))
                 {
                     var text = new FormattedText(FallbackText[..Math.Min(2, FallbackText.Length)].ToUpperInvariant(), System.Globalization.CultureInfo.InvariantCulture,

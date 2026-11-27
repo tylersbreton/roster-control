@@ -25,6 +25,7 @@ public sealed class GameDataService : IGameDataService
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly ConcurrentDictionary<string, Task<ChampionAbilities?>> _abilities = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, Task<AbilityNumbers?>> _abilityNumbers = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, Task<RuneNumbers?>> _runeNumbers = new();
     private readonly ConcurrentDictionary<string, Task<IReadOnlyDictionary<string, ItemInfo>?>> _itemsByVersion = new();
 
     public GameDataService(GameDataClient client, IAssetCache assets, ILogger<GameDataService> logger)
@@ -312,6 +313,29 @@ public sealed class GameDataService : IGameDataService
             {
                 _logger.LogWarning("Ability numbers for {Champion} unavailable: {Message}", id, ex.Message);
                 _abilityNumbers.TryRemove(id, out _);
+                return null;
+            }
+        })).WaitAsync(cancellationToken);
+    }
+
+    public Task<RuneNumbers?> GetRuneNumbersAsync(CancellationToken cancellationToken)
+    {
+        var version = Current?.Version;
+        if (version is null) return Task.FromResult<RuneNumbers?>(null);
+        return _runeNumbers.GetOrAdd(version, v => Task.Run(async () =>
+        {
+            try
+            {
+                var (doc, patch) = await _client.GetPerkDataAsync(v, CancellationToken.None).ConfigureAwait(false);
+                using (doc)
+                {
+                    return (RuneNumbers?)new RuneNumbers(patch, AbilityCalculations.ParsePerks(doc.RootElement));
+                }
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or IOException or InvalidOperationException)
+            {
+                _logger.LogWarning("Rune numbers unavailable: {Message}", ex.Message);
+                _runeNumbers.TryRemove(v, out _);
                 return null;
             }
         })).WaitAsync(cancellationToken);

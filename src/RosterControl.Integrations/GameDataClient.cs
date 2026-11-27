@@ -81,16 +81,28 @@ public sealed class GameDataClient
     /// </summary>
     public async Task<(JsonDocument Doc, string Patch)> GetCharacterDataAsync(string championId, string version, CancellationToken ct)
     {
-        string patch;
-        using (var meta = await GetCachedAsync(new Uri(CommunityDragonLatest, "content-metadata.json"), Path.Combine(_cacheRoot, "cdragon", "content-metadata.json"),
-                   CommunityDragonPatchMaxAge, ct).ConfigureAwait(false))
-        {
-            patch = PatchOf(meta.RootElement.TryGetProperty("version", out var v) ? v.GetString() : null) ?? "latest";
-        }
+        var patch = await CommunityDragonPatchAsync(ct).ConfigureAwait(false);
         var id = championId.ToLowerInvariant();
         var doc = await GetCachedAsync(new Uri(CommunityDragonLatest, $"game/data/characters/{id}/{id}.bin.json"),
             Path.Combine(_cacheRoot, version, "cdragon-game", patch, id + ".bin.json"), maxAge: null, ct).ConfigureAwait(false);
         return (doc, patch);
+    }
+
+    /// <summary>Rune game data (formulas of Electrocute, Grasp…), cached per Data Dragon version and game patch.</summary>
+    public async Task<(JsonDocument Doc, string Patch)> GetPerkDataAsync(string version, CancellationToken ct)
+    {
+        var patch = await CommunityDragonPatchAsync(ct).ConfigureAwait(false);
+        var doc = await GetCachedAsync(new Uri(CommunityDragonLatest, "game/perks.cdtb.bin.json"),
+            Path.Combine(_cacheRoot, version, "cdragon-game", patch, "perks.cdtb.bin.json"), maxAge: null, ct).ConfigureAwait(false);
+        return (doc, patch);
+    }
+
+    /// <summary>The game patch Community Dragon's "latest" currently holds (re-checked every few hours).</summary>
+    private async Task<string> CommunityDragonPatchAsync(CancellationToken ct)
+    {
+        using var meta = await GetCachedAsync(new Uri(CommunityDragonLatest, "content-metadata.json"), Path.Combine(_cacheRoot, "cdragon", "content-metadata.json"),
+            CommunityDragonPatchMaxAge, ct).ConfigureAwait(false);
+        return PatchOf(meta.RootElement.TryGetProperty("version", out var v) ? v.GetString() : null) ?? "latest";
     }
 
     /// <summary>"16.23.8418428+branch.releases-16-23.content.release" → "16.23".</summary>

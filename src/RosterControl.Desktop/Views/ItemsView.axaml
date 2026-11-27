@@ -1,0 +1,142 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:c="using:RosterControl.Desktop.Controls"
+             xmlns:v="using:RosterControl.Desktop.Views"
+             x:Class="RosterControl.Desktop.Views.ItemsView"
+             x:DataType="vm:ItemsViewModel">
+  <Grid RowDefinitions="Auto,Auto,*">
+    <Grid ColumnDefinitions="*,Auto" Margin="2,2,0,12">
+      <StackPanel Spacing="3">
+        <TextBlock Text="ITEMS" Classes="heading" />
+        <TextBlock Text="Every shop item with its gold efficiency and the builds of yours that use it. Click an item for details." Classes="caption" />
+      </StackPanel>
+      <Border Grid.Column="1" Classes="pill" VerticalAlignment="Center">
+        <TextBlock Text="{Binding CountText}" FontSize="11" Classes="secondary num" />
+      </Border>
+    </Grid>
+
+    <Border Grid.Row="1" Classes="card" Padding="12,10" Margin="0,0,0,12">
+      <StackPanel Spacing="8">
+        <WrapPanel ItemSpacing="10" LineSpacing="8">
+          <TextBox Classes="search" Width="260" PlaceholderText="Search items… (Enter selects)" Text="{Binding Search}" c:InputHelpers.EnterCommand="{Binding SelectFirstCommand}" Name="ItemSearch" />
+          <ComboBox ItemsSource="{Binding TierOptions}" SelectedItem="{Binding SelectedTier}" MinWidth="130" VerticalAlignment="Center" ToolTip.Tip="Item tier" />
+          <ComboBox ItemsSource="{Binding MapOptions}" SelectedItem="{Binding SelectedMap}" MinWidth="150" VerticalAlignment="Center" ToolTip.Tip="Map" />
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <c:LucideIcon Kind="arrow-up-down" Width="13" Height="13" Foreground="{DynamicResource Brush.TextMuted}" />
+            <ComboBox ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort}" MinWidth="150" ToolTip.Tip="Sort items" />
+          </StackPanel>
+          <ToggleButton Classes="chip" IsChecked="{Binding OnlyInBuilds}" VerticalAlignment="Center" Height="30" ToolTip.Tip="Only items used in at least one of your builds">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <c:LucideIcon Kind="book-marked" Width="13" Height="13" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+              <TextBlock Text="In my builds" FontSize="12" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+            </StackPanel>
+          </ToggleButton>
+          <Button Classes="ghost small" Content="Clear filters" Command="{Binding ClearFiltersCommand}" IsVisible="{Binding HasActiveFilters}" VerticalAlignment="Center" />
+        </WrapPanel>
+        <ItemsControl ItemsSource="{Binding StatFilters}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="5" LineSpacing="5" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ItemStatFilter">
+              <ToggleButton Classes="chip" IsChecked="{Binding IsOn}" Height="26" Padding="10,0" ToolTip.Tip="{Binding Name, StringFormat='Items with {0} (pick several to combine)'}">
+                <TextBlock Text="{Binding Label}" FontSize="11.5" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+              </ToggleButton>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,12,400">
+      <ScrollViewer>
+        <Panel>
+          <ItemsControl ItemsSource="{Binding Tiles}" Name="ItemTiles">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ItemTileViewModel">
+                <Border Classes="tile" Classes.selectedbuild="{Binding IsSelected}" Width="108" Padding="5,8" Margin="2" ToolTip.Tip="{Binding Tooltip}" BorderThickness="1" BorderBrush="Transparent"
+                        c:Dnd.ClickCommand="{Binding $parent[UserControl].((vm:ItemsViewModel)DataContext).SelectCommand}">
+                  <StackPanel Spacing="4">
+                    <Panel Width="48" Height="48">
+                      <Border Classes="itemframe">
+                        <c:AssetImage Source="{Binding IconUrl}" Width="44" Height="44" CornerRadius="2" />
+                      </Border>
+                      <Border IsVisible="{Binding HasBuilds}" CornerRadius="4" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.GoldDark}" BorderThickness="1" Padding="3,0"
+                              HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-10,0" ToolTip.Tip="Used in your builds">
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                          <c:LucideIcon Kind="book-marked" Width="9" Height="9" Foreground="{DynamicResource Brush.Gold}" />
+                          <TextBlock Text="{Binding BuildCount}" FontSize="9.5" Foreground="{DynamicResource Brush.Gold}" />
+                        </StackPanel>
+                      </Border>
+                    </Panel>
+                    <TextBlock Text="{Binding Name}" FontSize="10.5" TextAlignment="Center" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" Height="27" />
+                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                      <TextBlock Text="{Binding CostText}" FontSize="10.5" Foreground="{DynamicResource Brush.Gold}" Classes="num" />
+                      <TextBlock Text="{Binding EfficiencyText}" FontSize="10.5" Foreground="{Binding EfficiencyBrush}" Classes="num" IsVisible="{Binding HasEfficiency}" />
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <StackPanel IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,60,0,0" Spacing="10">
+            <TextBlock Text="No items match these filters." Classes="secondary" HorizontalAlignment="Center" />
+            <Button Classes="small" Content="Clear filters" Command="{Binding ClearFiltersCommand}" HorizontalAlignment="Center" />
+          </StackPanel>
+        </Panel>
+      </ScrollViewer>
+
+      <Border Grid.Column="2" Classes="card" Padding="16,14" VerticalAlignment="Stretch">
+        <Panel>
+          <StackPanel IsVisible="{Binding !HasSelection}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
+            <c:LucideIcon Kind="shopping-bag" Width="28" Height="28" Foreground="{DynamicResource Brush.TextMuted}" HorizontalAlignment="Center" />
+            <TextBlock Text="Pick an item to see its stats, build path, gold efficiency and your builds that use it." Classes="secondary" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="260" />
+          </StackPanel>
+          <ScrollViewer IsVisible="{Binding HasSelection}">
+            <StackPanel Spacing="14" Margin="0,0,6,0">
+              <v:ItemTooltipView DataContext="{Binding Details}" />
+              <StackPanel Spacing="6" IsVisible="{Binding HasEfficiency}">
+                <Border Classes="goldline" />
+                <TextBlock Text="GOLD VALUE" Classes="overline" FontSize="10" />
+                <ItemsControl ItemsSource="{Binding WorthRows}">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ItemWorthRow">
+                      <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="{Binding Stat}" Classes="secondary" FontSize="12" />
+                        <TextBlock Grid.Column="1" Text="{Binding Gold}" Classes="num" FontSize="12" Foreground="{DynamicResource Brush.Gold}" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{Binding EfficiencyText}" FontWeight="SemiBold" FontSize="12.5" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding UnvaluedText}" Classes="caption" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding ReferenceText}" Classes="caption" TextWrapping="Wrap" />
+              </StackPanel>
+              <StackPanel Spacing="6">
+                <Border Classes="goldline" />
+                <TextBlock Text="{Binding UsageTitle}" Classes="overline" FontSize="10" />
+                <TextBlock Text="None of your builds use this item." Classes="caption" IsVisible="{Binding !HasUsage}" />
+                <ItemsControl ItemsSource="{Binding UsageRows}" Name="ItemUsage">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ItemUsage">
+                      <Button Classes="plain" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="6,4" ToolTip.Tip="Open this build"
+                              Command="{Binding $parent[UserControl].((vm:ItemsViewModel)DataContext).OpenUsageCommand}" CommandParameter="{Binding}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                          <c:AssetImage Source="{Binding IconUrl}" Width="26" Height="26" CornerRadius="5" Zoom="1.08" />
+                          <TextBlock Grid.Column="1" Text="{Binding Text}" FontSize="12.5" Margin="10,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Column="2" Text="{Binding Detail}" Classes="caption" VerticalAlignment="Center" />
+                        </Grid>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </StackPanel>
+          </ScrollViewer>
+        </Panel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

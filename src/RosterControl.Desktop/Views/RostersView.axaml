@@ -61,9 +61,9 @@
                   <StackPanel Spacing="4">
                     <Panel Width="52" Height="52">
                       <c:AssetImage Source="{Binding IconUrl}" Width="52" Height="52" CornerRadius="6" Zoom="1.08" FallbackText="{Binding Name}"
-                                    Ring="{StaticResource Brush.GoldDark}" RingThickness="1" />
-                                    <Border IsVisible="{Binding IsNew}" CornerRadius="3" Background="#C8AA6E" Padding="4,0" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-3,-4,0,0" ToolTip.Tip="New this patch"><TextBlock Text="NEW" FontSize="8.5" FontWeight="Bold" LetterSpacing="0.6" Foreground="#060A11" /></Border>
-                      <Border IsVisible="{Binding IsInRoster}" Width="17" Height="17" CornerRadius="9" Background="#0AC8B9" BorderBrush="#060A11" BorderThickness="2"
+                                    Ring="{DynamicResource Brush.GoldDark}" RingThickness="1" />
+                                    <Border IsVisible="{Binding IsNew}" CornerRadius="3" Background="{DynamicResource Brush.Gold}" Padding="4,0" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-3,-4,0,0" ToolTip.Tip="New this patch"><TextBlock Text="NEW" FontSize="8.5" FontWeight="Bold" LetterSpacing="0.6" Foreground="#060A11" /></Border>
+                      <Border IsVisible="{Binding IsInRoster}" Width="17" Height="17" CornerRadius="9" Background="{DynamicResource Brush.Teal}" BorderBrush="{DynamicResource Brush.AppBackground}" BorderThickness="2"
                               HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-4,-4" ToolTip.Tip="In your roster">
                         <c:LucideIcon Kind="check" Width="10" Height="10" Foreground="#04121A" StrokeWidth="3.4" />
                       </Border>
@@ -83,7 +83,7 @@
         </StackPanel>
         <Border Grid.Row="4" Classes="divider" VerticalAlignment="Top" />
         <Grid Grid.Row="4" ColumnDefinitions="Auto,*" Margin="16,10,16,12">
-          <c:LucideIcon Kind="hand-metal" Width="14" Height="14" Foreground="{StaticResource Brush.TextMuted}" VerticalAlignment="Top" Margin="0,1,7,0" />
+          <c:LucideIcon Kind="hand-metal" Width="14" Height="14" Foreground="{DynamicResource Brush.TextMuted}" VerticalAlignment="Top" Margin="0,1,7,0" />
           <TextBlock Grid.Column="1" Text="Click to open · right-click to add · drag a card back here to remove it" Classes="caption" TextWrapping="Wrap" />
         </Grid>
       </Grid>
@@ -96,7 +96,7 @@
           <Button Name="RosterSwitcher" Classes="plain" ToolTip.Tip="Switch, create, rename or delete rosters (e.g. Solo/Duo, Flex, ARAM)">
             <StackPanel Orientation="Horizontal" Spacing="8">
               <TextBlock Text="{Binding RosterHeading}" Classes="heading" />
-              <c:LucideIcon Kind="chevron-down" Width="15" Height="15" Foreground="{StaticResource Brush.Gold}" VerticalAlignment="Center" />
+              <c:LucideIcon Kind="chevron-down" Width="15" Height="15" Foreground="{DynamicResource Brush.Gold}" VerticalAlignment="Center" />
             </StackPanel>
             <Button.Flyout>
               <Flyout Placement="BottomEdgeAlignedLeft">
@@ -108,8 +108,8 @@
                         <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="8,6"
                                 Command="{Binding $parent[UserControl].((vm:RostersViewModel)DataContext).SwitchRosterCommand}" CommandParameter="{Binding}">
                           <Grid ColumnDefinitions="18,*,Auto">
-                            <c:LucideIcon Kind="check" Width="14" Height="14" Foreground="{StaticResource Brush.Gold}" IsVisible="{Binding IsActive}" />
-                            <TextBlock Grid.Column="1" Text="{Binding Name}" Foreground="{StaticResource Brush.TextPrimary}" FontWeight="SemiBold" Margin="6,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                            <c:LucideIcon Kind="check" Width="14" Height="14" Foreground="{DynamicResource Brush.Gold}" IsVisible="{Binding IsActive}" />
+                            <TextBlock Grid.Column="1" Text="{Binding Name}" Foreground="{DynamicResource Brush.TextPrimary}" FontWeight="SemiBold" Margin="6,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                             <TextBlock Grid.Column="2" Text="{Binding Detail}" Classes="caption" VerticalAlignment="Center" />
                           </Grid>
                         </Button>
@@ -124,16 +124,28 @@
                     <Button Classes="small" Command="{Binding NewRosterCommand}" CommandParameter="Empty" Content="Empty" />
                     <Button Classes="small" Command="{Binding NewRosterCommand}" CommandParameter="Copy" Content="Copy of this roster" />
                   </WrapPanel>
+                  <Button Classes="ghost small" HorizontalAlignment="Left" Command="{Binding ImportRosterCommand}" ToolTip.Tip="Add a roster someone shared with you (.rcroster file)">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <c:LucideIcon Kind="upload" Width="13" Height="13" />
+                      <TextBlock Text="Import roster from file…" FontSize="12" />
+                    </StackPanel>
+                  </Button>
                   <Border Classes="divider" />
                   <TextBlock Text="THIS ROSTER" Classes="overline muted" />
                   <Grid ColumnDefinitions="*,Auto">
                     <TextBox Text="{Binding RenameText}" c:InputHelpers.EnterCommand="{Binding RenameRosterCommand}" />
                     <Button Grid.Column="1" Classes="small" Margin="6,0,0,0" Command="{Binding RenameRosterCommand}" Content="Rename" />
                   </Grid>
+                  <Button Classes="ghost small" HorizontalAlignment="Left" Command="{Binding ShareRosterCommand}" ToolTip.Tip="Save this roster as a file to send to friends or your team">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <c:LucideIcon Kind="share-2" Width="13" Height="13" />
+                      <TextBlock Text="Share as a file…" FontSize="12" />
+                    </StackPanel>
+                  </Button>
                   <Button Classes="ghost small" HorizontalAlignment="Left" Command="{Binding DeleteRosterCommand}" IsEnabled="{Binding CanDeleteRoster}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                      <c:LucideIcon Kind="trash-2" Width="13" Height="13" Foreground="{StaticResource Brush.Bad}" />
-                      <TextBlock Text="Delete this roster…" FontSize="12" Foreground="{StaticResource Brush.Bad}" />
+                      <c:LucideIcon Kind="trash-2" Width="13" Height="13" Foreground="{DynamicResource Brush.Bad}" />
+                      <TextBlock Text="Delete this roster…" FontSize="12" Foreground="{DynamicResource Brush.Bad}" />
                     </StackPanel>
                   </Button>
                   <TextBlock Text="Builds, matchups and notes are shared by all rosters." Classes="caption" TextWrapping="Wrap" />
@@ -158,7 +170,7 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-          <Border Width="1" Height="16" Background="{StaticResource Brush.Border}" Margin="0,0,8,0" />
+          <Border Width="1" Height="16" Background="{DynamicResource Brush.Border}" Margin="0,0,8,0" />
           <TextBlock Text="Ctrl+click selects · Ctrl + drop copies" Classes="caption" VerticalAlignment="Center" Margin="0,0,6,0" />
         </StackPanel>
         <StackPanel Name="HeaderActions" Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -173,8 +185,8 @@
           </ToggleButton>
           <Button Classes="primary" Command="{Binding AddGroupCommand}">
             <StackPanel Orientation="Horizontal" Spacing="7">
-              <c:LucideIcon Kind="plus" Width="15" Height="15" Foreground="{StaticResource Brush.GoldLight}" />
-              <TextBlock Text="New group" Foreground="{StaticResource Brush.GoldLight}" FontWeight="SemiBold" />
+              <c:LucideIcon Kind="plus" Width="15" Height="15" Foreground="{DynamicResource Brush.GoldLight}" />
+              <TextBlock Text="New group" Foreground="{DynamicResource Brush.GoldLight}" FontWeight="SemiBold" />
             </StackPanel>
           </Button>
         </StackPanel>
@@ -182,21 +194,21 @@
 
       <StackPanel Grid.Row="1">
       <!-- Patch review: builds affected by item/rune changes since they were saved -->
-      <Border Classes="card" Padding="14,9" Margin="0,0,0,12" IsVisible="{Binding Shell.Review.ShowBanner}" BorderBrush="#66E6B85C" Background="{StaticResource Brush.WarningSoft}">
+      <Border Classes="card" Padding="14,9" Margin="0,0,0,12" IsVisible="{Binding Shell.Review.ShowBanner}" BorderBrush="{DynamicResource Brush.WarningBorder}" Background="{DynamicResource Brush.WarningSoft}">
         <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-          <c:LucideIcon Kind="triangle-alert" Width="16" Height="16" Foreground="{StaticResource Brush.Warning}" VerticalAlignment="Center" Margin="0,0,10,0" />
-          <TextBlock Grid.Column="1" Text="{Binding Shell.Review.BannerText}" Foreground="#F2DDB0" VerticalAlignment="Center" TextWrapping="Wrap" />
+          <c:LucideIcon Kind="triangle-alert" Width="16" Height="16" Foreground="{DynamicResource Brush.Warning}" VerticalAlignment="Center" Margin="0,0,10,0" />
+          <TextBlock Grid.Column="1" Text="{Binding Shell.Review.BannerText}" Foreground="{DynamicResource Brush.WarningText}" VerticalAlignment="Center" TextWrapping="Wrap" />
           <Button Grid.Column="2" Classes="small" Margin="10,0,4,0" Command="{Binding Shell.Review.OpenCommand}" Content="Review" />
           <Button Grid.Column="3" Classes="ghost small" Command="{Binding Shell.Review.HideCommand}" Content="Later" ToolTip.Tip="Hide until the next start" />
         </Grid>
       </Border>
 
       <!-- Multi-selection actions (Ctrl/Shift-click cards) -->
-      <Border Grid.Row="1" Classes="card" Padding="12,8" Margin="0,0,0,12" IsVisible="{Binding HasSelection}" BorderBrush="{StaticResource Brush.GoldDark}">
+      <Border Grid.Row="1" Classes="card" Padding="12,8" Margin="0,0,0,12" IsVisible="{Binding HasSelection}" BorderBrush="{DynamicResource Brush.GoldDark}">
         <WrapPanel ItemSpacing="8" LineSpacing="6">
           <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center" Margin="2,0,6,0">
-            <c:LucideIcon Kind="check-check" Width="15" Height="15" Foreground="{StaticResource Brush.Gold}" />
-            <TextBlock Text="{Binding SelectionText}" FontWeight="SemiBold" Foreground="{StaticResource Brush.GoldLight}" VerticalAlignment="Center" />
+            <c:LucideIcon Kind="check-check" Width="15" Height="15" Foreground="{DynamicResource Brush.Gold}" />
+            <TextBlock Text="{Binding SelectionText}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.GoldLight}" VerticalAlignment="Center" />
           </StackPanel>
           <Button Classes="small" ToolTip.Tip="Move the selected champions to another group">
             <StackPanel Orientation="Horizontal" Spacing="6"><c:LucideIcon Kind="move" Width="13" Height="13" /><TextBlock Text="Move to" FontSize="12" /><c:LucideIcon Kind="chevron-down" Width="12" Height="12" /></StackPanel>
@@ -231,7 +243,7 @@
             </Button.Flyout>
           </Button>
           <Button Classes="small" Command="{Binding RemoveSelectionCommand}" ToolTip.Tip="Remove from their groups (Delete)">
-            <StackPanel Orientation="Horizontal" Spacing="6"><c:LucideIcon Kind="trash-2" Width="13" Height="13" Foreground="{StaticResource Brush.Bad}" /><TextBlock Text="Remove" FontSize="12" /></StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6"><c:LucideIcon Kind="trash-2" Width="13" Height="13" Foreground="{DynamicResource Brush.Bad}" /><TextBlock Text="Remove" FontSize="12" /></StackPanel>
           </Button>
           <Button Classes="ghost small" Command="{Binding ClearSelectionCommand}" ToolTip.Tip="Clear the selection (Esc)">
             <StackPanel Orientation="Horizontal" Spacing="6"><c:LucideIcon Kind="x" Width="13" Height="13" /><TextBlock Text="Clear" FontSize="12" /></StackPanel>
@@ -239,11 +251,11 @@
         </WrapPanel>
       </Border>
 
-      <Border Grid.Row="1" Classes="card" Padding="16,12" Margin="0,0,0,12" IsVisible="{Binding ShowTips}" BorderBrush="{StaticResource Brush.GoldDark}">
+      <Border Grid.Row="1" Classes="card" Padding="16,12" Margin="0,0,0,12" IsVisible="{Binding ShowTips}" BorderBrush="{DynamicResource Brush.GoldDark}">
         <Grid ColumnDefinitions="Auto,*,Auto">
-          <c:LucideIcon Kind="sparkles" Width="20" Height="20" Foreground="{StaticResource Brush.Gold}" VerticalAlignment="Top" Margin="0,2,14,0" />
+          <c:LucideIcon Kind="sparkles" Width="20" Height="20" Foreground="{DynamicResource Brush.Gold}" VerticalAlignment="Top" Margin="0,2,14,0" />
           <StackPanel Grid.Column="1" Spacing="5">
-            <TextBlock Text="Getting started" Classes="title" Foreground="{StaticResource Brush.GoldLight}" />
+            <TextBlock Text="Getting started" Classes="title" Foreground="{DynamicResource Brush.GoldLight}" />
             <TextBlock Classes="secondary" TextWrapping="Wrap" FontSize="12.5"
                        Text="• Drag champions from the pool into a group — or right-click a champion and choose a group." />
             <TextBlock Classes="secondary" TextWrapping="Wrap" FontSize="12.5"
@@ -275,7 +287,7 @@
                     </Panel>
                     <Panel Grid.Column="1" VerticalAlignment="Center">
                       <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13.5" LetterSpacing="0.6" TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsEditing}"
-                                 Foreground="{StaticResource Brush.GoldLight}" DoubleTapped="OnGroupNameDoubleTapped" ToolTip.Tip="Double-click to rename" />
+                                 Foreground="{DynamicResource Brush.GoldLight}" DoubleTapped="OnGroupNameDoubleTapped" ToolTip.Tip="Double-click to rename" />
                       <TextBox Text="{Binding EditName}" IsVisible="{Binding IsEditing}" Padding="6,3" MinHeight="0" FontWeight="SemiBold"
                                KeyDown="OnRenameKeyDown" LostFocus="OnRenameLostFocus" AttachedToVisualTree="OnRenameAttached" />
                     </Panel>
@@ -306,7 +318,7 @@
                             <MenuItem Header="Hextech" Command="{Binding SetColorCommand}" CommandParameter="#5FD3C9"><MenuItem.Icon><Ellipse Width="12" Height="12" Fill="#5FD3C9" /></MenuItem.Icon></MenuItem>
                             <MenuItem Header="Void" Command="{Binding SetColorCommand}" CommandParameter="#B98CFF"><MenuItem.Icon><Ellipse Width="12" Height="12" Fill="#B98CFF" /></MenuItem.Icon></MenuItem>
                             <MenuItem Header="Crimson" Command="{Binding SetColorCommand}" CommandParameter="#EE5A6F"><MenuItem.Icon><Ellipse Width="12" Height="12" Fill="#EE5A6F" /></MenuItem.Icon></MenuItem>
-                            <MenuItem Header="Gold" Command="{Binding SetColorCommand}" CommandParameter="#C8AA6E"><MenuItem.Icon><Ellipse Width="12" Height="12" Fill="#C8AA6E" /></MenuItem.Icon></MenuItem>
+                            <MenuItem Header="Gold" Command="{Binding SetColorCommand}" CommandParameter="#C8AA6E"><MenuItem.Icon><Ellipse Width="12" Height="12" Fill="{DynamicResource Brush.Gold}" /></MenuItem.Icon></MenuItem>
                             <MenuItem Header="Slate" Command="{Binding SetColorCommand}" CommandParameter="#8C99AD"><MenuItem.Icon><Ellipse Width="12" Height="12" Fill="#8C99AD" /></MenuItem.Icon></MenuItem>
                           </MenuItem>
                           <MenuItem Header="Select all in this group" Command="{Binding $parent[UserControl].((vm:RostersViewModel)DataContext).SelectGroupCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="check-check" /></MenuItem.Icon></MenuItem>
@@ -318,7 +330,7 @@
                           <MenuItem Header="Move left" Command="{Binding MoveLeftCommand}"><MenuItem.Icon><c:LucideIcon Kind="chevron-left" /></MenuItem.Icon></MenuItem>
                           <MenuItem Header="Move right" Command="{Binding MoveRightCommand}"><MenuItem.Icon><c:LucideIcon Kind="chevron-right" /></MenuItem.Icon></MenuItem>
                           <Separator />
-                          <MenuItem Header="Delete group…" Command="{Binding DeleteCommand}"><MenuItem.Icon><c:LucideIcon Kind="trash-2" Foreground="{StaticResource Brush.Bad}" /></MenuItem.Icon></MenuItem>
+                          <MenuItem Header="Delete group…" Command="{Binding DeleteCommand}"><MenuItem.Icon><c:LucideIcon Kind="trash-2" Foreground="{DynamicResource Brush.Bad}" /></MenuItem.Icon></MenuItem>
                         </MenuFlyout>
                       </Button.Flyout>
                     </Button>
@@ -341,9 +353,9 @@
                                   <StackPanel Spacing="8" DataContext="{Binding Preview}" x:DataType="vm:BuildPreview"
                                               IsVisible="{Binding !$parent[Panel].((vm:RosterEntryViewModel)DataContext).IsPreviewLoading}">
                                     <StackPanel Spacing="2">
-                                      <TextBlock Text="{Binding ChampionName}" FontWeight="Bold" FontSize="13.5" Foreground="{StaticResource Brush.GoldLight}" />
+                                      <TextBlock Text="{Binding ChampionName}" FontWeight="Bold" FontSize="13.5" Foreground="{DynamicResource Brush.GoldLight}" />
                                       <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasBuild}">
-                                        <c:LucideIcon Kind="star" Width="12" Height="12" Foreground="{StaticResource Brush.Gold}" Fill="{StaticResource Brush.Gold}" IsVisible="{Binding IsDefault}" VerticalAlignment="Center" />
+                                        <c:LucideIcon Kind="star" Width="12" Height="12" Foreground="{DynamicResource Brush.Gold}" Fill="{DynamicResource Brush.Gold}" IsVisible="{Binding IsDefault}" VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding BuildName}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding DefaultText}" Classes="caption" VerticalAlignment="Center" />
                                       </StackPanel>
@@ -362,7 +374,7 @@
                                         </DataTemplate>
                                       </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    <TextBlock Text="{Binding CoreText}" FontSize="11.5" Foreground="{StaticResource Brush.Gold}" TextWrapping="Wrap" MaxWidth="300" HorizontalAlignment="Left" IsVisible="{Binding HasCoreText}" />
+                                    <TextBlock Text="{Binding CoreText}" FontSize="11.5" Foreground="{DynamicResource Brush.Gold}" TextWrapping="Wrap" MaxWidth="300" HorizontalAlignment="Left" IsVisible="{Binding HasCoreText}" />
                                     <ItemsControl ItemsSource="{Binding Spells}" IsVisible="{Binding HasSpells}">
                                       <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                       <ItemsControl.ItemTemplate>
@@ -386,7 +398,7 @@
                                   <MenuItem Header="Pocket" Command="{Binding SetPriorityCommand}" CommandParameter="{x:Static m:ChampionPriority.Pocket}" />
                                   <MenuItem Header="Learning" Command="{Binding SetPriorityCommand}" CommandParameter="{x:Static m:ChampionPriority.Learning}" />
                                   <Separator />
-                                  <MenuItem Header="Remove from group" Command="{Binding RemoveCommand}"><MenuItem.Icon><c:LucideIcon Kind="x" Foreground="{StaticResource Brush.Bad}" /></MenuItem.Icon></MenuItem>
+                                  <MenuItem Header="Remove from group" Command="{Binding RemoveCommand}"><MenuItem.Icon><c:LucideIcon Kind="x" Foreground="{DynamicResource Brush.Bad}" /></MenuItem.Icon></MenuItem>
                                 </ContextMenu>
                               </Border.ContextMenu>
                               <Panel>
@@ -402,7 +414,7 @@
                                   <c:AssetImage Source="{Binding IconUrl}" Width="42" Height="42" CornerRadius="6" Zoom="1.1" Ring="{Binding PriorityBrush}" RingThickness="1.5" FallbackText="{Binding Name}" />
                                   <!-- Priority badge (click to change) -->
                                   <Button Classes="plain" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-6,-6" ToolTip.Tip="{Binding PriorityTooltip}">
-                                    <Border Width="19" Height="19" CornerRadius="10" Background="{Binding PriorityBrush}" BorderBrush="#121C2A" BorderThickness="2">
+                                    <Border Width="19" Height="19" CornerRadius="10" Background="{Binding PriorityBrush}" BorderBrush="{DynamicResource Brush.SurfaceElevated}" BorderThickness="2">
                                       <c:LucideIcon Kind="{Binding PriorityIcon}" Width="9" Height="9" Foreground="#060A11" StrokeWidth="2.6" />
                                     </Border>
                                     <Button.Flyout>
@@ -433,11 +445,11 @@
                                   </StackPanel>
                                   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="7" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="6,0,0,0">
                                     <StackPanel Orientation="Horizontal" Spacing="3" IsVisible="{Binding HasBuilds}" ToolTip.Tip="Saved builds">
-                                      <c:LucideIcon Kind="book-marked" Width="11" Height="11" Foreground="{StaticResource Brush.Gold}" />
+                                      <c:LucideIcon Kind="book-marked" Width="11" Height="11" Foreground="{DynamicResource Brush.Gold}" />
                                       <TextBlock Text="{Binding BuildCount}" FontSize="10.5" Classes="secondary num" />
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Spacing="3" IsVisible="{Binding HasMatchups}" ToolTip.Tip="Recorded matchups">
-                                      <c:LucideIcon Kind="swords" Width="11" Height="11" Foreground="{StaticResource Brush.Teal}" />
+                                      <c:LucideIcon Kind="swords" Width="11" Height="11" Foreground="{DynamicResource Brush.Teal}" />
                                       <TextBlock Text="{Binding MatchupCount}" FontSize="10.5" Classes="secondary num" />
                                     </StackPanel>
                                   </StackPanel>
@@ -450,9 +462,9 @@
                       </ItemsControl>
                     </ScrollViewer>
                     <StackPanel IsVisible="{Binding IsEmpty}" VerticalAlignment="Top" Margin="14,24,14,0" Spacing="10" IsHitTestVisible="False">
-                      <Border Height="64" CornerRadius="8" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" Background="#0A101A">
+                      <Border Height="64" CornerRadius="8" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" Background="{DynamicResource Brush.SurfaceDeep}">
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
-                          <c:LucideIcon Kind="plus" Width="18" Height="18" Foreground="{StaticResource Brush.TextMuted}" HorizontalAlignment="Center" />
+                          <c:LucideIcon Kind="plus" Width="18" Height="18" Foreground="{DynamicResource Brush.TextMuted}" HorizontalAlignment="Center" />
                           <TextBlock Text="Drop champions here" Classes="caption" HorizontalAlignment="Center" />
                         </StackPanel>
                       </Border>
@@ -465,6 +477,56 @@
         </ItemsControl>
       </ScrollViewer>
     </Grid>
+
+    <!-- Share a roster as a file / add a shared roster -->
+    <Panel Grid.ColumnSpan="3" IsVisible="{Binding ShareDialog, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <Border Background="{DynamicResource Brush.Overlay}" CornerRadius="10" />
+      <Border Classes="card" Width="500" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="22,20" BorderBrush="{DynamicResource Brush.GoldDark}" BoxShadow="{DynamicResource Shadow.Popup}"
+              DataContext="{Binding ShareDialog}" x:DataType="vm:RosterShareViewModel" Name="RosterShareDialog">
+        <StackPanel Spacing="14">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <c:LucideIcon Kind="share-2" Width="18" Height="18" Foreground="{DynamicResource Brush.Gold}" VerticalAlignment="Center" IsVisible="{Binding IsExport}" />
+            <c:LucideIcon Kind="upload" Width="18" Height="18" Foreground="{DynamicResource Brush.Gold}" VerticalAlignment="Center" IsVisible="{Binding IsImport}" />
+            <TextBlock Text="{Binding Title}" Classes="heading" FontSize="15" TextWrapping="Wrap" VerticalAlignment="Center" />
+          </StackPanel>
+          <TextBlock Text="{Binding Summary}" Classes="secondary" TextWrapping="Wrap" />
+          <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding HasWarning}">
+            <c:LucideIcon Kind="triangle-alert" Width="14" Height="14" Foreground="{DynamicResource Brush.Warning}" VerticalAlignment="Top" Margin="0,1,8,0" />
+            <TextBlock Grid.Column="1" Text="{Binding Warning}" Classes="caption" TextWrapping="Wrap" />
+          </Grid>
+
+          <!-- Export: what to include -->
+          <StackPanel Spacing="8" IsVisible="{Binding IsExport}">
+            <TextBlock Text="INCLUDE" Classes="overline muted" />
+            <CheckBox IsChecked="{Binding IncludeRatings}" Content="Proficiency and priority of each placement" />
+            <CheckBox IsChecked="{Binding IncludeBuilds}" Content="{Binding BuildsOptionText}" IsEnabled="{Binding CanIncludeBuilds}" />
+          </StackPanel>
+
+          <!-- Import: new roster or merge -->
+          <StackPanel Spacing="8" IsVisible="{Binding IsImport}">
+            <RadioButton GroupName="rosterImport" IsChecked="{Binding AsNewRoster, Mode=OneWay}" Command="{Binding ChooseModeCommand}" CommandParameter="new" Content="Add as a new roster" />
+            <TextBox Text="{Binding NewName}" Margin="28,0,0,0" IsEnabled="{Binding AsNewRoster}" PlaceholderText="Roster name" />
+            <RadioButton GroupName="rosterImport" IsChecked="{Binding Merge, Mode=OneWay}" Command="{Binding ChooseModeCommand}" CommandParameter="merge">
+              <TextBlock Text="{Binding MergeText}" TextWrapping="Wrap" />
+            </RadioButton>
+            <CheckBox IsChecked="{Binding IncludeBuilds}" IsVisible="{Binding HasBuildsToImport}" Margin="0,6,0,0">
+              <TextBlock Text="{Binding ImportBuildsText}" TextWrapping="Wrap" />
+            </CheckBox>
+          </StackPanel>
+
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,4,0,0">
+            <Button Content="Cancel" Command="{Binding CancelCommand}" IsCancel="True" />
+            <Button Classes="primary" Command="{Binding SaveCommand}" IsVisible="{Binding IsExport}" IsDefault="{Binding IsExport}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <c:LucideIcon Kind="save" Width="13" Height="13" />
+                <TextBlock Text="Save file…" />
+              </StackPanel>
+            </Button>
+            <Button Classes="primary" Command="{Binding ImportCommand}" IsVisible="{Binding IsImport}" IsDefault="{Binding IsImport}" Content="Add roster" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Panel>
 
     <!-- Off-screen host: the roster image is laid out here (clipped away) so portraits load before capture -->
     <Canvas Name="ExportHost" Grid.ColumnSpan="3" Width="0" Height="0" ClipToBounds="True" IsHitTestVisible="False"

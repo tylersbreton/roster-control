@@ -9,13 +9,13 @@
   <Grid RowDefinitions="Auto,Auto,*">
 
     <!-- ── Hero header: splash art, name, placements ────────────────────────────────────── -->
-    <Border Grid.Row="0" Height="214" CornerRadius="12" ClipToBounds="True" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="1">
+    <Border Grid.Row="0" Height="214" CornerRadius="12" ClipToBounds="True" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1">
       <Panel>
         <c:AssetImage Source="{Binding SplashUrl}" FallbackSource="{Binding SplashFallbackUrl}" DecodeWidth="1600" CornerRadius="12" FocusY="0.28" />
-        <Border Background="{StaticResource Brush.HeroSideFade}" CornerRadius="12" />
-        <Border Background="{StaticResource Brush.HeroFade}" CornerRadius="12" />
-        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,14,18,0" CornerRadius="8" Background="#B30C131D"
-                BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" Padding="4,3" IsVisible="{Binding HasSequence}">
+        <Border Background="{DynamicResource Brush.HeroSideFade}" CornerRadius="12" />
+        <Border Background="{DynamicResource Brush.HeroFade}" CornerRadius="12" />
+        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,14,18,0" CornerRadius="8" Background="{DynamicResource Brush.Glass}"
+                BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" Padding="4,3" IsVisible="{Binding HasSequence}">
           <StackPanel Orientation="Horizontal" Spacing="4">
             <Button Classes="ghost icon" Width="26" Height="26" Command="{Binding PreviousCommand}" ToolTip.Tip="{Binding PreviousName, StringFormat='Previous: {0} (Ctrl+←)'}">
               <c:LucideIcon Kind="chevron-left" Width="15" Height="15" />
@@ -27,7 +27,7 @@
           </StackPanel>
         </Border>
         <Grid ColumnDefinitions="Auto,*,Auto" Margin="26,0,22,20" VerticalAlignment="Bottom">
-          <Border Width="92" Height="92" CornerRadius="10" BorderBrush="{StaticResource Brush.GoldFrame}" BorderThickness="2" Padding="2" Background="#05080D" BoxShadow="{StaticResource Shadow.GoldGlow}">
+          <Border Width="92" Height="92" CornerRadius="10" BorderBrush="{DynamicResource Brush.GoldFrame}" BorderThickness="2" Padding="2" Background="{DynamicResource Brush.SurfaceDeep}" BoxShadow="{DynamicResource Shadow.GoldGlow}">
             <c:AssetImage Source="{Binding PortraitUrl}" CornerRadius="7" Zoom="1.08" />
           </Border>
           <StackPanel Grid.Column="1" Margin="20,0,0,2" VerticalAlignment="Bottom" Spacing="6">
@@ -38,8 +38,8 @@
                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="5" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="x:String">
-                    <Border CornerRadius="4" Background="#80121C2A" BorderBrush="#40C8AA6E" BorderThickness="1" Padding="7,2">
-                      <TextBlock Text="{Binding}" FontSize="11" Foreground="{StaticResource Brush.Gold}" FontWeight="SemiBold" />
+                    <Border CornerRadius="4" Background="{DynamicResource Brush.Glass}" BorderBrush="{DynamicResource Brush.GoldDark}" BorderThickness="1" Padding="7,2">
+                      <TextBlock Text="{Binding}" FontSize="11" Foreground="{DynamicResource Brush.Gold}" FontWeight="SemiBold" />
                     </Border>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -62,7 +62,7 @@
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="5" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:PlacementViewModel">
-                  <Border Background="#D90C131D" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="8" Padding="10,6,6,6">
+                  <Border Background="{DynamicResource Brush.Glass}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="8" Padding="10,6,6,6">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                       <Border Width="3" Height="18" CornerRadius="2" Background="{Binding Accent}" VerticalAlignment="Center" />
                       <c:AssetImage Source="{Binding RoleIconUrl}" Width="16" Height="16" CornerRadius="0" ShowPlaceholder="False" IsVisible="{Binding HasRoleIcon}" VerticalAlignment="Center" />
@@ -92,7 +92,7 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <Button Classes="small" HorizontalAlignment="Right" IsVisible="{Binding CanAddToGroup}" Background="#D90C131D">
+            <Button Classes="small" HorizontalAlignment="Right" IsVisible="{Binding CanAddToGroup}" Background="{DynamicResource Brush.Glass}">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <c:LucideIcon Kind="plus" Width="13" Height="13" />
                 <TextBlock Text="Add to group" FontSize="12" />
@@ -176,8 +176,8 @@
               </Button>
               <Button Classes="ghost small" Command="{Binding AddBuildCommand}" ToolTip.Tip="New build (Ctrl+N)">
                 <StackPanel Orientation="Horizontal" Spacing="5">
-                  <c:LucideIcon Kind="plus" Width="14" Height="14" Foreground="{StaticResource Brush.Gold}" />
-                  <TextBlock Text="New" FontSize="12" Foreground="{StaticResource Brush.Gold}" FontWeight="SemiBold" />
+                  <c:LucideIcon Kind="plus" Width="14" Height="14" Foreground="{DynamicResource Brush.Gold}" />
+                  <TextBlock Text="New" FontSize="12" Foreground="{DynamicResource Brush.Gold}" FontWeight="SemiBold" />
                 </StackPanel>
               </Button>
             </StackPanel>
@@ -193,19 +193,20 @@
                       <ContextMenu>
                         <MenuItem Header="{Binding DefaultMenuText}" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).ToggleDefaultCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="star" /></MenuItem.Icon></MenuItem>
                         <MenuItem Header="Copy share code" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).CopyShareCodeCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="share-2" /></MenuItem.Icon></MenuItem>
+                        <MenuItem Header="Copy as League item set" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).CopyItemSetCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="shopping-bag" /></MenuItem.Icon></MenuItem>
                         <Separator />
                         <MenuItem Header="Duplicate" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).DuplicateBuildCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="copy" /></MenuItem.Icon></MenuItem>
                         <MenuItem Header="Move up" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).MoveBuildUpCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="chevron-up" /></MenuItem.Icon></MenuItem>
                         <MenuItem Header="Move down" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).MoveBuildDownCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="chevron-down" /></MenuItem.Icon></MenuItem>
                         <Separator />
-                        <MenuItem Header="Delete build…" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).DeleteBuildCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="trash-2" Foreground="{StaticResource Brush.Bad}" /></MenuItem.Icon></MenuItem>
+                        <MenuItem Header="Delete build…" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).DeleteBuildCommand}" CommandParameter="{Binding}"><MenuItem.Icon><c:LucideIcon Kind="trash-2" Foreground="{DynamicResource Brush.Bad}" /></MenuItem.Icon></MenuItem>
                       </ContextMenu>
                     </Border.ContextMenu>
                     <StackPanel Spacing="7">
                       <Grid ColumnDefinitions="Auto,*,Auto">
                         <Panel Width="30" Height="30" Margin="0,0,9,0">
                           <c:AssetImage Source="{Binding KeystoneIconUrl}" Width="30" Height="30" CornerRadius="15" ShowPlaceholder="True" />
-                          <Border Width="15" Height="15" CornerRadius="8" Background="#060A11" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-4,-3" IsVisible="{Binding SubTreeIconUrl, Converter={x:Static ObjectConverters.IsNotNull}}">
+                          <Border Width="15" Height="15" CornerRadius="8" Background="{DynamicResource Brush.AppBackground}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-4,-3" IsVisible="{Binding SubTreeIconUrl, Converter={x:Static ObjectConverters.IsNotNull}}">
                             <c:AssetImage Source="{Binding SubTreeIconUrl}" Width="12" Height="12" CornerRadius="6" ShowPlaceholder="False" />
                           </Border>
                         </Panel>
@@ -216,7 +217,7 @@
                         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5" VerticalAlignment="Top">
                           <Button Classes="plain" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).ToggleDefaultCommand}" CommandParameter="{Binding}"
                                   ToolTip.Tip="{Binding DefaultTip}" IsVisible="{Binding IsDefault}">
-                            <c:LucideIcon Kind="star" Width="14" Height="14" Foreground="{StaticResource Brush.Gold}" Fill="{StaticResource Brush.Gold}" />
+                            <c:LucideIcon Kind="star" Width="14" Height="14" Foreground="{DynamicResource Brush.Gold}" Fill="{DynamicResource Brush.Gold}" />
                           </Button>
                           <c:AssetImage Source="{Binding RoleIconUrl}" Width="16" Height="16" CornerRadius="0" ShowPlaceholder="False" IsVisible="{Binding HasRole}" />
                         </StackPanel>
@@ -232,13 +233,13 @@
                         <ItemsControl ItemsSource="{Binding SummaryItems}">
                           <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                           <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="x:String"><c:AssetImage Source="{Binding}" Width="20" Height="20" CornerRadius="3" Ring="{StaticResource Brush.GoldDeep}" RingThickness="1" /></DataTemplate>
+                            <DataTemplate x:DataType="x:String"><c:AssetImage Source="{Binding}" Width="20" Height="20" CornerRadius="3" Ring="{DynamicResource Brush.GoldDeep}" RingThickness="1" /></DataTemplate>
                           </ItemsControl.ItemTemplate>
                         </ItemsControl>
                       </StackPanel>
                       <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding IsFromOlderPatch}" ToolTip.Tip="Items and runes may have changed since. Open the Items tab to see what changed; saving any edit marks the build as up to date.">
-                        <Ellipse Width="6" Height="6" Fill="{StaticResource Brush.Warning}" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding SavedOnPatchText}" Classes="caption" Foreground="{StaticResource Brush.Warning}" />
+                        <Ellipse Width="6" Height="6" Fill="{DynamicResource Brush.Warning}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding SavedOnPatchText}" Classes="caption" Foreground="{DynamicResource Brush.Warning}" />
                       </StackPanel>
                       <TextBlock Text="{Binding SkillSummary}" Classes="caption num" IsVisible="{Binding SkillSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                     </StackPanel>
@@ -254,13 +255,13 @@
       <v:BuildEditorView Grid.Column="2" DataContext="{Binding SelectedBuild}" IsVisible="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).HasSelectedBuild}" />
       <Border Grid.Column="2" Classes="card" IsVisible="{Binding !HasBuilds}">
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" MaxWidth="380">
-          <c:LucideIcon Kind="book-marked" Width="38" Height="38" Foreground="{StaticResource Brush.GoldDark}" HorizontalAlignment="Center" />
+          <c:LucideIcon Kind="book-marked" Width="38" Height="38" Foreground="{DynamicResource Brush.GoldDark}" HorizontalAlignment="Center" />
           <TextBlock Text="NO BUILDS YET" Classes="heading" HorizontalAlignment="Center" />
           <TextBlock Text="Save rune pages, item sets, summoner spells and a skill order — make one per role or matchup (e.g. Standard, vs AP, Aggressive)." Classes="secondary" TextWrapping="Wrap" TextAlignment="Center" />
           <Button Classes="primary" HorizontalAlignment="Center" Command="{Binding AddBuildCommand}" Margin="0,6,0,0">
             <StackPanel Orientation="Horizontal" Spacing="7">
-              <c:LucideIcon Kind="plus" Width="15" Height="15" Foreground="{StaticResource Brush.GoldLight}" />
-              <TextBlock Text="Create first build" Foreground="{StaticResource Brush.GoldLight}" FontWeight="SemiBold" />
+              <c:LucideIcon Kind="plus" Width="15" Height="15" Foreground="{DynamicResource Brush.GoldLight}" />
+              <TextBlock Text="Create first build" Foreground="{DynamicResource Brush.GoldLight}" FontWeight="SemiBold" />
             </StackPanel>
           </Button>
         </StackPanel>
@@ -274,6 +275,83 @@
     <ScrollViewer Grid.Row="2" IsVisible="{Binding IsAbilitiesTab}">
       <StackPanel DataContext="{Binding Abilities}" x:DataType="vm:AbilitiesViewModel" Spacing="10" MaxWidth="1100" HorizontalAlignment="Left" Margin="0,0,8,8">
         <TextBlock Text="Loading abilities…" Classes="secondary" IsVisible="{Binding IsLoading}" Margin="4,4" />
+        <!-- Calculator: stats and numbers at a level with the items you tick -->
+        <Panel IsVisible="{Binding HasCalculator}">
+          <Border Classes="card" Padding="16,14" DataContext="{Binding Calculator}" x:DataType="vm:AbilityCalculatorViewModel" Name="AbilityCalculator">
+            <Grid ColumnDefinitions="*,24,360" RowDefinitions="Auto,Auto">
+              <StackPanel Spacing="12">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="CALCULATOR" Classes="overline" />
+                  <TextBlock Text="Your stats and every ability's numbers at a level, with the items you tick. Ranks follow the build's skill order." Classes="caption" TextWrapping="Wrap" />
+                </StackPanel>
+                <Grid ColumnDefinitions="Auto,*">
+                  <TextBlock Text="Build" Classes="secondary" VerticalAlignment="Center" Width="52" />
+                  <ComboBox Grid.Column="1" ItemsSource="{Binding BuildChoices}" SelectedItem="{Binding SelectedChoice}" MinWidth="240" HorizontalAlignment="Left" Name="CalculatorBuild">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="vm:CalculatorBuildChoice">
+                        <TextBlock Text="{Binding Name}" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                </Grid>
+                <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                  <TextBlock Text="{Binding LevelText}" Classes="title num" VerticalAlignment="Center" Width="72" />
+                  <Button Grid.Column="1" Classes="ghost icon" Command="{Binding LevelDownCommand}" ToolTip.Tip="One level down" VerticalAlignment="Center">
+                    <c:LucideIcon Kind="minus" Width="14" Height="14" />
+                  </Button>
+                  <Slider Grid.Column="2" Minimum="1" Maximum="18" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="3"
+                          Value="{Binding Level}" Margin="8,0" VerticalAlignment="Center" Name="CalculatorLevel" />
+                  <Button Grid.Column="3" Classes="ghost icon" Command="{Binding LevelUpCommand}" ToolTip.Tip="One level up" VerticalAlignment="Center">
+                    <c:LucideIcon Kind="plus" Width="14" Height="14" />
+                  </Button>
+                </Grid>
+                <TextBlock Text="{Binding RanksText}" Classes="caption" TextWrapping="Wrap" />
+                <StackPanel Spacing="6" IsVisible="{Binding HasBuild}">
+                  <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                    <TextBlock Text="ITEMS" Classes="overline" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding ItemsText}" Classes="caption num" VerticalAlignment="Center" Margin="10,0,0,0" />
+                    <Button Grid.Column="2" Classes="ghost small" Content="All" Command="{Binding AllItemsCommand}" IsVisible="{Binding HasItems}" />
+                    <Button Grid.Column="3" Classes="ghost small" Content="None" Command="{Binding NoItemsCommand}" IsVisible="{Binding HasItems}" />
+                  </Grid>
+                  <ItemsControl ItemsSource="{Binding Items}" IsVisible="{Binding HasItems}">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="6" LineSpacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:CalculatorItem">
+                        <ToggleButton Classes="calcitem" IsChecked="{Binding IsOn}" ToolTip.Tip="{Binding Tip}" Padding="0">
+                          <Panel Width="38" Height="38">
+                            <c:AssetImage Source="{Binding IconUrl}" CornerRadius="4" />
+                            <Border CornerRadius="4" Background="{DynamicResource Brush.Overlay}" IsVisible="{Binding !IsOn}" />
+                          </Panel>
+                        </ToggleButton>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="This build has no items yet." Classes="caption" IsVisible="{Binding !HasItems}" />
+                  <CheckBox IsChecked="{Binding IncludeShards}" IsVisible="{Binding HasShards}">
+                    <TextBlock Text="{Binding ShardsText}" TextWrapping="Wrap" FontSize="12" />
+                  </CheckBox>
+                  <TextBlock Text="{Binding ShardsText}" Classes="caption" IsVisible="{Binding !HasShards}" />
+                </StackPanel>
+              </StackPanel>
+              <StackPanel Grid.Column="2" Spacing="6">
+                <TextBlock Text="{Binding LevelText, StringFormat='STATS · {0}'}" Classes="overline" />
+                <ItemsControl ItemsSource="{Binding Stats}" Name="CalculatorStats">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CalculatorStat">
+                      <Grid ColumnDefinitions="130,70,*">
+                        <TextBlock Text="{Binding Label}" Classes="secondary" FontSize="12" />
+                        <TextBlock Grid.Column="1" Text="{Binding Value}" Classes="num" FontWeight="SemiBold" FontSize="12.5" TextAlignment="Right" />
+                        <TextBlock Grid.Column="2" Text="{Binding Detail}" Classes="caption" Margin="10,0,0,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+              <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Text="{Binding Footnote}" Classes="caption" TextWrapping="Wrap" Margin="0,12,0,0" />
+            </Grid>
+          </Border>
+        </Panel>
         <ItemsControl ItemsSource="{Binding Abilities}">
           <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="10" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
@@ -287,8 +365,48 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+        <!-- The build's keystone and runes with formulas, at the calculator's level -->
+        <Panel IsVisible="{Binding HasCalculator}">
+          <Border Classes="card" Padding="16,14" DataContext="{Binding Calculator}" x:DataType="vm:AbilityCalculatorViewModel" IsVisible="{Binding HasRunes}" Name="CalculatorRunes">
+            <StackPanel Spacing="10">
+              <TextBlock Text="{Binding LevelText, StringFormat='RUNES · {0}'}" Classes="overline" />
+              <ItemsControl ItemsSource="{Binding Runes}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="12" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:CalculatorRune">
+                    <Grid ColumnDefinitions="Auto,*">
+                      <c:AssetImage Source="{Binding IconUrl}" Width="38" Height="38" VerticalAlignment="Top" />
+                      <StackPanel Grid.Column="1" Margin="12,0,0,0" Spacing="4">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{DynamicResource Brush.GoldLight}" VerticalAlignment="Center" />
+                          <TextBlock Text="{Binding KindText}" Classes="overline muted" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <ItemsControl ItemsSource="{Binding Rows}" IsVisible="{Binding HasRows}">
+                          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:AbilityValueRow">
+                              <Grid ColumnDefinitions="Auto,Auto,*">
+                                <TextBlock Text="{Binding Label}" Classes="secondary" FontSize="12" Margin="0,0,8,0" />
+                                <TextBlock Grid.Column="1" Text="{Binding Result}" IsVisible="{Binding HasResult}" Foreground="{DynamicResource Brush.Teal}" FontWeight="Bold" FontSize="13" Margin="0,-1,8,0" />
+                                <TextBlock Grid.Column="2" Text="{Binding Text}" Classes="muted" FontSize="12" TextWrapping="Wrap" />
+                              </Grid>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding HasNote}">
+                          <c:LucideIcon Kind="info" Width="13" Height="13" Foreground="{DynamicResource Brush.Warning}" VerticalAlignment="Top" Margin="0,1,6,0" />
+                          <TextBlock Grid.Column="1" Text="{Binding Note}" Classes="caption" TextWrapping="Wrap" />
+                        </Grid>
+                      </StackPanel>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+        </Panel>
         <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding Note, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="4,0">
-          <c:LucideIcon Kind="info" Width="13" Height="13" Foreground="{StaticResource Brush.TextMuted}" VerticalAlignment="Top" Margin="0,1,8,0" />
+          <c:LucideIcon Kind="info" Width="13" Height="13" Foreground="{DynamicResource Brush.TextMuted}" VerticalAlignment="Top" Margin="0,1,8,0" />
           <TextBlock Grid.Column="1" Text="{Binding Note}" Classes="caption" TextWrapping="Wrap" />
         </Grid>
       </StackPanel>
@@ -315,9 +433,9 @@
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="x:String">
-                <Border CornerRadius="999" Background="{StaticResource Brush.GoldSoft}" BorderBrush="{StaticResource Brush.GoldDark}" BorderThickness="1" Padding="10,3,4,3" Margin="0,0,6,6">
+                <Border CornerRadius="999" Background="{DynamicResource Brush.GoldSoft}" BorderBrush="{DynamicResource Brush.GoldDark}" BorderThickness="1" Padding="10,3,4,3" Margin="0,0,6,6">
                   <StackPanel Orientation="Horizontal" Spacing="4">
-                    <TextBlock Text="{Binding}" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding}" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" VerticalAlignment="Center" />
                     <Button Classes="ghost icon" Width="18" Height="18" Command="{Binding $parent[UserControl].((vm:ChampionDetailViewModel)DataContext).RemoveTagCommand}" CommandParameter="{Binding}">
                       <c:LucideIcon Kind="x" Width="11" Height="11" />
                     </Button>
@@ -329,7 +447,7 @@
           <Grid ColumnDefinitions="*,Auto">
             <TextBox Text="{Binding NewTag}" PlaceholderText="Add a tag…" KeyDown="OnTagKeyDown" />
             <Button Grid.Column="1" Margin="6,0,0,0" Command="{Binding AddTagCommand}" Classes="primary">
-              <c:LucideIcon Kind="plus" Width="15" Height="15" Foreground="{StaticResource Brush.GoldLight}" />
+              <c:LucideIcon Kind="plus" Width="15" Height="15" Foreground="{DynamicResource Brush.GoldLight}" />
             </Button>
           </Grid>
         </StackPanel>

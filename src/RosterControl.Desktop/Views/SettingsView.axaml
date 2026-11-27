@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:svc="using:RosterControl.Desktop.Services"
              xmlns:c="using:RosterControl.Desktop.Controls"
              x:Class="RosterControl.Desktop.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
@@ -14,14 +15,14 @@
       <!-- Data storage -->
       <Border Classes="card" Padding="18,16">
         <Grid ColumnDefinitions="Auto,*">
-          <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Brush.GoldSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
-            <c:LucideIcon Kind="database" Width="18" Height="18" Foreground="{StaticResource Brush.Gold}" />
+          <Border Width="36" Height="36" CornerRadius="8" Background="{DynamicResource Brush.GoldSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
+            <c:LucideIcon Kind="database" Width="18" Height="18" Foreground="{DynamicResource Brush.Gold}" />
           </Border>
           <StackPanel Grid.Column="1" Spacing="8">
             <TextBlock Text="Data storage" Classes="title" />
             <TextBlock Text="{Binding StorageText}" Classes="secondary" TextWrapping="Wrap" />
             <Border Classes="elevated" Padding="10,7">
-              <SelectableTextBlock Text="{Binding DataFolder}" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.TextPrimary}" />
+              <SelectableTextBlock Text="{Binding DataFolder}" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.TextPrimary}" />
             </Border>
             <TextBlock Classes="caption" TextWrapping="Wrap" Text="roster.db is a single SQLite file. Copy the whole data folder (with the app closed) to move your rosters to another PC, or use Export below." />
             <Button HorizontalAlignment="Left" Command="{Binding OpenDataFolderCommand}" Classes="small">
@@ -37,8 +38,8 @@
       <!-- Display -->
       <Border Classes="card" Padding="18,16">
         <Grid ColumnDefinitions="Auto,*">
-          <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Brush.GoldSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
-            <c:LucideIcon Kind="monitor" Width="18" Height="18" Foreground="{StaticResource Brush.Gold}" />
+          <Border Width="36" Height="36" CornerRadius="8" Background="{DynamicResource Brush.GoldSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
+            <c:LucideIcon Kind="monitor" Width="18" Height="18" Foreground="{DynamicResource Brush.Gold}" />
           </Border>
           <StackPanel Grid.Column="1" Spacing="8">
             <TextBlock Text="Display" Classes="title" />
@@ -47,6 +48,34 @@
               <ComboBox ItemsSource="{Binding ScaleOptions}" SelectedItem="{Binding SelectedScale}" MinWidth="150" />
               <TextBlock Text="Ctrl+= / Ctrl+- / Ctrl+0" Classes="caption" VerticalAlignment="Center" />
             </StackPanel>
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="10" Margin="0,2,0,2">
+              <TextBlock Text="Theme" Classes="secondary" VerticalAlignment="Center" Width="52" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Name="ThemeChoices">
+                <RadioButton Classes="segment" GroupName="theme" IsChecked="{Binding Shell.IsDarkTheme, Mode=OneWay}" Command="{Binding Shell.SetThemeCommand}" CommandParameter="{x:Static svc:ThemeMode.Dark}" Content="Dark" />
+                <RadioButton Classes="segment" GroupName="theme" IsChecked="{Binding Shell.IsLightTheme, Mode=OneWay}" Command="{Binding Shell.SetThemeCommand}" CommandParameter="{x:Static svc:ThemeMode.Light}" Content="Light" />
+                <RadioButton Classes="segment" GroupName="theme" IsChecked="{Binding Shell.IsSystemTheme, Mode=OneWay}" Command="{Binding Shell.SetThemeCommand}" CommandParameter="{x:Static svc:ThemeMode.System}" Content="Match Windows" />
+              </StackPanel>
+              <TextBlock Grid.Row="1" Text="Accent" Classes="secondary" VerticalAlignment="Center" Width="52" />
+              <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <ItemsControl ItemsSource="{Binding Shell.AccentChoices}" VerticalAlignment="Center">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:AccentChoice">
+                      <Button Classes="plain" Padding="0" ToolTip.Tip="{Binding Name}" CornerRadius="13"
+                              Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).Shell.SetAccentCommand}" CommandParameter="{Binding Hex}">
+                        <Panel Width="26" Height="26">
+                          <Ellipse Fill="{Binding Brush}" />
+                          <Ellipse Stroke="{DynamicResource Brush.TextPrimary}" StrokeThickness="2" IsVisible="{Binding IsSelected}" Margin="-3" />
+                        </Panel>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <ColorPicker Color="{Binding Shell.CustomAccentColor}" IsAlphaEnabled="False" IsAlphaVisible="False" VerticalAlignment="Center"
+                             ToolTip.Tip="Any colour" Name="AccentPicker" />
+                <TextBlock Text="{Binding Shell.AccentText}" Classes="caption" VerticalAlignment="Center" />
+              </StackPanel>
+            </Grid>
             <CheckBox IsChecked="{Binding ReopenLast}" Content="Reopen the last page (and champion) at startup" />
             <CheckBox IsChecked="{Binding ReduceMotion}" Content="Reduce motion: no animations or background glow" />
           </StackPanel>
@@ -56,8 +85,8 @@
       <!-- Game data -->
       <Border Classes="card" Padding="18,16">
         <Grid ColumnDefinitions="Auto,*">
-          <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Brush.TealSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
-            <c:LucideIcon Kind="refresh-cw" Width="18" Height="18" Foreground="{StaticResource Brush.Teal}" />
+          <Border Width="36" Height="36" CornerRadius="8" Background="{DynamicResource Brush.TealSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
+            <c:LucideIcon Kind="refresh-cw" Width="18" Height="18" Foreground="{DynamicResource Brush.Teal}" />
           </Border>
           <StackPanel Grid.Column="1" Spacing="8">
             <TextBlock Text="Game data" Classes="title" />
@@ -70,15 +99,15 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="x:String">
                   <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
-                    <c:LucideIcon Kind="triangle-alert" Width="13" Height="13" Foreground="{StaticResource Brush.Warning}" />
-                    <TextBlock Text="{Binding}" Classes="caption" Foreground="{StaticResource Brush.Warning}" />
+                    <c:LucideIcon Kind="triangle-alert" Width="13" Height="13" Foreground="{DynamicResource Brush.Warning}" />
+                    <TextBlock Text="{Binding}" Classes="caption" Foreground="{DynamicResource Brush.Warning}" />
                   </StackPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <TextBlock Classes="caption" TextWrapping="Wrap" Text="Champions, items, runes and spells come from Riot's Data Dragon; stat shards, rune page art and ability numbers (from the game files) from Community Dragon; champion positions from Meraki Analytics (all public and keyless). The app opens from the local cache, then checks for a new patch in the background (and every 2 hours). Patch data and icons are cached per patch (the newest 3 are kept); splash and rune art is re-checked weekly. Builds saved on an older patch flag items that changed since." />
+            <TextBlock Classes="caption" TextWrapping="Wrap" Text="Champions, items, runes and spells come from Riot's Data Dragon; stat shards, rune page art and ability and rune numbers (from the game files) from Community Dragon; champion positions from Meraki Analytics (all public and keyless). The app opens from the local cache, then checks for a new patch in the background (and every 2 hours). Patch data and icons are cached per patch (the newest 3 are kept); splash and rune art is re-checked weekly. Builds saved on an older patch flag items that changed since." />
             <StackPanel Orientation="Horizontal" Spacing="8">
-              <c:LucideIcon Kind="hard-drive" Width="13" Height="13" Foreground="{StaticResource Brush.TextMuted}" VerticalAlignment="Center" />
+              <c:LucideIcon Kind="hard-drive" Width="13" Height="13" Foreground="{DynamicResource Brush.TextMuted}" VerticalAlignment="Center" />
               <TextBlock Text="{Binding CacheText}" Classes="caption" VerticalAlignment="Center" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="8">
@@ -102,8 +131,8 @@
       <!-- Backups -->
       <Border Classes="card" Padding="18,16">
         <Grid ColumnDefinitions="Auto,*">
-          <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Brush.GoodSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
-            <c:LucideIcon Kind="archive" Width="18" Height="18" Foreground="{StaticResource Brush.Good}" />
+          <Border Width="36" Height="36" CornerRadius="8" Background="{DynamicResource Brush.GoodSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
+            <c:LucideIcon Kind="archive" Width="18" Height="18" Foreground="{DynamicResource Brush.Good}" />
           </Border>
           <StackPanel Grid.Column="1" Spacing="8">
             <TextBlock Text="Backup &amp; restore" Classes="title" />
@@ -112,8 +141,8 @@
             <StackPanel Orientation="Horizontal" Spacing="8">
               <Button Classes="primary small" Command="{Binding ExportCommand}" IsEnabled="{Binding !IsBusy}">
                 <StackPanel Orientation="Horizontal" Spacing="6">
-                  <c:LucideIcon Kind="download" Width="13" Height="13" Foreground="{StaticResource Brush.GoldLight}" />
-                  <TextBlock Text="Export…" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" />
+                  <c:LucideIcon Kind="download" Width="13" Height="13" Foreground="{DynamicResource Brush.GoldLight}" />
+                  <TextBlock Text="Export…" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" />
                 </StackPanel>
               </Button>
               <Button Classes="small" Command="{Binding ImportCommand}" IsEnabled="{Binding !IsBusy}">
@@ -136,8 +165,8 @@
       <!-- App updates -->
       <Border Classes="card" Padding="18,16">
         <Grid ColumnDefinitions="Auto,*">
-          <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Brush.TealSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
-            <c:LucideIcon Kind="download" Width="18" Height="18" Foreground="{StaticResource Brush.Teal}" />
+          <Border Width="36" Height="36" CornerRadius="8" Background="{DynamicResource Brush.TealSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
+            <c:LucideIcon Kind="download" Width="18" Height="18" Foreground="{DynamicResource Brush.Teal}" />
           </Border>
           <StackPanel Grid.Column="1" Spacing="8">
             <TextBlock Text="App updates" Classes="title" />
@@ -149,8 +178,8 @@
             <StackPanel Orientation="Horizontal" Spacing="8">
               <Button Classes="teal small" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RestartToUpdateCommand}" IsVisible="{Binding IsUpdateReady}">
                 <StackPanel Orientation="Horizontal" Spacing="6">
-                  <c:LucideIcon Kind="rotate-ccw" Width="13" Height="13" Foreground="#CDFAFA" />
-                  <TextBlock Text="Restart to update" FontSize="12" Foreground="#CDFAFA" />
+                  <c:LucideIcon Kind="rotate-ccw" Width="13" Height="13" Foreground="{DynamicResource Brush.TealText}" />
+                  <TextBlock Text="Restart to update" FontSize="12" Foreground="{DynamicResource Brush.TealText}" />
                 </StackPanel>
               </Button>
               <Button Classes="small" Command="{Binding CheckForUpdatesCommand}" IsEnabled="{Binding CanCheckForUpdates}" IsVisible="{Binding UpdatesSupported}">
@@ -173,8 +202,8 @@
       <!-- Quick look -->
       <Border Classes="card" Padding="18,16">
         <Grid ColumnDefinitions="Auto,*">
-          <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Brush.TealSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
-            <c:LucideIcon Kind="eye" Width="18" Height="18" Foreground="{StaticResource Brush.Teal}" />
+          <Border Width="36" Height="36" CornerRadius="8" Background="{DynamicResource Brush.TealSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
+            <c:LucideIcon Kind="eye" Width="18" Height="18" Foreground="{DynamicResource Brush.Teal}" />
           </Border>
           <StackPanel Grid.Column="1" Spacing="8">
             <TextBlock Text="Quick look" Classes="title" />
@@ -198,7 +227,7 @@
                 </StackPanel>
               </Button>
             </StackPanel>
-            <TextBlock Text="{Binding Shell.HotkeyStatus}" IsVisible="{Binding Shell.HasHotkeyStatus}" FontSize="12" Foreground="{StaticResource Brush.Warning}" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding Shell.HotkeyStatus}" IsVisible="{Binding Shell.HasHotkeyStatus}" FontSize="12" Foreground="{DynamicResource Brush.Warning}" TextWrapping="Wrap" />
           </StackPanel>
         </Grid>
       </Border>
@@ -206,39 +235,39 @@
       <!-- Keyboard -->
       <Border Classes="card" Padding="18,16">
         <Grid ColumnDefinitions="Auto,*">
-          <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Brush.TealSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
-            <c:LucideIcon Kind="keyboard" Width="18" Height="18" Foreground="{StaticResource Brush.Teal}" />
+          <Border Width="36" Height="36" CornerRadius="8" Background="{DynamicResource Brush.TealSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
+            <c:LucideIcon Kind="keyboard" Width="18" Height="18" Foreground="{DynamicResource Brush.Teal}" />
           </Border>
           <StackPanel Grid.Column="1" Spacing="8">
             <TextBlock Text="Keyboard shortcuts" Classes="title" />
             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
-              <TextBlock Grid.Row="0" Text="Ctrl+K" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="0" Text="Ctrl+K" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
               <TextBlock Grid.Row="0" Grid.Column="1" Text="Search champions, pages and actions" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
-              <TextBlock Grid.Row="1" Text="Ctrl+1 … 4" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
-              <TextBlock Grid.Row="1" Grid.Column="1" Text="Rosters · Champions · Counter picks · Settings" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
-              <TextBlock Grid.Row="2" Text="Alt+←" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="1" Text="Ctrl+1 … 5" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="Rosters · Champions · Counter picks · Settings · Items" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="2" Text="Alt+←" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
               <TextBlock Grid.Row="2" Grid.Column="1" Text="Back" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
-              <TextBlock Grid.Row="3" Text="Ctrl+Z" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="3" Text="Ctrl+Z" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
               <TextBlock Grid.Row="3" Grid.Column="1" Text="Undo the last removal" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
-              <TextBlock Grid.Row="4" Text="Ctrl+= / Ctrl+- / Ctrl+0" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="4" Text="Ctrl+= / Ctrl+- / Ctrl+0" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
               <TextBlock Grid.Row="4" Grid.Column="1" Text="Zoom in · out · reset" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
-              <TextBlock Grid.Row="5" Text="F11 · Esc" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="5" Text="F11 · Esc" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
               <TextBlock Grid.Row="5" Grid.Column="1" Text="Full screen · leave full screen" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
-              <TextBlock Grid.Row="6" Text="Ctrl+N" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="6" Text="Ctrl+N" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
               <TextBlock Grid.Row="6" Grid.Column="1" Text="New group (Rosters) · new build (champion)" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
-              <TextBlock Grid.Row="7" Text="1–5 · 0 · Delete" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="7" Text="1–5 · 0 · Delete" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
               <TextBlock Grid.Row="7" Grid.Column="1" Text="Rate, clear or remove the hovered roster card" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
-              <TextBlock Grid.Row="8" Text="Ctrl+Tab" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="8" Text="Ctrl+Tab" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
               <TextBlock Grid.Row="8" Grid.Column="1" Text="Next tab on a champion page" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
-              <TextBlock Grid.Row="9" Text="Ctrl+← / Ctrl+→" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="9" Text="Ctrl+← / Ctrl+→" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
               <TextBlock Grid.Row="9" Grid.Column="1" Text="Previous / next champion in the list you opened it from" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
-              <TextBlock Grid.Row="10" Text="Enter in a search box" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="10" Text="Enter in a search box" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
               <TextBlock Grid.Row="10" Grid.Column="1" Text="Open / add the first result" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
-              <TextBlock Grid.Row="11" Text="Ctrl+click · Shift+click · Ctrl+A" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="11" Text="Ctrl+click · Shift+click · Ctrl+A" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
               <TextBlock Grid.Row="11" Grid.Column="1" Text="Select roster cards (then 0–5 rates, Delete removes, Esc clears)" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
-              <TextBlock Grid.Row="12" Text="Ctrl+B · Enter · Esc (notes)" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="12" Text="Ctrl+B · Enter · Esc (notes)" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
               <TextBlock Grid.Row="12" Grid.Column="1" Text="Bold · continue a list · finish editing" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
-              <TextBlock Grid.Row="13" Text="{Binding Shell.QuickLookHotkey}" IsVisible="{Binding Shell.QuickLookHotkeyEnabled}" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="13" Text="{Binding Shell.QuickLookHotkey}" IsVisible="{Binding Shell.QuickLookHotkeyEnabled}" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
               <TextBlock Grid.Row="13" Grid.Column="1" Text="Show or hide quick look, from any app" IsVisible="{Binding Shell.QuickLookHotkeyEnabled}" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
             </Grid>
           </StackPanel>
@@ -248,8 +277,8 @@
       <!-- Troubleshooting -->
       <Border Classes="card" Padding="18,16">
         <Grid ColumnDefinitions="Auto,*">
-          <Border Width="36" Height="36" CornerRadius="8" Background="{StaticResource Brush.TealSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
-            <c:LucideIcon Kind="life-buoy" Width="18" Height="18" Foreground="{StaticResource Brush.Teal}" />
+          <Border Width="36" Height="36" CornerRadius="8" Background="{DynamicResource Brush.TealSoft}" VerticalAlignment="Top" Margin="0,0,14,0">
+            <c:LucideIcon Kind="life-buoy" Width="18" Height="18" Foreground="{DynamicResource Brush.Teal}" />
           </Border>
           <StackPanel Grid.Column="1" Spacing="8">
             <TextBlock Text="Troubleshooting" Classes="title" />

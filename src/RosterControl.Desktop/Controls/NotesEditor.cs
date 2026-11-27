@@ -67,6 +67,7 @@ public sealed class NotesEditor : UserControl
             Child = new ScrollViewer { Content = _lines, VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto },
         };
         _view.PointerReleased += OnViewPointerReleased;
+        ActualThemeVariantChanged += (_, _) => Refresh(); // formatted text uses theme brushes
         _view.PointerEntered += OnCompactHover;
         _view.PointerExited += OnCompactHover;
 
@@ -77,8 +78,8 @@ public sealed class NotesEditor : UserControl
             FontSize = 11,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 8, 0),
-            Foreground = Resource("Brush.TextMuted"),
         });
+        ((Control)_toolbar.Children[^1]).Bind(TextBlock.ForegroundProperty, _toolbar.Children[^1].GetResourceObservable("Brush.TextMuted"));
         _toolbar.Children.Add(ToolButton("bold", "Bold (Ctrl+B)", () => Apply(e => NoteFormat.ToggleBold(e.Text, e.SelectionStart, e.SelectionEnd))));
         _toolbar.Children.Add(ToolButton("list", "Bulleted list", () => Apply(e => NoteFormat.ToggleList(e.Text, e.SelectionStart, e.SelectionEnd, NoteLineKind.Bullet))));
         _toolbar.Children.Add(ToolButton("list-checks", "Checklist", () => Apply(e => NoteFormat.ToggleList(e.Text, e.SelectionStart, e.SelectionEnd, NoteLineKind.Check))));
@@ -369,9 +370,10 @@ public sealed class NotesEditor : UserControl
         return button;
     }
 
+    /// <summary>A theme brush for the current light/dark theme (colours live in per-theme dictionaries).</summary>
     private IBrush Resource(string key) =>
-        this.TryFindResource(key, out var value) && value is IBrush brush ? brush
-        : Application.Current?.TryFindResource(key, out var app) == true && app is IBrush appBrush ? appBrush
+        this.TryFindResource(key, ActualThemeVariant, out var value) && value is IBrush brush ? brush
+        : Application.Current is { } app && app.TryFindResource(key, app.ActualThemeVariant, out var appValue) && appValue is IBrush appBrush ? appBrush
         : Brushes.Gray;
 
     private static string Normalize(string? text) => (text ?? "").Replace("\r\n", "\n").Replace('\r', '\n');

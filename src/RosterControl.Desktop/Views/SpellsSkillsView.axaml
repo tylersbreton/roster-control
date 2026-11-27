@@ -21,7 +21,7 @@
                     <Button Classes="plain" Command="{Binding $parent[UserControl].((vm:SpellsSkillsViewModel)DataContext).SelectSlotCommand}" CommandParameter="{Binding}">
                       <ToolTip.Tip>
                         <StackPanel Spacing="4" MaxWidth="300">
-                          <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{StaticResource Brush.GoldLight}" />
+                          <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{DynamicResource Brush.GoldLight}" />
                           <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Classes="secondary" />
                         </StackPanel>
                       </ToolTip.Tip>
@@ -29,11 +29,11 @@
                         <Border Width="62" Height="62" CornerRadius="6" BorderThickness="2" Padding="2" Classes="spellslot" Classes.active="{Binding IsActive}">
                           <Panel>
                             <c:AssetImage Source="{Binding IconUrl}" CornerRadius="3" ShowPlaceholder="True" />
-                            <c:LucideIcon Kind="plus" Width="18" Height="18" IsVisible="{Binding !HasSpell}" Foreground="{StaticResource Brush.TextMuted}" />
+                            <c:LucideIcon Kind="plus" Width="18" Height="18" IsVisible="{Binding !HasSpell}" Foreground="{DynamicResource Brush.TextMuted}" />
                           </Panel>
                         </Border>
-                        <Border CornerRadius="3" Background="#05080D" BorderBrush="{StaticResource Brush.GoldDark}" BorderThickness="1" Padding="6,0" HorizontalAlignment="Center">
-                          <TextBlock Text="{Binding Hotkey}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource Brush.Gold}" />
+                        <Border CornerRadius="3" Background="{DynamicResource Brush.SurfaceDeep}" BorderBrush="{DynamicResource Brush.GoldDark}" BorderThickness="1" Padding="6,0" HorizontalAlignment="Center">
+                          <TextBlock Text="{Binding Hotkey}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Brush.Gold}" />
                         </Border>
                       </StackPanel>
                     </Button>
@@ -54,7 +54,7 @@
                 <Button Classes="plain rune" Margin="0,0,8,8" Command="{Binding $parent[UserControl].((vm:SpellsSkillsViewModel)DataContext).ChooseSpellCommand}" CommandParameter="{Binding}">
                   <ToolTip.Tip>
                     <StackPanel Spacing="4" MaxWidth="320">
-                      <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{StaticResource Brush.GoldLight}" />
+                      <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{DynamicResource Brush.GoldLight}" />
                       <TextBlock Text="{Binding CooldownText}" Classes="caption" />
                       <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Classes="secondary" />
                       <TextBlock Text="{Binding ModeText}" Classes="caption" FontStyle="Italic" />
@@ -84,8 +84,8 @@
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center"
                         IsVisible="{Binding MaxOrderText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
               <TextBlock Text="MAX" Classes="caption" FontWeight="Bold" LetterSpacing="1" VerticalAlignment="Center" />
-              <Border CornerRadius="6" Background="#05080D" BorderBrush="{StaticResource Brush.GoldDark}" BorderThickness="1" Padding="10,3">
-                <TextBlock Text="{Binding MaxOrderText}" FontWeight="Bold" FontSize="14" Foreground="{StaticResource Brush.GoldLight}" />
+              <Border CornerRadius="6" Background="{DynamicResource Brush.SurfaceDeep}" BorderBrush="{DynamicResource Brush.GoldDark}" BorderThickness="1" Padding="10,3">
+                <TextBlock Text="{Binding MaxOrderText}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource Brush.GoldLight}" />
               </Border>
             </StackPanel>
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
@@ -105,7 +105,7 @@
                           <DataTemplate x:DataType="x:String">
                             <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,6"
                                     Command="{Binding $parent[UserControl].((vm:SpellsSkillsViewModel)DataContext).FillSkillsCommand}" CommandParameter="{Binding}">
-                              <TextBlock Text="{Binding}" FontWeight="SemiBold" Foreground="{StaticResource Brush.GoldLight}" />
+                              <TextBlock Text="{Binding}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.GoldLight}" />
                             </Button>
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -148,14 +148,14 @@
                           <Panel MaxWidth="420">
                             <v:AbilityDetailView DataContext="{Binding Detail}" IsVisible="{Binding $parent[Panel].((vm:SkillRowViewModel)DataContext).HasDetail}" />
                             <StackPanel Spacing="4" IsVisible="{Binding !HasDetail}">
-                              <TextBlock Text="{Binding AbilityName}" FontWeight="Bold" Foreground="{StaticResource Brush.GoldLight}" />
+                              <TextBlock Text="{Binding AbilityName}" FontWeight="Bold" Foreground="{DynamicResource Brush.GoldLight}" />
                               <TextBlock c:RiotText.Markup="{Binding AbilityDescription}" TextWrapping="Wrap" Classes="secondary" />
                             </StackPanel>
                           </Panel>
                         </ToolTip.Tip>
                         <Panel Width="30" Height="30">
                           <c:AssetImage Source="{Binding IconUrl}" Width="30" Height="30" CornerRadius="4" FallbackText="{Binding Key}" Ring="{Binding Accent}" RingThickness="1" />
-                          <Border CornerRadius="3" Background="#E6060A11" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-3,0,0,-3" Padding="3,0">
+                          <Border CornerRadius="3" Background="{DynamicResource Brush.Scrim}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-3,0,0,-3" Padding="3,0">
                             <TextBlock Text="{Binding Key}" FontSize="10" FontWeight="Bold" Foreground="{Binding Accent}" />
                           </Border>
                         </Panel>
@@ -168,9 +168,9 @@
                           <DataTemplate x:DataType="vm:SkillCellViewModel">
                             <Button Classes="plain cell" Command="{Binding ToggleCommand}" ToolTip.Tip="{Binding Tooltip}">
                               <Panel Width="30" Height="30">
-                                <Border Classes="cellbg" CornerRadius="4" BorderBrush="#1C2737" BorderThickness="1" />
+                                <Border Classes="cellbg" CornerRadius="4" BorderBrush="{DynamicResource Brush.BorderStrong}" BorderThickness="1" />
                                 <Border CornerRadius="4" Background="{Binding Accent}" IsVisible="{Binding IsSet}" BoxShadow="0 0 10 0 #40000000" />
-                                <Border CornerRadius="4" BorderBrush="{StaticResource Brush.Bad}" BorderThickness="2" IsVisible="{Binding IsInvalid}" />
+                                <Border CornerRadius="4" BorderBrush="{DynamicResource Brush.Bad}" BorderThickness="2" IsVisible="{Binding IsInvalid}" />
                                 <TextBlock Text="{Binding LevelText}" FontSize="11" FontWeight="Bold" Foreground="#060A11" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsSet}" />
                               </Panel>
                             </Button>
@@ -185,8 +185,8 @@
           </ScrollViewer>
 
           <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasInvalid}">
-            <c:LucideIcon Kind="triangle-alert" Width="13" Height="13" Foreground="{StaticResource Brush.Warning}" />
-            <TextBlock Text="Outlined cells break the usual rank limits (basic abilities: max rank ≤ half your level; ultimate at 6 / 11 / 16)." Classes="caption" Foreground="{StaticResource Brush.Warning}" />
+            <c:LucideIcon Kind="triangle-alert" Width="13" Height="13" Foreground="{DynamicResource Brush.Warning}" />
+            <TextBlock Text="Outlined cells break the usual rank limits (basic abilities: max rank ≤ half your level; ultimate at 6 / 11 / 16)." Classes="caption" Foreground="{DynamicResource Brush.Warning}" />
           </StackPanel>
 
           <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding HasPassive}" Background="Transparent">

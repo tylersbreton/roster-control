@@ -77,6 +77,9 @@ public interface IShell
     /// <returns>The chosen path, or null when cancelled.</returns>
     Task<string?> PickSaveFileAsync(string title, string suggestedName, string extension, string typeName);
 
+    /// <returns>The chosen file, or null when cancelled.</returns>
+    Task<string?> PickOpenFileAsync(string title, string extension, string typeName);
+
     /// <summary>
     /// Reads a build share code from the clipboard and saves it. When it's for a different champion than
     /// <paramref name="targetChampionId"/>, asks first. Returns the saved build, or null (with a toast saying why).
@@ -439,4 +442,26 @@ public sealed partial class ToastViewModel : ObservableObject
         ToastKind.Error => Palette.Bad,
         _ => Palette.Teal,
     });
+}
+
+/// <summary>Puts a build's items on the clipboard as a League client item set.</summary>
+public static class ItemSetClipboard
+{
+    public static async Task CopyAsync(IShell shell, Build build, ChampionInfo champion)
+    {
+        if (build.Items.Blocks.All(b => b.Items.Count == 0))
+        {
+            shell.ShowToast($"\"{build.Name}\" has no items yet.", ToastKind.Warning);
+            return;
+        }
+        var json = Core.Rules.ItemSetExport.ToClientJson(build, champion, shell.Game, out var skipped);
+        if (!await shell.CopyTextAsync(json))
+        {
+            shell.ShowToast("Couldn't access the clipboard.", ToastKind.Error);
+            return;
+        }
+        var missing = skipped > 0 ? $" {skipped} item{(skipped == 1 ? " is" : "s are")} no longer in the game and left out." : "";
+        shell.ShowToast($"Item set \"{Core.Rules.ItemSetExport.Title(champion, build)}\" copied. In the League client, open Collection → Items, then import the item set from the clipboard.{missing}",
+            ToastKind.Success);
+    }
 }

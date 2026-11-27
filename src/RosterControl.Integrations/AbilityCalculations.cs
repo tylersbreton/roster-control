@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using RosterControl.Core.GameData;
+using RosterControl.Core.Rules;
 
 namespace RosterControl.Integrations;
 
@@ -82,19 +83,58 @@ public static class AbilityCalculations
     public static IReadOnlyList<AbilityValue> ParseSpell(JsonElement spell, int ranks)
     {
         if (!spell.TryGetProperty("mSpellCalculations", out var calcs) || calcs.ValueKind != JsonValueKind.Object) return [];
-        var context = new Context(spell, calcs, ranks);
+        return ParseCalculations(calcs, ranks, name => SpellDataValue(spell, name, ranks), index => EffectValue(spell, index, ranks));
+    }
+
+    private static List<AbilityValue> ParseCalculations(JsonElement calcs, int ranks, Func<string, double[]?> dataValue, Func<int, double[]?> effectValue,
+        Func<string, bool>? skip = null)
+    {
+        var context = new Context(calcs, ranks, dataValue, effectValue);
         var list = new List<AbilityValue>();
         foreach (var calc in calcs.EnumerateObject())
         {
             if (calc.Name.StartsWith('{')) continue; // unnamed (hashed) calculations have no readable label
+            if (skip?.Invoke(calc.Name) == true) continue;
             var label = Label(calc.Name);
             if (label.Length == 0) continue;
-            var text = context.Display(calc.Name);
-            if (text is null) continue;
-            list.Add(new AbilityValue(label, text));
+            if (context.Display(calc.Name) is not { } shown) continue;
+            list.Add(new AbilityValue(label, shown.Text, shown.Formula));
         }
         return list;
     }
+
+    /// <summary>
+    /// Rune numbers from <c>perks.cdtb.bin.json</c>: every rune whose script data has calculations (Electrocute, Grasp,
+    /// Aery, Comet, Fleet Footwork...). Runes without any (e.g. Conqueror) are left out.
+    /// </summary>
+    public static IReadOnlyDictionary<int, IReadOnlyList<AbilityValue>> ParsePerks(JsonElement root)
+    {
+        var result = new Dictionary<int, IReadOnlyList<AbilityValue>>();
+        if (root.ValueKind != JsonValueKind.Object) return result;
+        foreach (var prop in root.EnumerateObject())
+        {
+            var perk = prop.Value;
+            if (perk.ValueKind != JsonValueKind.Object || Str(perk, "__type") != "Perk") continue;
+            if (!perk.TryGetProperty("mPerkId", out var idEl) || !idEl.TryGetInt32(out var id)) continue;
+            if (!perk.TryGetProperty("mScript", out var script) || !script.TryGetProperty("mSpellScriptData", out var data)) continue;
+            if (!data.TryGetProperty("mCalculations", out var calcs) || calcs.ValueKind != JsonValueKind.Object) continue;
+            var amounts = data.TryGetProperty("mEffectAmount", out var a) && a.ValueKind == JsonValueKind.Object ? a : default;
+            double[]? Amount(string name)
+            {
+                if (amounts.ValueKind != JsonValueKind.Object) return null;
+                foreach (var v in amounts.EnumerateObject())
+                    if (string.Equals(v.Name, name, StringComparison.OrdinalIgnoreCase) && v.Value.TryGetDouble(out var d)) return [d];
+                return null;
+            }
+            var values = ParseCalculations(calcs, 1, Amount, _ => null, IsHelperCalculation).Take(MaxValuesPerAbility).ToList();
+            if (values.Count > 0) result[id] = values;
+        }
+        return result;
+    }
+
+    /// <summary>Melee/ranged helper calculations of runes only feed other calculations.</summary>
+    private static bool IsHelperCalculation(string name) =>
+        name.Contains("Melee", StringComparison.Ordinal) || name.Contains("Ranged", StringComparison.Ordinal) || name.Contains("ChampRange", StringComparison.Ordinal);
 
     // ── Labels ──────────────────────────────────────────────────────────────────────────────────────
 
@@ -150,14 +190,32 @@ public static class AbilityCalculations
 
     // ── Evaluation ──────────────────────────────────────────────────────────────────────────────────
 
-    /// <summary>A value per rank: a constant part, stat ratios and an optional range over champion levels 1–18.</summary>
+    private const int Levels = 18;
+
+    /// <summary>A value per rank: a constant part, stat ratios and an optional value per champion level 1–18.</summary>
     private sealed class Value(int ranks)
     {
         public double[] Base { get; } = new double[ranks];
         public List<(int Stat, int Formula, double[] Coefficient)> Ratios { get; } = [];
-        public (double From, double To)? ByLevel { get; set; }
+        public double[]? ByLevel { get; set; }
+        public double RangedMultiplier { get; set; } = 1;
 
         public bool IsConstant => Ratios.Count == 0 && ByLevel is null;
+
+        public static Value Levelled(int ranks, Func<int, double> atLevel)
+        {
+            var value = new Value(ranks) { ByLevel = new double[Levels] };
+            for (var l = 1; l <= Levels; l++) value.ByLevel[l - 1] = atLevel(l);
+            return value;
+        }
+
+        public AbilityFormula ToFormula(bool percent, int? precision) => new(
+            Base.ToArray(),
+            Ratios.Select(r => new StatRatio(r.Stat, r.Formula, r.Coefficient.ToArray())).ToList(),
+            ByLevel?.ToArray(),
+            percent,
+            precision,
+            RangedMultiplier);
 
         public static Value Const(int ranks, double v)
         {
@@ -175,8 +233,10 @@ public static class AbilityCalculations
 
         public static Value? Add(Value a, Value b)
         {
-            if (a.ByLevel is not null && b.ByLevel is not null) return null;
-            var sum = new Value(a.Base.Length) { ByLevel = a.ByLevel ?? b.ByLevel };
+            var sum = new Value(a.Base.Length)
+            {
+                ByLevel = a.ByLevel is null ? b.ByLevel?.ToArray() : b.ByLevel is null ? a.ByLevel.ToArray() : a.ByLevel.Zip(b.ByLevel, (x, y) => x + y).ToArray(),
+            };
             for (var i = 0; i < sum.Base.Length; i++) sum.Base[i] = a.Base[i] + b.Base[i];
             foreach (var ratio in a.Ratios.Concat(b.Ratios))
             {
@@ -194,7 +254,7 @@ public static class AbilityCalculations
             var scaled = new Value(v.Base.Length);
             for (var i = 0; i < scaled.Base.Length; i++) scaled.Base[i] = v.Base[i] * factor[i];
             foreach (var (stat, formula, coef) in v.Ratios) scaled.Ratios.Add((stat, formula, coef.Select((c, i) => c * factor[i]).ToArray()));
-            if (v.ByLevel is { } r) scaled.ByLevel = (r.From * factor[0], r.To * factor[0]);
+            if (v.ByLevel is { } r) scaled.ByLevel = r.Select(x => x * factor[0]).ToArray();
             return scaled;
         }
 
@@ -202,18 +262,18 @@ public static class AbilityCalculations
             a.IsConstant ? Scale(b, a.Base) : b.IsConstant ? Scale(a, b.Base) : null;
     }
 
-    private sealed class Context(JsonElement spell, JsonElement calcs, int ranks)
+    private sealed class Context(JsonElement calcs, int ranks, Func<string, double[]?> dataValue, Func<int, double[]?> effectValue)
     {
         private readonly HashSet<string> _evaluating = new(StringComparer.Ordinal);
 
-        public string? Display(string name)
+        public (string Text, AbilityFormula Formula)? Display(string name)
         {
             if (!calcs.TryGetProperty(name, out var calc)) return null;
             var value = Evaluate(calc);
             if (value is null) return null;
             var percent = calc.TryGetProperty("mDisplayAsPercent", out var p) && p.ValueKind == JsonValueKind.True;
             int? precision = calc.TryGetProperty("mPrecision", out var pr) && pr.TryGetInt32(out var digits) ? digits : null;
-            return Format(value, percent, precision);
+            return Format(value, percent, precision) is { } text ? (text, value.ToFormula(percent, precision)) : null;
         }
 
         private Value? EvaluateNamed(string name)
@@ -231,23 +291,31 @@ public static class AbilityCalculations
 
         private Value? Evaluate(JsonElement calc)
         {
-            switch (Str(calc, "__type"))
+            var type = Str(calc, "__type");
+            // Some calculation types only have hashed names (e.g. one with a ranged multiplier); they share the formula layout.
+            if (type == "GameCalculation" || (type is not null && type.StartsWith('{') && calc.TryGetProperty("mFormulaParts", out _)))
             {
-                case "GameCalculation":
+                var total = Value.Const(ranks, 0);
+                if (!calc.TryGetProperty("mFormulaParts", out var parts) || parts.ValueKind != JsonValueKind.Array) return null;
+                foreach (var part in parts.EnumerateArray())
                 {
-                    var total = Value.Const(ranks, 0);
-                    if (!calc.TryGetProperty("mFormulaParts", out var parts) || parts.ValueKind != JsonValueKind.Array) return null;
-                    foreach (var part in parts.EnumerateArray())
-                    {
-                        var v = Part(part);
-                        if (v is null) return null;
-                        total = Value.Add(total, v);
-                        if (total is null) return null;
-                    }
-                    return calc.TryGetProperty("mMultiplier", out var m) && m.ValueKind == JsonValueKind.Object
-                        ? Part(m) is { } factor ? Value.Multiply(total, factor) : null
-                        : total;
+                    var v = Part(part);
+                    if (v is null) return null;
+                    total = Value.Add(total, v);
+                    if (total is null) return null;
                 }
+                var result = calc.TryGetProperty("mMultiplier", out var m) && m.ValueKind == JsonValueKind.Object
+                    ? Part(m) is { } factor ? Value.Multiply(total, factor) : null
+                    : total;
+                if (result is not null && calc.TryGetProperty("mRangedMultiplier", out var rm) && rm.ValueKind == JsonValueKind.Object)
+                {
+                    if (Part(rm) is not { IsConstant: true } ranged) return null;
+                    result.RangedMultiplier = ranged.Base[0];
+                }
+                return result;
+            }
+            switch (type)
+            {
                 case "GameCalculationModified":
                 {
                     if (Str(calc, "mModifiedGameCalculation") is not { } inner || EvaluateNamed(inner) is not { } value) return null;
@@ -271,7 +339,7 @@ public static class AbilityCalculations
                 case "NumberCalculationPart":
                     return Value.Const(ranks, Num(part, "mNumber"));
                 case "EffectValueCalculationPart":
-                    return EffectValue(part.TryGetProperty("mEffectIndex", out var idx) && idx.TryGetInt32(out var i) ? i : 0) is { } effect ? Value.PerRank(effect) : null;
+                    return effectValue(part.TryGetProperty("mEffectIndex", out var idx) && idx.TryGetInt32(out var i) ? i : 0) is { } effect ? Value.PerRank(effect) : null;
                 case "StatByCoefficientCalculationPart":
                     return Ratio(part, Enumerable.Repeat(Num(part, "mCoefficient"), ranks).ToArray());
                 case "StatByNamedDataValueCalculationPart":
@@ -295,16 +363,43 @@ public static class AbilityCalculations
                         ? Value.Multiply(va, vb)
                         : null;
                 case "ByCharLevelInterpolationCalculationPart":
-                    return new Value(ranks) { ByLevel = (Num(part, "mStartValue"), Num(part, "mEndValue")) };
+                {
+                    var from = Num(part, "mStartValue");
+                    var to = Num(part, "mEndValue");
+                    // Either evenly per level, or along the stat growth curve (slower early, faster late).
+                    var curve = part.TryGetProperty("mScaleByStatProgressionMultiplier", out var sp) && sp.ValueKind == JsonValueKind.True;
+                    return Value.Levelled(ranks, l => from + (to - from) * (curve ? ChampionMath.Growth(l) / 17 : (l - 1) / 17.0));
+                }
                 case "ByCharLevelBreakpointsCalculationPart":
-                    return new Value(ranks) { ByLevel = Breakpoints(part) };
+                    return Value.Levelled(ranks, Breakpoints(part));
                 case "ByCharLevelFormulaCalculationPart":
                 {
                     if (!part.TryGetProperty("values", out var arr) || arr.ValueKind != JsonValueKind.Array || arr.GetArrayLength() < 2) return null;
                     var all = arr.EnumerateArray().Select(x => x.TryGetDouble(out var d) ? d : 0).ToList();
-                    var from = all.Count > 18 ? all[1] : all[0];
-                    var to = all.Count > 18 ? all[18] : all[^1];
-                    return new Value(ranks) { ByLevel = (from, to) };
+                    // 19+ entries are indexed by level (entry 0 unused); otherwise entry 0 is level 1.
+                    return Value.Levelled(ranks, l => all.Count > Levels ? all[Math.Min(l, all.Count - 1)] : all[Math.Min(l - 1, all.Count - 1)]);
+                }
+                case "ClampSubPartsCalculationPart":
+                {
+                    if (!part.TryGetProperty("mSubparts", out var subs) || subs.ValueKind != JsonValueKind.Array) return null;
+                    Value? total = Value.Const(ranks, 0);
+                    foreach (var s in subs.EnumerateArray())
+                    {
+                        if (Part(s) is not { } v) return null;
+                        total = Value.Add(total!, v);
+                        if (total is null) return null;
+                    }
+                    var floor = part.TryGetProperty("mFloor", out var f) && f.TryGetDouble(out var fv) ? fv : double.MinValue;
+                    var ceiling = part.TryGetProperty("mCeiling", out var ce) && ce.TryGetDouble(out var cv) ? cv : double.MaxValue;
+                    if (total!.Ratios.Count > 0) return null;
+                    if (total.ByLevel is null)
+                    {
+                        for (var r = 0; r < total.Base.Length; r++) total.Base[r] = Math.Clamp(total.Base[r], floor, ceiling);
+                        return total;
+                    }
+                    if (total.Base.Any(b => Math.Abs(b) > 1e-9)) return null;
+                    for (var l = 0; l < total.ByLevel.Length; l++) total.ByLevel[l] = Math.Clamp(total.ByLevel[l], floor, ceiling);
+                    return total;
                 }
                 default:
                     return null;
@@ -321,13 +416,15 @@ public static class AbilityCalculations
             return value;
         }
 
-        private (double, double) Breakpoints(JsonElement part)
+        /// <summary>Value at each level 1–18: a level-1 value plus a bonus per level that can change at breakpoints.</summary>
+        private static Func<int, double> Breakpoints(JsonElement part)
         {
+            var values = new double[Levels];
             var value = Num(part, "mLevel1Value");
             var perLevel = Num(part, "mInitialBonusPerLevel");
             var breakpoints = part.TryGetProperty("mBreakpoints", out var bps) && bps.ValueKind == JsonValueKind.Array ? bps.EnumerateArray().ToList() : [];
-            var first = value;
-            for (var level = 2; level <= 18; level++)
+            values[0] = value;
+            for (var level = 2; level <= Levels; level++)
             {
                 foreach (var bp in breakpoints.Where(b => b.TryGetProperty("mLevel", out var l) && l.TryGetInt32(out var lv) && lv == level))
                 {
@@ -335,44 +432,50 @@ public static class AbilityCalculations
                     if (bp.TryGetProperty("mBonusPerLevelAtAndAfter", out var per) && per.TryGetDouble(out var p)) perLevel = p;
                 }
                 value += perLevel;
+                values[level - 1] = value;
             }
-            return (first, value);
+            return l => values[l - 1];
         }
 
-        /// <summary>A named data value per rank (index 1 = rank 1).</summary>
-        private double[]? DataValue(string? name)
+        private double[]? DataValue(string? name) => name is null ? null : dataValue(name) is { } v ? Fit(v) : null;
+
+        /// <summary>Rune data values are a single number; spread it over every rank.</summary>
+        private double[] Fit(double[] values) =>
+            values.Length == ranks ? values : Enumerable.Range(0, ranks).Select(r => values[Math.Min(r, values.Length - 1)]).ToArray();
+    }
+
+    /// <summary>A named data value of a spell, per rank (index 1 = rank 1).</summary>
+    private static double[]? SpellDataValue(JsonElement spell, string name, int ranks)
+    {
+        foreach (var key in new[] { "DataValues", "mDataValues" })
         {
-            if (name is null) return null;
-            foreach (var key in new[] { "DataValues", "mDataValues" })
+            if (!spell.TryGetProperty(key, out var list) || list.ValueKind != JsonValueKind.Array) continue;
+            foreach (var dv in list.EnumerateArray())
             {
-                if (!spell.TryGetProperty(key, out var list) || list.ValueKind != JsonValueKind.Array) continue;
-                foreach (var dv in list.EnumerateArray())
-                {
-                    var n = Str(dv, "name") ?? Str(dv, "mName");
-                    if (!string.Equals(n, name, StringComparison.OrdinalIgnoreCase)) continue; // the game matches names case-insensitively
-                    var values = dv.TryGetProperty("values", out var v) ? v : dv.TryGetProperty("mValues", out var mv) ? mv : default;
-                    return ByRank(values);
-                }
+                var n = Str(dv, "name") ?? Str(dv, "mName");
+                if (!string.Equals(n, name, StringComparison.OrdinalIgnoreCase)) continue; // the game matches names case-insensitively
+                var values = dv.TryGetProperty("values", out var v) ? v : dv.TryGetProperty("mValues", out var mv) ? mv : default;
+                return ByRank(values, ranks);
             }
-            return null;
         }
+        return null;
+    }
 
-        private double[]? EffectValue(int index)
-        {
-            if (index <= 0 || !spell.TryGetProperty("mEffectAmount", out var list) || list.ValueKind != JsonValueKind.Array || list.GetArrayLength() < index) return null;
-            var effect = list[index - 1];
-            return ByRank(effect.TryGetProperty("value", out var v) ? v : default);
-        }
+    private static double[]? EffectValue(JsonElement spell, int index, int ranks)
+    {
+        if (index <= 0 || !spell.TryGetProperty("mEffectAmount", out var list) || list.ValueKind != JsonValueKind.Array || list.GetArrayLength() < index) return null;
+        var effect = list[index - 1];
+        return ByRank(effect.TryGetProperty("value", out var v) ? v : default, ranks);
+    }
 
-        private double[] ByRank(JsonElement values)
-        {
-            var result = new double[ranks];
-            if (values.ValueKind != JsonValueKind.Array) return result; // omitted = all zero
-            var all = values.EnumerateArray().Select(x => x.TryGetDouble(out var d) ? d : 0).ToList();
-            for (var r = 1; r <= ranks; r++)
-                result[r - 1] = all.Count == 0 ? 0 : all[Math.Min(r, all.Count - 1)];
-            return result;
-        }
+    private static double[] ByRank(JsonElement values, int ranks)
+    {
+        var result = new double[ranks];
+        if (values.ValueKind != JsonValueKind.Array) return result; // omitted = all zero
+        var all = values.EnumerateArray().Select(x => x.TryGetDouble(out var d) ? d : 0).ToList();
+        for (var r = 1; r <= ranks; r++)
+            result[r - 1] = all.Count == 0 ? 0 : all[Math.Min(r, all.Count - 1)];
+        return result;
     }
 
     // ── Formatting ─────────────────────────────────────────────────────────────────────────────────
@@ -411,9 +514,9 @@ public static class AbilityCalculations
         if (!hasBase && ratios.Count == 0 && value.ByLevel is null) return null;
         var unit = percent ? "%" : "";
         var parts = new List<string>();
-        if (value.ByLevel is { } range)
+        if (value.ByLevel is { Length: > 0 } range)
         {
-            var levelText = $"{Number(range.From * scale, precision)}{unit}–{Number(range.To * scale, precision)}{unit} (by level)";
+            var levelText = $"{Number(range[0] * scale, precision)}{unit}–{Number(range[^1] * scale, precision)}{unit} (by level)";
             parts.Add(hasBase ? $"{Series(value.Base, scale, precision)}{unit} + {levelText}" : levelText);
         }
         else if (hasBase || ratios.Count == 0)
@@ -432,6 +535,7 @@ public static class AbilityCalculations
                 : $"{Series(magnitude, 100, 1)}% {name}";
             parts.Add(parts.Count == 0 ? (negative ? "−" : "") + text : $"({(negative ? "−" : "+")}{text})");
         }
+        if (Math.Abs(value.RangedMultiplier - 1) > 1e-6) parts.Add($"(ranged: ×{Number(value.RangedMultiplier, 2)})");
         return string.Join(" ", parts);
     }
 

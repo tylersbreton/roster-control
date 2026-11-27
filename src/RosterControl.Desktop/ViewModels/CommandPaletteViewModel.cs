@@ -10,6 +10,7 @@ namespace RosterControl.Desktop.ViewModels;
 public sealed partial class CommandPaletteViewModel : ObservableObject
 {
     private const int MaxChampions = 7;
+    private const int MaxItems = 4;
     private const int MaxNotes = 6;
     private const int MinNoteQuery = 3;
     private readonly MainWindowViewModel _main;
@@ -113,6 +114,19 @@ public sealed partial class CommandPaletteViewModel : ObservableObject
                 .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
                 .Take(MaxChampions);
             foreach (var c in champions) Results.Add(ChampionItem(game, c, null));
+            if (query.Length >= 3)
+            {
+                var items = game.ShopItems
+                    .Where(i => i.SearchKey.Contains(query, StringComparison.Ordinal))
+                    .OrderBy(i => !i.SearchKey.StartsWith(query, StringComparison.Ordinal))
+                    .ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase)
+                    .Take(MaxItems);
+                foreach (var i in items)
+                {
+                    var id = i.Id;
+                    Results.Add(new PaletteItem(i.Name, $"Item · {i.TotalGold:N0} gold", AssetUrls.Item(game.Version, id), null, () => _ = _main.OpenItemAsync(id)));
+                }
+            }
             foreach (var item in NoteResults(game, Query.Trim())) Results.Add(item);
             foreach (var item in Actions().Where(a => ChampionInfo.Normalize(a.Title + " " + a.Subtitle).Contains(query, StringComparison.Ordinal)))
                 Results.Add(item);
@@ -161,6 +175,7 @@ public sealed partial class CommandPaletteViewModel : ObservableObject
         yield return new PaletteItem("Rosters", "Page · Ctrl+1", null, "layout-grid", () => _ = _main.NavigateAsync(Section.Rosters));
         yield return new PaletteItem("Champions", "Page · Ctrl+2", null, "library-big", () => _ = _main.NavigateAsync(Section.Champions));
         yield return new PaletteItem("Counter Picks", "Page · Ctrl+3", null, "swords", () => _ = _main.NavigateAsync(Section.Counters));
+        yield return new PaletteItem("Items", "Page · Ctrl+5 · gold efficiency and your builds per item", null, "shopping-bag", () => _ = _main.NavigateAsync(Section.Items));
         yield return new PaletteItem("Settings", "Page · Ctrl+4", null, "settings", () => _ = _main.NavigateAsync(Section.Settings));
         yield return new PaletteItem("New roster group", "Action", null, "plus", async () =>
         {

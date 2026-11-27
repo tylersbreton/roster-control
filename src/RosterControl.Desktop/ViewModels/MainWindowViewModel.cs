@@ -25,6 +25,8 @@ public enum Section
     Champion,
     Compare,
     Review,
+    // New sections go last: the section is saved by number.
+    Items,
 }
 
 /// <summary>Application shell: loading, navigation, keyboard shortcuts, search palette, dialogs and toasts.</summary>
@@ -77,53 +79,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
         _sidebarCollapsed = preferences.Get("ui.sidebarCollapsed", false);
         _uiScale = Math.Clamp(preferences.Get(ScaleKey, 1.0), ScaleSteps[0], ScaleSteps[^1]);
         _recentChampions.AddRange(preferences.Get<List<string>>("ui.recentChampions", []).Take(6));
+        LoadTheme();
         Palette = new CommandPaletteViewModel(this);
         Review = new PatchReviewState(OpenPatchReview);
     }
 
     /// <summary>Raised when every page is rebuilt (patch update, import) so cached views can be dropped.</summary>
     public event EventHandler? PagesReset;
-
-    // ── App updates (GitHub releases) ──────────────────────────────────────────────────────────────
-
-    private readonly AppUpdateService _updates;
-    private DispatcherTimer? _updateTimer;
-
-    public AppUpdateService Updates => _updates;
-
-    /// <summary>A downloaded app update is ready; applied when the user clicks "Restart to update".</summary>
-    [ObservableProperty]
-    private bool _isAppUpdateReady;
-
-    [ObservableProperty]
-    private string _appUpdateText = "";
-
-    private void OnUpdateStateChanged()
-    {
-        var ready = _updates.State == AppUpdateState.ReadyToRestart;
-        if (ready && !IsAppUpdateReady) ShowToast($"Roster Control {_updates.AvailableVersion} is ready — click “Restart to update” when convenient.", ToastKind.Success);
-        IsAppUpdateReady = ready;
-        AppUpdateText = ready ? $"Version {_updates.AvailableVersion} ready" : "";
-        Settings?.RefreshUpdateStatus();
-    }
-
-    private void StartUpdateChecks()
-    {
-        if (!_updates.IsSupported || _updateTimer is not null) return;
-        _updateTimer = new DispatcherTimer(AppUpdateService.CheckInterval, DispatcherPriority.Background, (_, _) => _ = _updates.CheckAndDownloadAsync());
-        _updateTimer.Start();
-        // First check shortly after startup so it doesn't compete with loading game data.
-        DispatcherTimer.RunOnce(() => _ = _updates.CheckAndDownloadAsync(), TimeSpan.FromSeconds(10));
-    }
-
-    [RelayCommand]
-    private async Task RestartToUpdateAsync()
-    {
-        if (Dialog is not null) return;
-        await _saves.FlushAsync();
-        await _preferences.FlushAsync(CancellationToken.None);
-        _updates.RestartToUpdate();
-    }
 
     // ── IShell ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -155,7 +117,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
     private object? _currentPage;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsRostersSection), nameof(IsChampionsSection), nameof(IsCountersSection), nameof(IsSettingsSection))]
+    [NotifyPropertyChangedFor(nameof(IsRostersSection), nameof(IsChampionsSection), nameof(IsItemsSection), nameof(IsCountersSection), nameof(IsSettingsSection))]
     private Section _currentSection;
 
     [ObservableProperty]
@@ -188,6 +150,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
     public double SidebarWidth => SidebarCollapsed ? 64 : 212;
     public bool IsRostersSection => CurrentSection == Section.Rosters;
     public bool IsChampionsSection => CurrentSection is Section.Champions;
+    public bool IsItemsSection => CurrentSection == Section.Items;
     public bool IsCountersSection => CurrentSection == Section.Counters;
     public bool IsSettingsSection => CurrentSection == Section.Settings;
     public string PatchText => _game is null ? "" : $"Patch data {_game.Version}";
@@ -240,6 +203,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
 
     public RostersViewModel? Rosters { get; private set; }
     public LibraryViewModel? Library { get; private set; }
+    public ItemsViewModel? Items { get; private set; }
     public CounterPicksViewModel? Counters { get; private set; }
     public SettingsViewModel? Settings { get; private set; }
 
@@ -296,139 +260,6 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
     partial void OnReopenLastChanged(bool value) => _preferences.Set(ReopenLastKey, value);
 
     private sealed record LastChampion(string Id, ChampionTab Tab);
-
-    // ── Quick look (always-on-top build window) and its global shortcut ────────────────────────────
-
-    private const string QuickLookHotkeyKey = "quicklook.hotkey";
-    private const string QuickLookHotkeyEnabledKey = "quicklook.hotkeyEnabled";
-    public const string DefaultQuickLookHotkey = "Ctrl+Shift+Space";
-
-    private QuickLookViewModel? _quickLook;
-    private Func<string?, bool>? _registerHotkey;
-
-    public QuickLookViewModel QuickLook => _quickLook ??= new QuickLookViewModel(this) { ShortcutHint = QuickLookShortcutHint };
-
-    /// <param name="Toggle">From the global shortcut: hides the window when it's already in front.</param>
-    public sealed record QuickLookRequest(bool Toggle, bool FocusSearch);
-
-    /// <summary>Raised to show (or toggle) the quick-look window; the main window owns it.</summary>
-    public event EventHandler<QuickLookRequest>? QuickLookRequested;
-
-    public void OpenQuickLook(string? championId = null, Position? role = null, int? buildId = null)
-    {
-        QuickLookRequested?.Invoke(this, new QuickLookRequest(false, championId is null));
-        _ = championId is null ? QuickLook.RestoreLastAsync() : QuickLook.ShowChampionAsync(championId, role, buildId);
-    }
-
-    /// <summary>The global shortcut was pressed.</summary>
-    public void ToggleQuickLook()
-    {
-        QuickLookRequested?.Invoke(this, new QuickLookRequest(true, true));
-        _ = QuickLook.RestoreLastAsync();
-    }
-
-    public void BringToFront()
-    {
-        if (_topLevel?.Invoke() is not Window window) return;
-        if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
-        window.Activate();
-    }
-
-    /// <summary>The global shortcut is on (default) and registered with Windows.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(QuickLookShortcutHint))]
-    private bool _quickLookHotkeyEnabled;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(QuickLookShortcutHint), nameof(HotkeyButtonText))]
-    private string _quickLookHotkey = DefaultQuickLookHotkey;
-
-    /// <summary>Waiting for a new shortcut to be pressed (Settings); the current one is released meanwhile.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HotkeyButtonText))]
-    private bool _isRecordingHotkey;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasHotkeyStatus))]
-    private string _hotkeyStatus = "";
-
-    public bool HasHotkeyStatus => HotkeyStatus.Length > 0;
-    public string HotkeyButtonText => IsRecordingHotkey ? "Press a shortcut… (Esc cancels)" : QuickLookHotkey;
-    public string QuickLookShortcutHint => QuickLookHotkeyEnabled ? $"{QuickLookHotkey} shows or hides this window from anywhere" : "";
-
-    partial void OnQuickLookHotkeyEnabledChanged(bool value)
-    {
-        _preferences.Set(QuickLookHotkeyEnabledKey, value);
-        ApplyHotkey();
-    }
-
-    partial void OnQuickLookHotkeyChanged(string value)
-    {
-        _preferences.Set(QuickLookHotkeyKey, value);
-        ApplyHotkey();
-    }
-
-    partial void OnIsRecordingHotkeyChanged(bool value) => ApplyHotkey();
-
-    /// <summary>Connects the shortcut to Windows (null unregisters); returns false when another app already uses it.</summary>
-    public void AttachHotkey(Func<string?, bool> register)
-    {
-        _registerHotkey = register;
-        ApplyHotkey();
-    }
-
-    private void ApplyHotkey()
-    {
-        if (_quickLook is not null) _quickLook.ShortcutHint = QuickLookShortcutHint;
-        if (_registerHotkey is null) return;
-        if (!QuickLookHotkeyEnabled || IsRecordingHotkey)
-        {
-            _registerHotkey(null);
-            if (!IsRecordingHotkey) HotkeyStatus = "";
-            return;
-        }
-        var ok = _registerHotkey(QuickLookHotkey);
-        HotkeyStatus = ok ? "" : $"{QuickLookHotkey} is already used by another app. Choose a different shortcut.";
-        if (!ok) _logger.LogWarning("Could not register the quick look shortcut {Shortcut}", QuickLookHotkey);
-    }
-
-    [RelayCommand]
-    private void RecordHotkey()
-    {
-        HotkeyStatus = "";
-        IsRecordingHotkey = true;
-    }
-
-    [RelayCommand]
-    private void ResetHotkey()
-    {
-        IsRecordingHotkey = false;
-        QuickLookHotkey = DefaultQuickLookHotkey;
-        ApplyHotkey();
-    }
-
-    /// <summary>A key pressed while recording a new shortcut (Settings). Always consumes the key.</summary>
-    public void RecordHotkeyKey(Key key, KeyModifiers modifiers)
-    {
-        if (key is Key.LeftCtrl or Key.RightCtrl or Key.LeftShift or Key.RightShift or Key.LeftAlt or Key.RightAlt or Key.LWin or Key.RWin or Key.System)
-            return; // wait for the actual key
-        if (key == Key.Escape)
-        {
-            IsRecordingHotkey = false;
-            return;
-        }
-        var gesture = new KeyGesture(key, modifiers);
-        if (!GlobalHotkey.IsValid(gesture))
-        {
-            HotkeyStatus = "Use Ctrl, Alt or Win together with a letter, number, F-key or Space.";
-            return;
-        }
-        HotkeyStatus = "";
-        var text = GlobalHotkey.Format(gesture);
-        IsRecordingHotkey = false;
-        if (text == QuickLookHotkey) ApplyHotkey();
-        else QuickLookHotkey = text;
-    }
 
     // ── Rosters, compare, files ────────────────────────────────────────────────────────────────────
 
@@ -511,41 +342,22 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
             SuggestedFileName = suggestedName,
             DefaultExtension = extension,
             FileTypeChoices = [new FilePickerFileType(typeName) { Patterns = [$"*.{extension}"] }],
-            SuggestedStartLocation = await storage.TryGetWellKnownFolderAsync(WellKnownFolder.Pictures),
+            SuggestedStartLocation = await storage.TryGetWellKnownFolderAsync(extension == "png" ? WellKnownFolder.Pictures : WellKnownFolder.Documents),
         });
         return file?.TryGetLocalPath();
     }
 
-    // ── What's new ─────────────────────────────────────────────────────────────────────────────────
-
-    [ObservableProperty]
-    private WhatsNewViewModel? _whatsNew;
-
-    private static IReadOnlyList<Core.Rules.ChangelogEntry> LoadChangelog()
+    public async Task<string?> PickOpenFileAsync(string title, string extension, string typeName)
     {
-        using var stream = typeof(MainWindowViewModel).Assembly.GetManifestResourceStream("CHANGELOG.md");
-        if (stream is null) return [];
-        using var reader = new StreamReader(stream);
-        return Core.Rules.Changelog.Parse(reader.ReadToEnd());
-    }
-
-    /// <summary>After an update, shows what changed since the version last run (nothing on the first run).</summary>
-    private void ShowWhatsNewAfterUpdate()
-    {
-        if (!Core.Rules.Changelog.TryParseVersion(_updates.CurrentVersion, out var current)) return;
-        // Versions before 1.3 didn't record this: an existing install without it is coming from 1.2.
-        var lastSeenText = _preferences.Get<string?>(LastSeenVersionKey, null) ?? (_returningUser ? "1.2.0" : null);
-        _preferences.Set(LastSeenVersionKey, current.ToString(3));
-        if (!Core.Rules.Changelog.TryParseVersion(lastSeenText, out var lastSeen) || lastSeen >= current) return;
-        var entries = Core.Rules.Changelog.Between(LoadChangelog(), lastSeen, current);
-        if (entries.Count > 0) WhatsNew = new WhatsNewViewModel(this, $"What's new in Roster Control {current.ToString(3)}", entries);
-    }
-
-    [RelayCommand]
-    public void ShowWhatsNew()
-    {
-        var entries = LoadChangelog().Take(3).ToList();
-        if (entries.Count > 0) WhatsNew = new WhatsNewViewModel(this, "What's new", entries);
+        if (_topLevel?.Invoke()?.StorageProvider is not { } storage) return null;
+        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = title,
+            AllowMultiple = false,
+            FileTypeFilter = [new FilePickerFileType(typeName) { Patterns = [$"*.{extension}"] }],
+            SuggestedStartLocation = await storage.TryGetWellKnownFolderAsync(WellKnownFolder.Downloads),
+        });
+        return files.Count > 0 ? files[0].TryGetLocalPath() : null;
     }
 
     // ── Startup ────────────────────────────────────────────────────────────────────────────────────
@@ -604,6 +416,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
     {
         Rosters = new RostersViewModel(this);
         Library = new LibraryViewModel(this);
+        Items = new ItemsViewModel(this);
         Counters = new CounterPicksViewModel(this);
         Settings = new SettingsViewModel(this, _paths, _backups);
         _history.Clear();
@@ -660,6 +473,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
         {
             Section.Rosters => Rosters,
             Section.Champions => Library,
+            Section.Items => Items,
             Section.Counters => Counters,
             Section.Settings => Settings,
             _ => CurrentPage,
@@ -710,6 +524,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
         if (_recentChampions.Count > 6) _recentChampions.RemoveRange(6, _recentChampions.Count - 6);
         _preferences.Set("ui.recentChampions", _recentChampions);
         await page.OnNavigatedToAsync();
+    }
+
+    /// <summary>Opens the Items page with <paramref name="itemId"/> selected (from search).</summary>
+    public async Task OpenItemAsync(string itemId)
+    {
+        await NavigateAsync(Section.Items);
+        Items?.Show(itemId);
     }
 
     [RelayCommand]
@@ -764,6 +585,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
                 case Key.D4 or Key.NumPad4:
                     _ = NavigateAsync(Section.Settings);
                     return true;
+                case Key.D5 or Key.NumPad5:
+                    _ = NavigateAsync(Section.Items);
+                    return true;
                 case Key.OemPlus or Key.Add:
                     ZoomIn();
                     return true;
@@ -784,158 +608,4 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
         }
         return CurrentPage is IKeyboardPage page && page.HandleKey(key, modifiers, typing);
     }
-
-    // ── Dialogs & toasts ───────────────────────────────────────────────────────────────────────────
-
-    public async Task<bool> CopyTextAsync(string text)
-    {
-        if (_topLevel?.Invoke()?.Clipboard is not { } clipboard) return false;
-        try
-        {
-            await Avalonia.Input.Platform.ClipboardExtensions.SetTextAsync(clipboard, text);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Clipboard write failed");
-            return false;
-        }
-    }
-
-    private async Task<string?> ReadTextAsync()
-    {
-        if (_topLevel?.Invoke()?.Clipboard is not { } clipboard) return null;
-        try
-        {
-            return await Avalonia.Input.Platform.ClipboardExtensions.TryGetTextAsync(clipboard);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Clipboard read failed");
-            return null;
-        }
-    }
-
-    public async Task<Core.Model.Build?> ImportSharedBuildAsync(string? targetChampionId)
-    {
-        var text = await ReadTextAsync();
-        if (!Core.Rules.BuildShareCode.TryDecode(text, out var build, out var error))
-        {
-            ShowToast(string.IsNullOrWhiteSpace(text) ? "Copy a build code (it starts with RC1:) first, then paste it here." : error!, ToastKind.Warning);
-            return null;
-        }
-        if (_game?.Champion(build.ChampionId) is not { } champion)
-        {
-            ShowToast($"That build is for a champion that isn't in patch {_game?.Version} yet.", ToastKind.Warning);
-            return null;
-        }
-        build.ChampionId = champion.Id;
-        if (targetChampionId is not null && !string.Equals(targetChampionId, champion.Id, StringComparison.OrdinalIgnoreCase))
-        {
-            var here = _game.Champion(targetChampionId)?.Name ?? targetChampionId;
-            if (!await ConfirmAsync($"Add to {champion.Name}?", $"This code is a {champion.Name} build, not a {here} build. It will be added to {champion.Name}'s builds.", $"Add to {champion.Name}", danger: false))
-                return null;
-        }
-        build.GameVersion ??= _game.Version;
-        build.Id = await _repository.SaveBuildAsync(build);
-        MarkDirty();
-        return build;
-    }
-
-    public async Task<bool> ConfirmAsync(string title, string message, string confirmText, bool danger = true)
-    {
-        var dialog = new ConfirmDialogViewModel(title, message, confirmText, danger);
-        Dialog = dialog;
-        try
-        {
-            return await dialog.Result;
-        }
-        finally
-        {
-            if (ReferenceEquals(Dialog, dialog)) Dialog = null;
-        }
-    }
-
-    public void ShowToast(string message, ToastKind kind = ToastKind.Info, string? actionText = null, Func<Task>? action = null)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            var toast = new ToastViewModel(message, kind, actionText, action);
-            Toasts.Add(toast);
-            while (Toasts.Count > 3) Toasts.RemoveAt(0);
-            var seconds = action is not null ? 8 : kind is ToastKind.Error or ToastKind.Warning ? 6 : 3.2;
-            DispatcherTimer.RunOnce(() => Toasts.Remove(toast), TimeSpan.FromSeconds(seconds));
-        });
-    }
-
-    [RelayCommand]
-    private void DismissToast(ToastViewModel toast) => Toasts.Remove(toast);
-
-    [RelayCommand]
-    private async Task RunToastActionAsync(ToastViewModel toast)
-    {
-        Toasts.Remove(toast);
-        if (toast.Action is null) return;
-        try
-        {
-            await toast.Action();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Toast action failed");
-            ShowToast("That couldn't be undone: " + ex.Message, ToastKind.Error);
-        }
-    }
-
-    /// <summary>Ctrl+Z: runs the newest Undo toast (other toast actions, such as Open, are left alone).</summary>
-    public bool UndoLast()
-    {
-        var toast = Toasts.LastOrDefault(t => t.HasAction && t.ActionText == "Undo");
-        if (toast is null) return false;
-        RunToastActionCommand.Execute(toast);
-        return true;
-    }
-
-    public async Task<string?> PickSaveFileAsync(string title, string suggestedName)
-    {
-        if (_topLevel?.Invoke()?.StorageProvider is not { } storage) return null;
-        var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            Title = title,
-            SuggestedFileName = suggestedName,
-            DefaultExtension = "json",
-            FileTypeChoices = [new FilePickerFileType("Roster Control backup") { Patterns = ["*.json"] }],
-            SuggestedStartLocation = await storage.TryGetFolderFromPathAsync(_paths.BackupDirectory),
-        });
-        return file?.TryGetLocalPath();
-    }
-
-    public async Task<string?> PickOpenFileAsync(string title)
-    {
-        if (_topLevel?.Invoke()?.StorageProvider is not { } storage) return null;
-        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = title,
-            AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType("Roster Control backup") { Patterns = ["*.json"] }],
-            SuggestedStartLocation = await storage.TryGetFolderFromPathAsync(_paths.BackupDirectory),
-        });
-        return files.Count > 0 ? files[0].TryGetLocalPath() : null;
-    }
 }
-
-/// <summary>The "What's new" dialog (after an update, or from Settings → About).</summary>
-public sealed partial class WhatsNewViewModel(MainWindowViewModel owner, string title, IReadOnlyList<Core.Rules.ChangelogEntry> entries) : ObservableObject
-{
-    public string Title { get; } = title;
-    public IReadOnlyList<WhatsNewEntry> Entries { get; } = entries.Select(e => new WhatsNewEntry(e.Version.ToString(3), e.Body)).ToList();
-
-    [RelayCommand]
-    private void Close() => owner.WhatsNew = null;
-}
-
-public sealed record WhatsNewEntry(string Version, string Body)
-{
-    public string Heading => "Version " + Version;
-}
-

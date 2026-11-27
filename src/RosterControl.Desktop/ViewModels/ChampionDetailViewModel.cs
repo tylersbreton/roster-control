@@ -30,7 +30,7 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
         SplashUrl = AssetUrls.ChampionCentered(champion.Id);
         SplashFallbackUrl = AssetUrls.ChampionSplash(champion.Id);
         Matchups = new MatchupsViewModel(shell, champion);
-        Abilities = new AbilitiesViewModel(shell, champion.Id);
+        Abilities = new AbilitiesViewModel(shell, champion.Id, () => Builds.ToList(), () => SelectedBuild);
         if (tab == ChampionTab.Abilities) _ = Abilities.EnsureLoadedAsync();
     }
 
@@ -142,7 +142,9 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
 
     partial void OnSelectedTabChanged(int value)
     {
-        if (value == (int)ChampionTab.Abilities) _ = Abilities.EnsureLoadedAsync();
+        if (value != (int)ChampionTab.Abilities) return;
+        _ = Abilities.EnsureLoadedAsync();
+        Abilities.Refresh();
     }
 
     public bool IsBuildsTab { get => SelectedTab == 0; set { if (value) SelectedTab = 0; } }
@@ -202,6 +204,7 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
         SelectedBuild = (_initialBuildId is { } id ? Builds.FirstOrDefault(b => b.Model.Id == id) : null) ?? PickInitialBuild();
         _initialBuildId = null;
         NotifyBuilds();
+        if (IsAbilitiesTab) Abilities.Refresh();
 
         await Matchups.LoadAsync();
     }
@@ -413,6 +416,16 @@ public sealed partial class ChampionDetailViewModel : ObservableObject, IPage, I
             _shell.ShowToast($"Build code for \"{build.Name}\" copied. Share it anywhere; others add it with Paste build code.", ToastKind.Success);
         else
             _shell.ShowToast("Couldn't access the clipboard.", ToastKind.Error);
+    }
+
+    /// <summary>Copies the build's items in the League client's item set format (paste it in the client's item set editor).</summary>
+    [RelayCommand]
+    private async Task CopyItemSetAsync(BuildViewModel? build)
+    {
+        build ??= SelectedBuild;
+        if (build is null) return;
+        await _shell.Saves.FlushAsync();
+        await ItemSetClipboard.CopyAsync(_shell, build.Model, Champion);
     }
 
     [RelayCommand]

@@ -4,6 +4,7 @@ using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using RosterControl.Core.GameData;
@@ -102,8 +103,18 @@ public class AppScreenTests
         return path;
     }
 
+    /// <summary>Shots used in README.md (tools/readme-screenshots.txt): captured without leftover toasts.</summary>
+    private static readonly Lazy<HashSet<string>> ReadmeShots = new(() =>
+        File.ReadAllLines(Path.Combine(UiTestHost.ScreenshotDirectory, "..", "..", "tools", "readme-screenshots.txt"))
+            .Select(l => l.Trim()).Where(l => l.Length > 0 && !l.StartsWith('#')).ToHashSet());
+
     private static string Capture(string name)
     {
+        if (ReadmeShots.Value.Contains(name))
+        {
+            Vm.Toasts.Clear();
+            UiTestHost.Settle(2);
+        }
         WaitForImages();
         var frame = _window!.CaptureRenderedFrame();
         var path = Path.Combine(UiTestHost.ScreenshotDirectory, name + ".png");
@@ -589,6 +600,10 @@ public class AppScreenTests
         var editor = window.GetVisualDescendants().OfType<NotesEditor>().First(e => e.IsEffectivelyVisible);
         Assert.That(editor.IsEditing, Is.False, "shows the formatted view");
         Capture("07b-notes-formatted");
+        var parts = editor.GetVisualDescendants().ToList();
+        Assert.That(parts.OfType<TextBlock>().Any(t => ReferenceEquals(t.Foreground, Brushes.Gray) || (t.Inlines?.Any(i => ReferenceEquals(i.Foreground, Brushes.Gray)) ?? false))
+                    || parts.OfType<Border>().Any(b => ReferenceEquals(b.Background, Brushes.Gray)), Is.False,
+            "every colour comes from the theme (a missing theme resource falls back to grey)");
 
         var unticked = window.GetVisualDescendants().OfType<Button>().First(b => b.IsEffectivelyVisible && Equals(b.Tag, "notecheck") && Equals(ToolTip.GetTip(b), "Mark as done"));
         var point = unticked.TranslatePoint(new Point(unticked.Bounds.Width / 2, unticked.Bounds.Height / 2), window)!.Value;
@@ -798,7 +813,7 @@ public class AppScreenTests
         Vm.ShowWhatsNew();
         UiTestHost.Settle(5);
         Assert.That(Vm.WhatsNew, Is.Not.Null);
-        Assert.That(Vm.WhatsNew!.Entries.First().Version, Is.EqualTo("1.3.0"));
+        Assert.That(Vm.WhatsNew!.Entries.First().Version, Is.EqualTo(typeof(RosterControl.Desktop.App).Assembly.GetName().Version!.ToString(3)), "the newest changelog section is this version");
         Capture("16-whats-new");
         window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
         UiTestHost.Settle(3);
@@ -1063,5 +1078,223 @@ public class AppScreenTests
         UiTestHost.Run(() => Vm.NavigateAsync(Section.Settings));
         Capture("36-settings-quick-look");
         UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+    }
+
+    [AvaloniaTest, Order(37)]
+    public void Ability_calculator_shows_numbers_for_a_level_and_items()
+    {
+        Window();
+        Vm.OpenChampion("Ahri", ChampionTab.Abilities);
+        UiTestHost.Settle(5);
+        var page = (ChampionDetailViewModel)Vm.CurrentPage!;
+        var calc = page.Abilities.Calculator!;
+        Assert.That(calc, Is.Not.Null, "Ahri has base stats");
+        for (var i = 0; i < 300 && (page.Abilities.RuneNumbers is null || !page.Abilities.Abilities.Any(a => a.HasValues)); i++)
+        {
+            Thread.Sleep(30);
+            UiTestHost.Settle(1);
+        }
+        calc.SelectedChoice = calc.BuildChoices.First(c => c.Name == "Standard");
+        calc.Level = 11;
+        UiTestHost.Settle(3);
+
+        // Core block ticked by default: Luden's, Sorcerer's Shoes, Shadowflame, Rabadon's, Zhonya's.
+        Assert.That(calc.Items.Count(i => i.IsOn), Is.EqualTo(5));
+        var ap = calc.Stats.Single(s => s.Label == "Ability power");
+        Assert.That(double.Parse(ap.Value.Replace(",", ""), System.Globalization.CultureInfo.InvariantCulture), Is.GreaterThan(300), "item AP plus the adaptive shard");
+        Assert.That(calc.RanksText, Does.Contain("Q 5").And.Contain("R 2"), "QWEQQRQWQWR… at level 11");
+        var q = page.Abilities.Abilities.Single(a => a.Slot == 'Q');
+        Assert.That(q.RankText, Is.EqualTo("Rank 5 of 5 at level 11"));
+        Assert.That(q.Rows.Where(r => r.HasResult), Is.Not.Empty, "Q's damage is calculated");
+        var haste = calc.Stats.Single(s => s.Label == "Ability haste").Value;
+        var w = page.Abilities.Abilities.Single(a => a.Slot == 'W');
+        if (haste != "0") Assert.That(w.Stats.Single(s => s.Label == "Cooldown").Value, Does.Contain($"with {haste} haste"), "cooldown with the items' ability haste");
+        else Assert.That(w.Stats.Single(s => s.Label == "Cooldown").Value, Does.StartWith(w.Info.CooldownText.Split('/')[2].TrimEnd('s') + "s"), "W rank 3 at level 11");
+        var electrocute = calc.Runes.Single(r => r.IsKeystone);
+        Assert.That(electrocute.Name, Is.EqualTo("Electrocute"));
+        Assert.That(electrocute.Rows.Where(r => r.HasResult), Is.Not.Empty, "keystone damage from the game files");
+        Capture("37-ability-calculator");
+
+        // Fewer items: less AP; level 1: R isn't learned yet.
+        var before = q.Rows.First(r => r.HasResult).Result;
+        calc.NoItemsCommand.Execute(null);
+        Assert.That(calc.ItemsText, Is.EqualTo("No items counted"));
+        Assert.That(q.Rows.First(r => r.HasResult).Result, Is.Not.EqualTo(before));
+        calc.Level = 1;
+        Assert.That(page.Abilities.Abilities.Single(a => a.Slot == 'R').IsNotLearned, Is.True);
+        Assert.That(Vm.Preferences.Get(AbilityCalculatorPrefsKey, new AbilityCalculatorViewModel.CalculatorPrefs()).Level, Is.EqualTo(1), "the level is remembered");
+        calc.AllItemsCommand.Execute(null);
+        calc.Level = 11;
+        page.SelectedTab = (int)ChampionTab.Builds;
+    }
+
+    private const string AbilityCalculatorPrefsKey = "abilities.calc";
+
+    [AvaloniaTest, Order(38)]
+    public void Items_page_shows_gold_efficiency_and_the_builds_using_an_item()
+    {
+        var window = Window();
+        Vm.Palette.Open();
+        Vm.Palette.Query = "rabadon";
+        UiTestHost.Settle(3);
+        var result = Vm.Palette.Results.First(r => r.Subtitle.StartsWith("Item"));
+        Assert.That(result.Title, Is.EqualTo("Rabadon's Deathcap"));
+        Vm.Palette.ExecuteCommand.Execute(result);
+        UiTestHost.Settle(10);
+        Assert.That(Vm.CurrentSection, Is.EqualTo(Section.Items));
+        var items = Vm.Items!;
+        Assert.That(items.Selected!.Name, Is.EqualTo("Rabadon's Deathcap"));
+        Assert.That(items.HasEfficiency, Is.True, "AP is valued from Amplifying Tome");
+        Assert.That(items.EfficiencyText, Does.Contain("gold efficient"));
+        Assert.That(items.UsageRows.Select(u => u.Text), Has.Some.EqualTo("Ahri · Standard"));
+        Assert.That(items.Selected.BuildCount, Is.EqualTo(items.UsageRows.Count));
+
+        // Stat filters combine; "In my builds" keeps only used items.
+        items.ClearFiltersCommand.Execute(null);
+        var all = items.Tiles.Count;
+        items.StatFilters.First(f => f.Name == "Ability Power").IsOn = true;
+        Assert.That(items.Tiles.Count, Is.LessThan(all));
+        Assert.That(items.Tiles.All(t => t.StatNames.Contains("Ability Power")), Is.True);
+        items.OnlyInBuilds = true;
+        Assert.That(items.Tiles.All(t => t.BuildCount > 0), Is.True);
+        Assert.That(items.Tiles.Select(t => t.Name), Has.Some.EqualTo("Rabadon's Deathcap"));
+        items.OnlyInBuilds = false;
+        items.SelectedSort = "Gold efficiency";
+        var percents = items.Tiles.Where(t => t.HasEfficiency).Select(t => t.Efficiency!.Percent).ToList();
+        Assert.That(percents, Is.Ordered.Descending);
+        Capture("38-items");
+
+        // Opening a build from the list.
+        items.OpenUsageCommand.Execute(items.UsageRows.First(u => u.Text == "Ahri · Standard"));
+        UiTestHost.Settle(20);
+        var page = (ChampionDetailViewModel)Vm.CurrentPage!;
+        Assert.That(page.SelectedBuild!.Name, Is.EqualTo("Standard"));
+
+        // The build's items as a League client item set.
+        UiTestHost.Run(() => page.CopyItemSetCommand.ExecuteAsync(page.SelectedBuild));
+        UiTestHost.Settle(3);
+        Assert.That(Vm.Toasts.Select(t => t.Message), Has.Some.StartsWith("Item set \"Ahri · Standard\" copied"));
+        var text = UiTestHost.Run(() => Avalonia.Input.Platform.ClipboardExtensions.TryGetTextAsync(window.Clipboard!));
+        using var json = System.Text.Json.JsonDocument.Parse(text!);
+        Assert.That(json.RootElement.GetProperty("title").GetString(), Is.EqualTo("Ahri · Standard"));
+        Assert.That(json.RootElement.GetProperty("associatedChampions")[0].GetInt32(), Is.EqualTo(Game.Champion("Ahri")!.Key));
+        var starting = json.RootElement.GetProperty("blocks")[0];
+        Assert.That(starting.GetProperty("type").GetString(), Is.EqualTo("Starting Items"));
+        Assert.That(starting.GetProperty("items")[1].GetProperty("count").GetInt32(), Is.EqualTo(2), "two potions → ×2");
+
+        items.SelectedSort = "Cost";
+        items.ClearFiltersCommand.Execute(null);
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+    }
+
+    [AvaloniaTest, Order(39)]
+    public void Roster_shares_as_a_file_and_imports_as_a_new_roster_or_merged()
+    {
+        Window();
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+        var rosters = Vm.Rosters!;
+        var sourceId = rosters.ActiveRosterId;
+        var sourceName = rosters.RosterName;
+        var placed = rosters.AllEntries.Count();
+        var path = Path.Combine(UiTestHost.Root, "shared-roster.rcroster");
+
+        // Share: ratings and builds.
+        UiTestHost.Run(() => rosters.ShareRosterCommand.ExecuteAsync(null));
+        var export = rosters.ShareDialog!;
+        Assert.That(export.IsExport, Is.True);
+        Assert.That(export.CanIncludeBuilds, Is.True, "Ahri has builds");
+        Capture("39-share-roster");
+        UiTestHost.Run(() => export.SaveToAsync(path));
+        Assert.That(rosters.ShareDialog, Is.Null);
+        Assert.That(SharedRosterFile.TryParse(File.ReadAllText(path), out var file, out _), Is.True);
+        Assert.That(file.ChampionCount, Is.EqualTo(rosters.AllEntries.Select(e => e.ChampionId).Distinct().Count()));
+        Assert.That(file.Builds.Select(b => b.ChampionId), Has.Some.EqualTo("Ahri"));
+        Assert.That(file.Builds.All(b => b.Notes.Length == 0), Is.True, "notes are never shared");
+
+        // Import as a new roster: same groups and champions; identical builds aren't duplicated.
+        var buildsBefore = UiTestHost.Run(() => Repo.GetBuildsAsync("Ahri")).Count;
+        UiTestHost.Run(() => rosters.OpenSharedRosterFileAsync(path));
+        var import = rosters.ShareDialog!;
+        Assert.That(import.IsImport, Is.True);
+        Assert.That(import.NewName, Is.EqualTo(sourceName + " 2"), "a free name");
+        Capture("39-import-roster");
+        UiTestHost.Run(() => import.ImportCommand.ExecuteAsync(null));
+        UiTestHost.Settle(5);
+        Assert.That(rosters.RosterName, Is.EqualTo(sourceName + " 2"));
+        Assert.That(rosters.AllEntries.Count(), Is.EqualTo(placed));
+        Assert.That(UiTestHost.Run(() => Repo.GetBuildsAsync("Ahri")).Count, Is.EqualTo(buildsBefore), "identical builds skipped");
+
+        // Merge into the original: nothing new, so nothing changes.
+        UiTestHost.Run(() => Vm.SwitchRosterAsync(sourceId));
+        UiTestHost.Run(() => rosters.OpenSharedRosterFileAsync(path));
+        UiTestHost.Settle(3);
+        rosters.ShareDialog!.Merge = true;
+        UiTestHost.Settle(3);
+        Assert.That(rosters.ShareDialog!.AsNewRoster, Is.False, "merge chosen");
+        UiTestHost.Run(() => rosters.ShareDialog!.ImportCommand.ExecuteAsync(null));
+        UiTestHost.Settle(3);
+        Assert.That(rosters.AllEntries.Count(), Is.EqualTo(placed), "already there: no duplicates");
+        Assert.That(Vm.Toasts.Select(t => t.Message), Has.Some.StartsWith("Merged: 0 new placements"));
+
+        // Not a roster file.
+        File.WriteAllText(path, "{\"hello\": 1}");
+        UiTestHost.Run(() => rosters.OpenSharedRosterFileAsync(path));
+        Assert.That(rosters.ShareDialog, Is.Null);
+
+        // Clean up: remove the imported roster.
+        var imported = UiTestHost.Run(() => Repo.GetRostersAsync()).First(r => r.Name == sourceName + " 2");
+        UiTestHost.Run(() => Repo.DeleteRosterAsync(imported.Id));
+        UiTestHost.Run(() => rosters.ReloadAsync());
+    }
+
+    [AvaloniaTest, Order(40)]
+    public void Light_theme_and_accent_colour_apply_instantly()
+    {
+        var window = Window();
+        var app = Avalonia.Application.Current!;
+        try
+        {
+            Vm.IsLightTheme = true;
+            UiTestHost.Settle(5);
+            Assert.That(app.ActualThemeVariant, Is.EqualTo(Avalonia.Styling.ThemeVariant.Light));
+            Assert.That(Vm.Preferences.Get("ui.theme", ThemeMode.Dark), Is.EqualTo(ThemeMode.Light));
+            Assert.That(window.TryFindResource("Brush.AppBackground", window.ActualThemeVariant, out var bg) && bg is ISolidColorBrush { Color.R: > 200 }, Is.True, "light background");
+            UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+            Capture("40-light-rosters");
+            Vm.OpenChampion("Ahri", ChampionTab.Builds);
+            UiTestHost.Settle(20);
+            Capture("40-light-champion");
+            ((ChampionDetailViewModel)Vm.CurrentPage!).SelectedBuild!.EditorTab = 1;
+            UiTestHost.Settle(10);
+            Capture("40-light-items-editor");
+            ((ChampionDetailViewModel)Vm.CurrentPage!).SelectedBuild!.EditorTab = 0;
+            UiTestHost.Run(() => Vm.OpenItemAsync(Game.ShopItems.First(i => i.Name == "Rabadon's Deathcap").Id));
+            Capture("40-light-items");
+
+            // A custom accent: generated for both themes.
+            Vm.SetAccentCommand.Execute("#5B9BF0");
+            UiTestHost.Settle(5);
+            Assert.That(Vm.AccentText, Is.EqualTo("Arcane blue"));
+            Assert.That(window.TryFindResource("Brush.Gold", window.ActualThemeVariant, out var gold) && gold is ISolidColorBrush { Color.B: > 150 }, Is.True, "blue accent");
+            Vm.CustomAccentColor = Avalonia.Media.Color.Parse("#E07A10");
+            Assert.That(Vm.Accent, Is.EqualTo("#E07A10"));
+            Assert.That(Vm.AccentText, Is.EqualTo("Custom #E07A10"));
+            UiTestHost.Run(() => Vm.NavigateAsync(Section.Settings));
+            Capture("40-light-settings");
+
+            Vm.IsDarkTheme = true;
+            UiTestHost.Settle(5);
+            Assert.That(app.ActualThemeVariant, Is.EqualTo(Avalonia.Styling.ThemeVariant.Dark));
+            UiTestHost.Run(() => Vm.NavigateAsync(Section.Rosters));
+            Capture("40-dark-orange-accent");
+        }
+        finally
+        {
+            Vm.SetAccentCommand.Execute(AppTheme.DefaultAccent);
+            Vm.IsDarkTheme = true;
+            UiTestHost.Settle(3);
+        }
+        Assert.That(window.TryFindResource("Brush.GoldLight", window.ActualThemeVariant, out var light) && light is ISolidColorBrush { Color: var c } && c == Avalonia.Media.Color.Parse("#F0E6D2"),
+            Is.True, "the default dark gold is exactly the original palette");
     }
 }

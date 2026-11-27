@@ -41,9 +41,31 @@ public static class GameDataParser
                 Str(c, "title") ?? "",
                 StrArray(c, "tags"),
                 c.TryGetProperty("image", out var img) ? Str(img, "full") ?? id + ".png" : id + ".png",
-                pos));
+                pos,
+                ParseStats(c)));
         }
         return list;
+    }
+
+    /// <summary>Base stats and growth (Data Dragon <c>stats</c>); null when missing.</summary>
+    internal static ChampionStats? ParseStats(JsonElement champion)
+    {
+        if (!champion.TryGetProperty("stats", out var st) || st.ValueKind != JsonValueKind.Object) return null;
+        double N(string name) => st.TryGetProperty(name, out var v) && v.TryGetDouble(out var d) ? d : 0;
+        var info = champion.TryGetProperty("info", out var i) && i.ValueKind == JsonValueKind.Object ? i : default;
+        int I(string name) => info.ValueKind == JsonValueKind.Object && info.TryGetProperty(name, out var v) && v.TryGetInt32(out var n) ? n : 0;
+        var resource = Str(champion, "partype") ?? "";
+        return new ChampionStats(
+            N("hp"), N("hpperlevel"),
+            N("mp"), N("mpperlevel"),
+            N("movespeed"),
+            N("armor"), N("armorperlevel"),
+            N("spellblock"), N("spellblockperlevel"),
+            N("attackrange"),
+            N("attackdamage"), N("attackdamageperlevel"),
+            N("attackspeed"), N("attackspeedperlevel"),
+            AdaptiveAp: I("magic") > I("attack"),
+            Resource: resource == "None" ? "" : resource);
     }
 
     /// <summary>All items, plus the ids shown in the shop (purchasable on Summoner's Rift or ARAM, de-duplicated by name).</summary>

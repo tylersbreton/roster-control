@@ -13,9 +13,9 @@
           <!-- Champion -->
           <Grid ColumnDefinitions="Auto,*,Auto">
             <Panel Width="56" Height="56">
-              <c:AssetImage Source="{Binding PortraitUrl}" Width="56" Height="56" CornerRadius="8" Zoom="1.08" Ring="{StaticResource Brush.GoldDark}" RingThickness="1.5" IsVisible="{Binding HasChampion}" />
-              <Border CornerRadius="8" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" Background="#0A101A" IsVisible="{Binding !HasChampion}">
-                <c:LucideIcon Kind="search" Width="20" Height="20" Foreground="{StaticResource Brush.TextMuted}" />
+              <c:AssetImage Source="{Binding PortraitUrl}" Width="56" Height="56" CornerRadius="8" Zoom="1.08" Ring="{DynamicResource Brush.GoldDark}" RingThickness="1.5" IsVisible="{Binding HasChampion}" />
+              <Border CornerRadius="8" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" Background="{DynamicResource Brush.SurfaceDeep}" IsVisible="{Binding !HasChampion}">
+                <c:LucideIcon Kind="search" Width="20" Height="20" Foreground="{DynamicResource Brush.TextMuted}" />
               </Border>
             </Panel>
             <StackPanel Grid.Column="1" Margin="14,0,8,0" VerticalAlignment="Center" Spacing="2">
@@ -40,7 +40,7 @@
                                     Command="{Binding $parent[ItemsControl].((vm:CompareSideViewModel)DataContext).PickCommand}" CommandParameter="{Binding}">
                               <StackPanel Orientation="Horizontal" Spacing="8">
                                 <c:AssetImage Source="{Binding IconUrl}" Width="24" Height="24" CornerRadius="4" Zoom="1.1" />
-                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Foreground="{StaticResource Brush.TextPrimary}" />
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextPrimary}" />
                               </StackPanel>
                             </Button>
                           </DataTemplate>
@@ -66,7 +66,7 @@
                           Command="{Binding $parent[ItemsControl].((vm:CompareSideViewModel)DataContext).PickCommand}" CommandParameter="{Binding}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                       <c:AssetImage Source="{Binding IconUrl}" Width="26" Height="26" CornerRadius="4" Zoom="1.1" />
-                      <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Foreground="{StaticResource Brush.TextPrimary}" />
+                      <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextPrimary}" />
                     </StackPanel>
                   </Button>
                 </DataTemplate>
@@ -106,7 +106,7 @@
                   <ComboBox.ItemTemplate>
                     <DataTemplate x:DataType="m:Build">
                       <StackPanel Orientation="Horizontal" Spacing="6">
-                        <c:LucideIcon Kind="star" Width="12" Height="12" Foreground="{StaticResource Brush.Gold}" Fill="{StaticResource Brush.Gold}" IsVisible="{Binding IsDefault}" VerticalAlignment="Center" />
+                        <c:LucideIcon Kind="star" Width="12" Height="12" Foreground="{DynamicResource Brush.Gold}" Fill="{DynamicResource Brush.Gold}" IsVisible="{Binding IsDefault}" VerticalAlignment="Center" />
                         <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
                       </StackPanel>
                     </DataTemplate>
@@ -128,7 +128,7 @@
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <Border Width="1" Height="24" Background="{StaticResource Brush.Border}" Margin="6,0" VerticalAlignment="Center" />
+                    <Border Width="1" Height="24" Background="{DynamicResource Brush.Border}" Margin="6,0" VerticalAlignment="Center" />
                     <ItemsControl ItemsSource="{Binding SecondaryRunes}">
                       <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                       <ItemsControl.ItemTemplate>
@@ -137,7 +137,7 @@
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <Border Width="1" Height="24" Background="{StaticResource Brush.Border}" Margin="6,0" VerticalAlignment="Center" />
+                    <Border Width="1" Height="24" Background="{DynamicResource Brush.Border}" Margin="6,0" VerticalAlignment="Center" />
                     <ItemsControl ItemsSource="{Binding Shards}" VerticalAlignment="Center">
                       <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                       <ItemsControl.ItemTemplate>
@@ -171,7 +171,7 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <TextBlock Text="{Binding CoreTotals}" FontSize="12" Foreground="{StaticResource Brush.Gold}" TextWrapping="Wrap"
+                <TextBlock Text="{Binding CoreTotals}" FontSize="12" Foreground="{DynamicResource Brush.Gold}" TextWrapping="Wrap"
                            IsVisible="{Binding CoreTotals, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                            ToolTip.Tip="Gold and stats of the core block, added up from the items' descriptions" />
 
@@ -195,28 +195,28 @@
             <!-- Matchups -->
             <StackPanel Spacing="8">
               <StackPanel Orientation="Horizontal" Spacing="7">
-                <c:LucideIcon Kind="thumbs-up" Width="13" Height="13" Foreground="{StaticResource Brush.Good}" />
-                <TextBlock Text="GOOD AGAINST" Classes="overline" Foreground="{StaticResource Brush.Good}" />
+                <c:LucideIcon Kind="thumbs-up" Width="13" Height="13" Foreground="{DynamicResource Brush.Good}" />
+                <TextBlock Text="GOOD AGAINST" Classes="overline" Foreground="{DynamicResource Brush.Good}" />
               </StackPanel>
               <TextBlock Text="None recorded." Classes="caption" IsVisible="{Binding !HasGood}" />
               <ItemsControl ItemsSource="{Binding Good}" IsVisible="{Binding HasGood}">
                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="4" LineSpacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:CompareIcon">
-                    <c:AssetImage Source="{Binding Url}" Width="32" Height="32" CornerRadius="5" Zoom="1.1" Ring="{StaticResource Brush.Good}" RingThickness="1" ToolTip.Tip="{Binding Tip}" />
+                    <c:AssetImage Source="{Binding Url}" Width="32" Height="32" CornerRadius="5" Zoom="1.1" Ring="{DynamicResource Brush.Good}" RingThickness="1" ToolTip.Tip="{Binding Tip}" />
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
               <StackPanel Orientation="Horizontal" Spacing="7" Margin="0,4,0,0">
-                <c:LucideIcon Kind="thumbs-down" Width="13" Height="13" Foreground="{StaticResource Brush.Bad}" />
-                <TextBlock Text="WEAK AGAINST" Classes="overline" Foreground="{StaticResource Brush.Bad}" />
+                <c:LucideIcon Kind="thumbs-down" Width="13" Height="13" Foreground="{DynamicResource Brush.Bad}" />
+                <TextBlock Text="WEAK AGAINST" Classes="overline" Foreground="{DynamicResource Brush.Bad}" />
               </StackPanel>
               <TextBlock Text="None recorded." Classes="caption" IsVisible="{Binding !HasWeak}" />
               <ItemsControl ItemsSource="{Binding Weak}" IsVisible="{Binding HasWeak}">
                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="4" LineSpacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:CompareIcon">
-                    <c:AssetImage Source="{Binding Url}" Width="32" Height="32" CornerRadius="5" Zoom="1.1" Ring="{StaticResource Brush.Bad}" RingThickness="1" ToolTip.Tip="{Binding Tip}" />
+                    <c:AssetImage Source="{Binding Url}" Width="32" Height="32" CornerRadius="5" Zoom="1.1" Ring="{DynamicResource Brush.Bad}" RingThickness="1" ToolTip.Tip="{Binding Tip}" />
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>

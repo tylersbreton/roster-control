@@ -43,6 +43,9 @@ public interface IGameDataService
     /// <summary>Damage, ratios and other ability numbers from the game files (Community Dragon). Null if unavailable.</summary>
     Task<AbilityNumbers?> GetAbilityNumbersAsync(string championId, CancellationToken cancellationToken);
 
+    /// <summary>Formulas of runes such as Electrocute or Grasp (game files, Community Dragon). Null if unavailable.</summary>
+    Task<RuneNumbers?> GetRuneNumbersAsync(CancellationToken cancellationToken);
+
     /// <summary>Checks Data Dragon for a patch newer than <see cref="Current"/>. Returns it, or null (also when offline).</summary>
     Task<string?> CheckForNewPatchAsync(CancellationToken cancellationToken);
 

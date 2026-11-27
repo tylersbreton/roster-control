@@ -10,7 +10,8 @@ public sealed record ChampionInfo(
     string Title,
     IReadOnlyList<string> Tags,
     string ImageFile,
-    IReadOnlyList<Position> Positions)
+    IReadOnlyList<Position> Positions,
+    ChampionStats? Stats = null)
 {
     /// <summary>Lower-case name without punctuation, for forgiving search ("kogmaw" finds "Kog'Maw").</summary>
     public string SearchKey { get; } = Normalize(Name) + " " + Normalize(Id);
@@ -52,6 +53,24 @@ public sealed record ItemInfo(
     int CombineCost = 0)
 {
     public string SearchKey { get; } = ChampionInfo.Normalize(Name);
+}
+
+/// <summary>A champion's base stats and growth per level (Data Dragon <c>stats</c>).</summary>
+/// <param name="AdaptiveAp">Adaptive force goes to AP when bonus AD and AP are equal (a magic-leaning champion).</param>
+public sealed record ChampionStats(
+    double Health, double HealthPerLevel,
+    double Mana, double ManaPerLevel,
+    double MoveSpeed,
+    double Armor, double ArmorPerLevel,
+    double MagicResist, double MagicResistPerLevel,
+    double AttackRange,
+    double AttackDamage, double AttackDamagePerLevel,
+    double AttackSpeed, double AttackSpeedPerLevel,
+    bool AdaptiveAp = false,
+    string Resource = "")
+{
+    /// <summary>Ranged champions get smaller numbers from some runes (e.g. Grasp, Fleet Footwork).</summary>
+    public bool IsRanged => AttackRange > 350;
 }
 
 /// <summary>One node of an item's recipe tree (the item, its components, their components…).</summary>
@@ -101,8 +120,34 @@ public sealed record AbilityInfo(char Slot, string Name, string Description, str
     public string Key => Slot == 'P' ? "Passive" : Slot.ToString();
 }
 
+/// <summary>A share of a stat added to a value, per rank (e.g. 0.5 × AP). See <see cref="StatKind"/> for stat numbers.</summary>
+/// <param name="Formula">0 = total, 1 = base, 2 = bonus.</param>
+public sealed record StatRatio(int Stat, int Formula, IReadOnlyList<double> Coefficient);
+
+/// <summary>
+/// How an ability number is calculated: a value per rank, plus an optional value per champion level (1–18), plus stat
+/// ratios. Percent values are fractions (0.08 = 8%).
+/// </summary>
+public sealed record AbilityFormula(
+    IReadOnlyList<double> Base,
+    IReadOnlyList<StatRatio> Ratios,
+    IReadOnlyList<double>? ByLevel,
+    bool IsPercent,
+    int? Precision,
+    double RangedMultiplier = 1)
+{
+    public int Ranks => Base.Count;
+}
+
 /// <summary>One number of an ability from the game files, e.g. "Total damage: 35/60/85/110/135 (+50% AP)".</summary>
-public sealed record AbilityValue(string Label, string Text);
+/// <param name="Formula">How to calculate it for a given rank, level and stats; null when only the text is known.</param>
+public sealed record AbilityValue(string Label, string Text, AbilityFormula? Formula = null);
+
+/// <summary>Numbers of the runes that have formulas in the game files (keystones such as Electrocute or Grasp), by rune id.</summary>
+public sealed record RuneNumbers(string Patch, IReadOnlyDictionary<int, IReadOnlyList<AbilityValue>> Values)
+{
+    public IReadOnlyList<AbilityValue> this[int runeId] => Values.TryGetValue(runeId, out var v) ? v : [];
+}
 
 /// <summary>Ability numbers per slot (P, Q, W, E, R) from the game files, for the game patch <paramref name="Patch"/>.</summary>
 public sealed record AbilityNumbers(string ChampionId, string Patch, IReadOnlyDictionary<char, IReadOnlyList<AbilityValue>> Values)

@@ -2,6 +2,16 @@
 
 What's new in each version of Roster Control. The app shows this after an update (also under Settings → About).
 
+## 1.5.0
+
+- **Ability calculator** on the Abilities tab: pick a build and a level (1–18), tick the items to count, and see your stats (health, AD, AP, armor, attack speed, ability haste…) and every ability's actual numbers, e.g. Q: 317 damage at rank 5. Ranks follow the build's skill order, cooldowns include your ability haste, and the build's stat shards are counted.
+- **Keystone numbers** — Electrocute, Arcane Comet, Aery, Grasp, Fleet Footwork and other runes with formulas in the game files show their damage, shields and heals at your level and stats. Runes without published formulas (e.g. Conqueror) say so.
+- **Items page** — every shop item with gold efficiency (stats valued by the cheapest basic item, e.g. Long Sword for AD), filters by stat, tier and map, and the builds of yours that use each item. Ctrl+5, the sidebar, or search an item name with Ctrl+K.
+- **Copy as League item set** — from a build (or quick look), paste it in the League client's item set import so your build shows in the in-game shop.
+- **Share a roster as a file** — the roster menu saves a .rcroster file with its groups and champions, and optionally ratings and builds (notes are never included). *Import roster from file* shows what's inside, then adds it as a new roster or merges it into the current one; builds are added next to yours, never replacing them.
+- **Light theme and accent colour** — Settings → Display: Dark, Light or Match Windows, and six accent presets or any colour you like.
+- Internal tidy-up of the largest screens' code, for faster work on future features.
+
 ## 1.4.0
 
 - **Quick look** — a small always-on-top window with one champion's build: runes, items, summoner spells and skill order, with a switcher for your builds. Open it from anywhere with **Ctrl+Shift+Space** (change it in Settings → Quick look), from a champion's page, a roster card's right-click menu or Ctrl+K.

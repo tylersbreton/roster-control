@@ -21,6 +21,10 @@ It never restarts on its own, and your data is untouched by updates.
 
 ![Rosters](docs/images/01b-rosters-1920x1080.png)
 
+| Ability calculator | Items and gold efficiency |
+|---|---|
+| ![](docs/images/37-ability-calculator.png) | ![](docs/images/38-items.png) |
+
 | Rune page | Item set |
 |---|---|
 | ![](docs/images/03-champion-runes.png) | ![](docs/images/04-champion-items.png) |
@@ -29,9 +33,21 @@ It never restarts on its own, and your data is untouched by updates.
 |---|---|
 | ![](docs/images/05-champion-spells-skills.png) | ![](docs/images/08-counter-picks.png) |
 
+| Compare | Notes with checklists |
+|---|---|
+| ![](docs/images/15-compare.png) | ![](docs/images/07b-notes-formatted.png) |
+
 | Matchups per role | Item build path |
 |---|---|
 | ![](docs/images/06b-matchups-role-top.png) | ![](docs/images/04c-item-tooltip-build-path.png) |
+
+| Light theme | Light theme: a champion |
+|---|---|
+| ![](docs/images/40-light-rosters.png) | ![](docs/images/40-light-champion.png) |
+
+| Quick look (always on top) | Adding a shared roster |
+|---|---|
+| ![](docs/images/35-quick-look.png) | ![](docs/images/39-import-roster.png) |
 
 ## Features
 
@@ -45,6 +61,10 @@ It never restarts on its own, and your data is untouched by updates.
   together from the selection bar; dragging a selected card moves the whole selection.
 - **Pool sorting** — A–Z, newest first or by class; **Hide rostered** shows only champions not yet in a group.
 - **Save as image** — the whole roster board as a PNG to share.
+- **Share a roster as a file** — *Share as a file…* in the roster menu saves a `.rcroster` file: groups and champions,
+  optionally proficiency/priority and the builds of those champions (notes are never included). *Import roster from
+  file…* previews it, then adds it as a new roster or merges it into the current one (groups matched by name or role;
+  imported builds are added next to yours and identical ones skipped, nothing is replaced).
 - **Card preview** — hover a roster card to see the build that opens first for that group's role (runes, core items,
   spells).
 - **Edge scrolling** — while dragging, the board and columns scroll near and past their edges, faster the further out.
@@ -58,6 +78,15 @@ It never restarts on its own, and your data is untouched by updates.
 - **Abilities** — a tab on each champion with cooldown, cost and range (Data Dragon) and damage, shields and heals per
   rank with their ratios, read from the current patch's game files (Community Dragon). Hovering an ability in the
   skill order shows the same numbers.
+- **Ability calculator** — on the Abilities tab, pick a build and a level and tick the items to count: your stats at
+  that level (base stats grow along the game's per-level curve; item stats and stat shards added, adaptive force
+  resolved) and each ability's actual numbers for the rank the build's skill order reaches, with cooldowns after
+  ability haste. The build's keystone and runes with formulas in the game files (Electrocute, Comet, Aery, Grasp,
+  Fleet Footwork…) are calculated too; ones without (e.g. Conqueror) say so. Item passives aren't counted, and damage
+  is before the target's resistances.
+- **Items** — every shop item with **gold efficiency** (stats valued by the cheapest basic item that gives only that
+  stat, from the current patch), filters by stat, tier and map, sorting, and the **builds of yours that use each
+  item** (click one to open it). Search item names with Ctrl+K too.
 - **Builds** — any number per champion (e.g. *Standard*, *vs AP*), each with:
   - a **rune page** laid out like the client: path icons, keystones, grayscale unselected runes, coloured selection rings,
     the client's rune-tree artwork, stat shards and full descriptions on hover. Selection rules match the client
@@ -73,6 +102,9 @@ It never restarts on its own, and your data is untouched by updates.
   - **copy to another champion** (runes, items, spells and notes; the skill order is champion-specific).
   - **share codes** — *Copy share code* puts a short `RC1:…` code on the clipboard to paste in Discord or anywhere;
     a friend copies it (the whole message is fine) and clicks *Paste build code* on the Builds tab or in Ctrl+K.
+  - **copy as League item set** — puts the build's items on the clipboard in the League client's item set format;
+    import it in the client (Collection → Items → item sets) and the build shows in the in-game shop. Clipboard only:
+    nothing talks to the client.
   - a **default build per role** (★): opening the champion from that role's group selects it first.
   - drag builds in the list to **reorder** them.
 - **Matchups** — *Good against* / *Weak against* lists per champion with a note per matchup (drag champions in, flip,
@@ -108,6 +140,8 @@ It never restarts on its own, and your data is untouched by updates.
   off by default, so the app starts on Rosters).
 - **What's new** after each update (from [CHANGELOG.md](CHANGELOG.md); also under *Settings → About*).
 - **Saved ✓** in the title bar after each change; **Reduce motion** in *Settings → Display* (no animations or glow).
+- **Light or dark** — *Settings → Display*: Dark (default), Light or Match Windows, and an accent colour (six presets
+  or any colour). The rune page keeps the client's dark art in both.
 - **Troubleshooting** — *Copy diagnostic info* (Windows user name hidden) and *Open logs folder* in Settings.
 
 ### Keyboard shortcuts
@@ -115,7 +149,7 @@ It never restarts on its own, and your data is untouched by updates.
 | Keys | Action |
 |---|---|
 | Ctrl+K / Ctrl+P | Quick search |
-| Ctrl+1 … Ctrl+4 | Rosters · Champions · Counter Picks · Settings |
+| Ctrl+1 … Ctrl+5 | Rosters · Champions · Counter Picks · Settings · Items |
 | Alt+← | Back |
 | Ctrl+Z | Undo the last removal |
 | Ctrl+= / Ctrl+- / Ctrl+0 | Zoom in / out / reset |
@@ -168,6 +202,7 @@ Everything that can be cached is, but champions are occasionally added and items
 | Stat shards (Community Dragon) | Re-downloaded whenever the patch changes, otherwise daily. |
 | Champion positions (Meraki) | Weekly, or sooner when a champion is missing (a new release; retried every 12 h until Meraki has it). |
 | Ability numbers (Community Dragon game files) | Downloaded per champion when first shown, cached per patch; Community Dragon's patch is re-checked every 6 hours, so numbers update once it has the new patch. |
+| Rune numbers (Community Dragon `perks.cdtb.bin.json`) | Downloaded once per patch when the calculator first needs them, cached like ability numbers. |
 
 New champions get a **NEW** badge. Builds saved on an older patch say so in the build list, and the item editor marks
 items whose cost, stats or recipe changed since (and items removed from the game). Editing a build saves it on the
@@ -198,6 +233,16 @@ tools/  publish.ps1 · generate_lucide_icons.py · RosterControl.DevTools (icon)
 ```
 
 ## Releasing
+
+Every release also updates this page:
+
+1. Bump `<Version>` in [Directory.Build.props](Directory.Build.props) and add the version's section at the top of
+   [CHANGELOG.md](CHANGELOG.md) (the app's *What's new* reads it).
+2. Describe new features here in **Features** (and shortcuts, caching or data notes where they change).
+3. Refresh the screenshots: `.\tools\update-readme-screenshots.ps1` runs the headless UI tests, which capture every
+   screen, and copies the ones listed in [tools/readme-screenshots.txt](tools/readme-screenshots.txt) to `docs\images`.
+   Add new screens to that list and to the gallery above.
+4. Commit, push, then tag.
 
 Releases are built by GitHub Actions ([release.yml](.github/workflows/release.yml)) when a version tag is pushed:
 

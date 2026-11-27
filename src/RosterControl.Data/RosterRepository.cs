@@ -561,6 +561,112 @@ public sealed class RosterRepository
 
     // ── Helpers ─────────────────────────────────────────────────────────────────────────────────────
 
+    // ── Shared roster files ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Adds a shared roster, all or nothing: as a new roster named <paramref name="newName"/>, or merged into
+    /// <paramref name="mergeIntoRosterId"/> (groups matched by name, then by role; champions already in a group are left
+    /// alone). Builds are added next to existing ones (never replacing them); identical builds are skipped.
+    /// </summary>
+    /// <param name="canonicalChampion">Maps a champion id to the current patch's id; null = unknown champion (skipped).</param>
+    public Task<RosterImportResult> ImportSharedRosterAsync(Core.Rules.SharedRosterFile file, int? mergeIntoRosterId, string newName, bool includeBuilds,
+        Func<string, string?> canonicalChampion, CancellationToken ct = default) => WriteAsync(async db =>
+    {
+        await using var tx = await db.Database.BeginTransactionAsync(ct).ConfigureAwait(false);
+        int rosterId;
+        if (mergeIntoRosterId is { } target && await db.Rosters.AnyAsync(r => r.Id == target, ct).ConfigureAwait(false))
+        {
+            rosterId = target;
+        }
+        else
+        {
+            var maxRoster = await db.Rosters.Select(r => (int?)r.SortOrder).MaxAsync(ct).ConfigureAwait(false) ?? -1;
+            var roster = new Roster { Name = Clean(newName, 60, "Shared roster"), SortOrder = maxRoster + 1 };
+            db.Rosters.Add(roster);
+            await db.SaveChangesAsync(ct).ConfigureAwait(false);
+            rosterId = roster.Id;
+        }
+
+        var groups = await db.Groups.Include(g => g.Entries).Where(g => g.RosterId == rosterId).ToListAsync(ct).ConfigureAwait(false);
+        var nextGroupOrder = groups.Count == 0 ? 0 : groups.Max(g => g.SortOrder) + 1;
+        int groupsAdded = 0, placementsAdded = 0;
+        var skipped = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var shared in file.Groups)
+        {
+            var group = groups.FirstOrDefault(g => string.Equals(g.Name, shared.Name, StringComparison.OrdinalIgnoreCase))
+                        ?? (shared.Role is { } role ? groups.FirstOrDefault(g => g.Role == role) : null);
+            if (group is null)
+            {
+                group = new RosterGroup { RosterId = rosterId, Name = Clean(shared.Name, 80, "Group"), Role = shared.Role, Color = shared.Color, SortOrder = nextGroupOrder++ };
+                db.Groups.Add(group);
+                groups.Add(group);
+                groupsAdded++;
+            }
+            var nextEntryOrder = group.Entries.Count == 0 ? 0 : group.Entries.Max(e => e.SortOrder) + 1;
+            foreach (var entry in shared.Entries)
+            {
+                if (canonicalChampion(entry.ChampionId) is not { } championId)
+                {
+                    skipped.Add(entry.ChampionId);
+                    continue;
+                }
+                if (group.Entries.Any(e => string.Equals(e.ChampionId, championId, StringComparison.OrdinalIgnoreCase))) continue;
+                group.Entries.Add(new RosterEntry
+                {
+                    ChampionId = championId,
+                    Proficiency = Math.Clamp(entry.Proficiency ?? 0, 0, 5),
+                    Priority = entry.Priority ?? ChampionPriority.Secondary,
+                    SortOrder = nextEntryOrder++,
+                });
+                placementsAdded++;
+            }
+        }
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+
+        int buildsAdded = 0, buildsExisting = 0;
+        if (includeBuilds && file.Builds.Count > 0)
+        {
+            var champions = file.Builds.Select(b => canonicalChampion(b.ChampionId)).Where(c => c is not null).Cast<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var existing = (await db.Builds.AsNoTracking().ToListAsync(ct).ConfigureAwait(false))
+                .Where(b => champions.Contains(b.ChampionId)).ToList();
+            var signatures = existing.Select(BuildSignature).ToHashSet(StringComparer.Ordinal);
+            var nextOrder = existing.GroupBy(b => b.ChampionId, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.Max(b => b.SortOrder) + 1, StringComparer.OrdinalIgnoreCase);
+            foreach (var shared in file.Builds)
+            {
+                if (canonicalChampion(shared.ChampionId) is not { } championId)
+                {
+                    skipped.Add(shared.ChampionId);
+                    continue;
+                }
+                var build = Copy(shared);
+                build.Id = 0;
+                build.ChampionId = championId;
+                build.IsDefault = false;
+                build.Name = Clean(build.Name, 80, "Shared build");
+                build.UpdatedAt = DateTimeOffset.UtcNow;
+                if (!signatures.Add(BuildSignature(build)))
+                {
+                    buildsExisting++;
+                    continue;
+                }
+                build.SortOrder = nextOrder.GetValueOrDefault(championId);
+                nextOrder[championId] = build.SortOrder + 1;
+                db.Builds.Add(build);
+                buildsAdded++;
+            }
+            await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        }
+        await tx.CommitAsync(ct).ConfigureAwait(false);
+        return new RosterImportResult(rosterId, groupsAdded, placementsAdded, buildsAdded, buildsExisting, skipped.Count);
+    }, ct);
+
+    /// <summary>What makes two builds the same for import purposes (name and content, not notes or edit time).</summary>
+    private static string BuildSignature(Build b) => string.Join("|",
+        b.ChampionId.ToLowerInvariant(), b.Name.Trim(), b.Role?.ToString() ?? "",
+        System.Text.Json.JsonSerializer.Serialize(b.Runes), System.Text.Json.JsonSerializer.Serialize(b.Items),
+        string.Join(",", b.SummonerSpells), b.SkillOrder ?? "");
+
     private async Task<T> WriteAsync<T>(Func<RosterDbContext, Task<T>> action, CancellationToken ct)
     {
         await _write.WaitAsync(ct).ConfigureAwait(false);
@@ -663,3 +769,7 @@ public sealed class BackupEntry
     public ChampionPriority Priority { get; set; }
     public DateTimeOffset AddedAt { get; set; }
 }
+
+/// <summary>What importing a shared roster added.</summary>
+/// <param name="ChampionsSkipped">Champions not in the current patch (left out).</param>
+public sealed record RosterImportResult(int RosterId, int GroupsAdded, int PlacementsAdded, int BuildsAdded, int BuildsAlreadyThere, int ChampionsSkipped);

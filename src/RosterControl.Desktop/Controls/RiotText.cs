@@ -76,16 +76,43 @@ public static partial class RiotText
 
     private static IBrush Brush(string hex) => new SolidColorBrush(Color.Parse(hex));
 
+    private static readonly AttachedProperty<bool> WatchingThemeProperty =
+        AvaloniaProperty.RegisterAttached<TextBlock, bool>("WatchingTheme", typeof(RiotText));
+
     public static void Apply(TextBlock tb, string? markup)
     {
         tb.Inlines ??= [];
         tb.Inlines.Clear();
+        if (!tb.GetValue(WatchingThemeProperty))
+        {
+            // The game's colours are made for dark backgrounds: darker shades on light ones, re-applied when the theme changes.
+            tb.SetValue(WatchingThemeProperty, true);
+            tb.ActualThemeVariantChanged += (_, _) => Apply(tb, GetMarkup(tb));
+        }
         if (string.IsNullOrEmpty(markup))
         {
             tb.Text = null;
             return;
         }
-        foreach (var inline in Parse(markup)) tb.Inlines.Add(inline);
+        var light = tb.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Light;
+        foreach (var inline in Parse(markup))
+        {
+            if (light) ForLight(inline);
+            tb.Inlines.Add(inline);
+        }
+    }
+
+    private static readonly Dictionary<Color, IBrush> LightBrushes = [];
+
+    private static void ForLight(Inline inline)
+    {
+        if (inline.Foreground is not ISolidColorBrush { Color: var c }) return;
+        lock (LightBrushes)
+        {
+            if (!LightBrushes.TryGetValue(c, out var brush))
+                LightBrushes[c] = brush = new SolidColorBrush(Services.AppTheme.ForLightBackground(c)).ToImmutable();
+            inline.Foreground = brush;
+        }
     }
 
     /// <summary>Converts markup to plain text (for search or accessibility).</summary>

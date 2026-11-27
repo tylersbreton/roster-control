@@ -225,4 +225,59 @@ public class RepositoryTests
         Assert.That(await service.RunAutomaticBackupAsync("16.23.1"), Is.Not.Null);
         Assert.That(await service.RunAutomaticBackupAsync("16.23.1"), Is.Null);
     }
+
+    [Test]
+    public async Task Shared_roster_imports_as_a_new_roster_or_merges_without_duplicates()
+    {
+        // Mine: Ahri in Middle with a build.
+        var groups = await _repo.GetGroupsAsync();
+        await _repo.AddEntryAsync(groups.Single(g => g.Role == Position.Middle).Id, "Ahri", 3, ChampionPriority.Secondary);
+        await _repo.SaveBuildAsync(new Build { ChampionId = "Ahri", Name = "Standard", SkillOrder = "QWE" });
+
+        var shared = new Core.Rules.SharedRosterFile
+        {
+            FileKind = Core.Rules.SharedRosterFile.Kind,
+            Name = "Clash",
+            IncludesRatings = true,
+            Groups =
+            [
+                new() { Name = "Middle", Role = Position.Middle, Entries = [new() { ChampionId = "ahri", Proficiency = 5, Priority = ChampionPriority.Main }, new() { ChampionId = "Syndra", Proficiency = 4 }] },
+                new() { Name = "Fun picks", Entries = [new() { ChampionId = "Teemo" }, new() { ChampionId = "NotAChampion" }] },
+            ],
+            Builds =
+            [
+                new Build { ChampionId = "Ahri", Name = "Standard", SkillOrder = "QWE" }, // same as mine
+                new Build { ChampionId = "Ahri", Name = "vs AD", SkillOrder = "QEW" },
+            ],
+        };
+        var known = new[] { "Ahri", "Syndra", "Teemo" };
+        string? Canonical(string id) => known.FirstOrDefault(k => string.Equals(k, id, StringComparison.OrdinalIgnoreCase));
+
+        // As a new roster.
+        var result = await _repo.ImportSharedRosterAsync(shared, null, "Clash", includeBuilds: true, Canonical);
+        Assert.That((await _repo.GetRostersAsync()).Select(r => r.Name), Is.EqualTo(new[] { RosterRepository.DefaultRosterName, "Clash" }));
+        var clash = await _repo.GetGroupsAsync(result.RosterId);
+        Assert.That(clash.Select(g => g.Name), Is.EqualTo(new[] { "Middle", "Fun picks" }));
+        var ahri = clash[0].Entries.First();
+        Assert.That((ahri.ChampionId, ahri.Proficiency, ahri.Priority), Is.EqualTo(("Ahri", 5, ChampionPriority.Main)), "ids fixed to the patch's spelling; ratings kept");
+        Assert.That(clash[0].Entries[1].Priority, Is.EqualTo(ChampionPriority.Secondary), "missing priority: Secondary");
+        Assert.That(result.ChampionsSkipped, Is.EqualTo(1));
+        Assert.That(result.BuildsAdded, Is.EqualTo(1));
+        Assert.That(result.BuildsAlreadyThere, Is.EqualTo(1));
+        var builds = await _repo.GetBuildsAsync("Ahri");
+        Assert.That(builds.Select(b => b.Name), Is.EqualTo(new[] { "Standard", "vs AD" }));
+        Assert.That(builds.Any(b => b.IsDefault), Is.False);
+
+        // Merged into my roster: Middle gets Syndra (Ahri is already there), "Fun picks" is new; builds aren't added twice.
+        var mine = (await _repo.GetRostersAsync())[0].Id;
+        var merged = await _repo.ImportSharedRosterAsync(shared, mine, "ignored", includeBuilds: true, Canonical);
+        Assert.That(merged.RosterId, Is.EqualTo(mine));
+        Assert.That(merged.PlacementsAdded, Is.EqualTo(2), "Syndra and Teemo");
+        Assert.That(merged.GroupsAdded, Is.EqualTo(1));
+        Assert.That(merged.BuildsAdded, Is.EqualTo(0));
+        var middle = (await _repo.GetGroupsAsync(mine)).Single(g => g.Name == "Middle");
+        Assert.That(middle.Entries.Select(e => e.ChampionId), Is.EqualTo(new[] { "Ahri", "Syndra" }));
+        Assert.That(middle.Entries[0].Proficiency, Is.EqualTo(3), "my existing placement isn't changed");
+        Assert.That((await _repo.GetRostersAsync()).Count, Is.EqualTo(2), "no new roster when merging");
+    }
 }

@@ -9,7 +9,7 @@
         Icon="avares://RosterControl/Assets/roster.ico"
         Width="1600" Height="960" MinWidth="1100" MinHeight="680"
         FontFamily="{StaticResource Font.UI}"
-        Background="{StaticResource Brush.AppBackground}"
+        Background="{DynamicResource Brush.AppBackground}"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaTitleBarHeightHint="44"
         Classes.reducedmotion="{Binding ReduceMotion}">
@@ -17,6 +17,7 @@
   <Window.DataTemplates>
     <DataTemplate DataType="vm:RostersViewModel"><v:RostersView /></DataTemplate>
     <DataTemplate DataType="vm:LibraryViewModel"><v:LibraryView /></DataTemplate>
+    <DataTemplate DataType="vm:ItemsViewModel"><v:ItemsView /></DataTemplate>
     <DataTemplate DataType="vm:CounterPicksViewModel"><v:CounterPicksView /></DataTemplate>
     <DataTemplate DataType="vm:SettingsViewModel"><v:SettingsView /></DataTemplate>
     <DataTemplate DataType="vm:ChampionDetailViewModel"><v:ChampionView /></DataTemplate>
@@ -47,22 +48,22 @@
           </Button>
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="9" Margin="10,0,18,0" VerticalAlignment="Center" IsHitTestVisible="False">
             <Image Source="avares://RosterControl/Assets/roster-256.png" Width="22" Height="22" />
-            <TextBlock Text="ROSTER CONTROL" FontWeight="Bold" FontSize="12.5" LetterSpacing="2" Foreground="{StaticResource Brush.GoldLight}" VerticalAlignment="Center" />
+            <TextBlock Text="ROSTER CONTROL" FontWeight="Bold" FontSize="12.5" LetterSpacing="2" Foreground="{DynamicResource Brush.GoldLight}" VerticalAlignment="Center" />
           </StackPanel>
           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
             <Button Classes="ghost icon" WindowDecorationProperties.ElementRole="User" Command="{Binding GoBackCommand}" IsVisible="{Binding CanGoBack}" ToolTip.Tip="Back">
               <c:LucideIcon Kind="arrow-left" />
             </Button>
-            <Border Width="1" Height="16" Background="{StaticResource Brush.Border}" Margin="2,0,8,0" IsVisible="{Binding !IsLoading}" />
+            <Border Width="1" Height="16" Background="{DynamicResource Brush.Border}" Margin="2,0,8,0" IsVisible="{Binding !IsLoading}" />
             <TextBlock Text="{Binding PageTitle}" Classes="secondary" FontWeight="SemiBold" VerticalAlignment="Center" IsHitTestVisible="False" />
           </StackPanel>
 
           <Button Grid.Column="3" Classes="titlesearch" WindowDecorationProperties.ElementRole="User" HorizontalAlignment="Center" Width="300" Margin="12,0"
                   Command="{Binding OpenPaletteCommand}" IsVisible="{Binding !IsLoading}" ToolTip.Tip="Search champions, pages and actions (Ctrl+K)">
             <Grid ColumnDefinitions="Auto,*,Auto">
-              <c:LucideIcon Kind="search" Width="14" Height="14" Foreground="{StaticResource Brush.TextMuted}" />
+              <c:LucideIcon Kind="search" Width="14" Height="14" Foreground="{DynamicResource Brush.TextMuted}" />
               <TextBlock Grid.Column="1" Text="Search champions…" Classes="muted" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center" />
-              <Border Grid.Column="2" CornerRadius="4" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" Padding="5,0">
+              <Border Grid.Column="2" CornerRadius="4" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" Padding="5,0">
                 <TextBlock Text="Ctrl K" FontSize="10.5" Classes="muted" />
               </Border>
             </Grid>
@@ -78,30 +79,30 @@
             <Button Classes="teal small" WindowDecorationProperties.ElementRole="User" IsVisible="{Binding IsAppUpdateReady}" Command="{Binding RestartToUpdateCommand}"
                     ToolTip.Tip="A new version of Roster Control has been downloaded. Restart to install it — your data is kept.">
               <StackPanel Orientation="Horizontal" Spacing="6">
-                <c:LucideIcon Kind="download" Width="13" Height="13" Foreground="#CDFAFA" />
-                <TextBlock Text="{Binding AppUpdateText}" FontSize="12" Foreground="#CDFAFA" />
-                <TextBlock Text="· Restart to update" FontSize="12" FontWeight="Bold" Foreground="{StaticResource Brush.Teal}" />
+                <c:LucideIcon Kind="download" Width="13" Height="13" Foreground="{DynamicResource Brush.TealText}" />
+                <TextBlock Text="{Binding AppUpdateText}" FontSize="12" Foreground="{DynamicResource Brush.TealText}" />
+                <TextBlock Text="· Restart to update" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource Brush.Teal}" />
               </StackPanel>
             </Button>
             <Button Classes="primary small" WindowDecorationProperties.ElementRole="User" IsVisible="{Binding HasNewPatch}" Command="{Binding UpdatePatchCommand}"
                     ToolTip.Tip="Load the new patch's champions, items and runes. Your rosters and builds are kept.">
               <StackPanel Orientation="Horizontal" Spacing="6">
-                <c:LucideIcon Kind="sparkles" Width="13" Height="13" Foreground="{StaticResource Brush.GoldLight}" />
-                <TextBlock Text="{Binding NewPatchText}" FontSize="12" Foreground="{StaticResource Brush.GoldLight}" />
-                <TextBlock Text="· Update" FontSize="12" FontWeight="Bold" Foreground="{StaticResource Brush.Gold}" />
+                <c:LucideIcon Kind="sparkles" Width="13" Height="13" Foreground="{DynamicResource Brush.GoldLight}" />
+                <TextBlock Text="{Binding NewPatchText}" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" />
+                <TextBlock Text="· Update" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource Brush.Gold}" />
               </StackPanel>
             </Button>
             <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsSaving}" IsHitTestVisible="False">
-              <c:LucideIcon Kind="save" Width="13" Height="13" Foreground="{StaticResource Brush.Teal}" />
-              <TextBlock Text="Saving…" FontSize="11.5" Foreground="{StaticResource Brush.Teal}" VerticalAlignment="Center" />
+              <c:LucideIcon Kind="save" Width="13" Height="13" Foreground="{DynamicResource Brush.Teal}" />
+              <TextBlock Text="Saving…" FontSize="11.5" Foreground="{DynamicResource Brush.Teal}" VerticalAlignment="Center" />
             </StackPanel>
             <StackPanel Name="SavedIndicator" Orientation="Horizontal" Spacing="5" IsVisible="{Binding ShowSaved}" IsHitTestVisible="False" ToolTip.Tip="Your changes are saved">
-              <c:LucideIcon Kind="check" Width="13" Height="13" Foreground="{StaticResource Brush.Good}" StrokeWidth="2.6" />
-              <TextBlock Text="Saved" FontSize="11.5" Foreground="{StaticResource Brush.Good}" VerticalAlignment="Center" />
+              <c:LucideIcon Kind="check" Width="13" Height="13" Foreground="{DynamicResource Brush.Good}" StrokeWidth="2.6" />
+              <TextBlock Text="Saved" FontSize="11.5" Foreground="{DynamicResource Brush.Good}" VerticalAlignment="Center" />
             </StackPanel>
             <Border Classes="pill" IsVisible="{Binding !IsLoading}" IsHitTestVisible="False">
               <StackPanel Orientation="Horizontal" Spacing="6">
-                <Ellipse Width="6" Height="6" Fill="{StaticResource Brush.Teal}" VerticalAlignment="Center" />
+                <Ellipse Width="6" Height="6" Fill="{DynamicResource Brush.Teal}" VerticalAlignment="Center" />
                 <TextBlock Text="{Binding PatchText}" FontSize="11" Classes="secondary num" VerticalAlignment="Center" />
               </StackPanel>
             </Border>
@@ -135,6 +136,12 @@
                   <TextBlock Text="Champions" IsVisible="{Binding !SidebarCollapsed}" Foreground="{Binding $parent[RadioButton].Foreground}" />
                 </StackPanel>
               </RadioButton>
+              <RadioButton Classes="nav" GroupName="nav" IsChecked="{Binding IsItemsSection, Mode=OneWay}" Command="{Binding NavigateCommand}" CommandParameter="{x:Static vm:Section.Items}" ToolTip.Tip="Items — gold efficiency and the builds that use each item">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <c:LucideIcon Kind="shopping-bag" Width="18" Height="18" Foreground="{Binding $parent[RadioButton].Foreground}" />
+                  <TextBlock Text="Items" IsVisible="{Binding !SidebarCollapsed}" Foreground="{Binding $parent[RadioButton].Foreground}" />
+                </StackPanel>
+              </RadioButton>
               <RadioButton Classes="nav" GroupName="nav" IsChecked="{Binding IsCountersSection, Mode=OneWay}" Command="{Binding NavigateCommand}" CommandParameter="{x:Static vm:Section.Counters}" ToolTip.Tip="Counter picks — what should I play into this?">
                 <StackPanel Orientation="Horizontal" Spacing="12">
                   <c:LucideIcon Kind="swords" Width="18" Height="18" Foreground="{Binding $parent[RadioButton].Foreground}" />
@@ -153,12 +160,12 @@
       <StackPanel Grid.Row="0" Grid.RowSpan="2" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16" IsVisible="{Binding IsLoading}" MaxWidth="460">
         <Image Source="avares://RosterControl/Assets/roster-256.png" Width="84" Height="84" HorizontalAlignment="Center" />
         <TextBlock Text="ROSTER CONTROL" Classes="heading" FontSize="18" LetterSpacing="4" HorizontalAlignment="Center" />
-        <ProgressBar IsIndeterminate="True" Width="220" Height="3" Foreground="{StaticResource Brush.Gold}" Background="{StaticResource Brush.SurfaceElevated}" IsVisible="{Binding !HasError}" />
+        <ProgressBar IsIndeterminate="True" Width="220" Height="3" Foreground="{DynamicResource Brush.Gold}" Background="{DynamicResource Brush.SurfaceElevated}" IsVisible="{Binding !HasError}" />
         <TextBlock Text="{Binding LoadingText}" Classes="secondary" HorizontalAlignment="Center" IsVisible="{Binding !HasError}" />
         <Border Classes="card" Padding="18,14" IsVisible="{Binding HasError}">
           <StackPanel Spacing="12">
             <StackPanel Orientation="Horizontal" Spacing="8">
-              <c:LucideIcon Kind="triangle-alert" Foreground="{StaticResource Brush.Warning}" />
+              <c:LucideIcon Kind="triangle-alert" Foreground="{DynamicResource Brush.Warning}" />
               <TextBlock Text="Couldn't load game data" Classes="title" />
             </StackPanel>
             <TextBlock Text="{Binding LoadError}" Classes="secondary" TextWrapping="Wrap" />
@@ -177,13 +184,13 @@
       </ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="vm:ToastViewModel">
-          <Border Background="#F2121C2A" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="8" Padding="12,10" BoxShadow="{StaticResource Shadow.Popup}">
+          <Border Background="{DynamicResource Brush.Toast}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="8" Padding="12,10" BoxShadow="{DynamicResource Shadow.Popup}">
             <Grid ColumnDefinitions="Auto,*,Auto,Auto">
               <c:LucideIcon Kind="{Binding IconKind}" Foreground="{Binding Accent}" VerticalAlignment="Top" Margin="0,1,10,0" />
               <TextBlock Grid.Column="1" Text="{Binding Message}" TextWrapping="Wrap" VerticalAlignment="Center" />
               <Button Grid.Column="2" Classes="small teal" Margin="10,-3,0,-3" VerticalAlignment="Center" IsVisible="{Binding HasAction}" ToolTip.Tip="Ctrl+Z"
                       Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RunToastActionCommand}" CommandParameter="{Binding}">
-                <TextBlock Text="{Binding ActionText}" FontSize="12" Foreground="#CDFAFA" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding ActionText}" FontSize="12" Foreground="{DynamicResource Brush.TealText}" FontWeight="SemiBold" />
               </Button>
               <Button Grid.Column="3" Classes="ghost icon" Width="22" Height="22" Margin="6,-2,-4,0" VerticalAlignment="Top"
                       Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).DismissToastCommand}" CommandParameter="{Binding}">
@@ -197,12 +204,12 @@
 
     <!-- ── What's new (after an update, or Settings → About) ──────────────────────────────── -->
     <Panel IsVisible="{Binding WhatsNew, Converter={x:Static ObjectConverters.IsNotNull}}">
-      <Border Background="{StaticResource Brush.Overlay}" />
-      <Border Classes="card" Width="620" MaxHeight="640" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="0" BorderBrush="{StaticResource Brush.GoldDark}" BoxShadow="{StaticResource Shadow.Popup}"
+      <Border Background="{DynamicResource Brush.Overlay}" />
+      <Border Classes="card" Width="620" MaxHeight="640" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="0" BorderBrush="{DynamicResource Brush.GoldDark}" BoxShadow="{DynamicResource Shadow.Popup}"
               DataContext="{Binding WhatsNew}" x:DataType="vm:WhatsNewViewModel">
         <Grid RowDefinitions="Auto,*,Auto">
           <StackPanel Orientation="Horizontal" Spacing="10" Margin="22,18,22,10">
-            <c:LucideIcon Kind="sparkles" Width="20" Height="20" Foreground="{StaticResource Brush.Gold}" VerticalAlignment="Center" />
+            <c:LucideIcon Kind="sparkles" Width="20" Height="20" Foreground="{DynamicResource Brush.Gold}" VerticalAlignment="Center" />
             <TextBlock Text="{Binding Title}" Classes="heading" FontSize="16" VerticalAlignment="Center" />
           </StackPanel>
           <ScrollViewer Grid.Row="1" Padding="22,0,18,0">
@@ -225,8 +232,8 @@
 
     <!-- ── Confirmation dialog ───────────────────────────────────────────────────────────── -->
     <Panel IsVisible="{Binding Dialog, Converter={x:Static ObjectConverters.IsNotNull}}">
-      <Border Background="{StaticResource Brush.Overlay}" />
-      <Border Classes="card" Width="440" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="22,20" BorderBrush="{StaticResource Brush.GoldDark}" BoxShadow="{StaticResource Shadow.Popup}"
+      <Border Background="{DynamicResource Brush.Overlay}" />
+      <Border Classes="card" Width="440" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="22,20" BorderBrush="{DynamicResource Brush.GoldDark}" BoxShadow="{DynamicResource Shadow.Popup}"
               DataContext="{Binding Dialog}" x:DataType="vm:ConfirmDialogViewModel">
         <StackPanel Spacing="14">
           <TextBlock Text="{Binding Title}" Classes="heading" FontSize="16" LetterSpacing="0.5" TextWrapping="Wrap" />
@@ -241,9 +248,9 @@
 
     <!-- ── Search palette (Ctrl+K) ───────────────────────────────────────────────────────── -->
     <Panel IsVisible="{Binding Palette.IsOpen}">
-      <Border Background="#99030609" PointerPressed="OnPaletteBackdropPressed" />
+      <Border Background="{DynamicResource Brush.Overlay}" PointerPressed="OnPaletteBackdropPressed" />
       <Border Classes="card" Width="560" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,90,0,0" Padding="0"
-              BorderBrush="{StaticResource Brush.GoldDark}" BoxShadow="{StaticResource Shadow.Popup}" DataContext="{Binding Palette}" x:DataType="vm:CommandPaletteViewModel">
+              BorderBrush="{DynamicResource Brush.GoldDark}" BoxShadow="{DynamicResource Shadow.Popup}" DataContext="{Binding Palette}" x:DataType="vm:CommandPaletteViewModel">
         <StackPanel>
           <TextBox Name="PaletteBox" Classes="search" Text="{Binding Query}" PlaceholderText="Search champions, pages and actions…" Margin="12,12,12,8"
                    FontSize="14" />
@@ -255,7 +262,7 @@
                   <Grid ColumnDefinitions="Auto,*">
                     <Panel Width="28" Height="28" Margin="0,0,12,0">
                       <c:AssetImage Source="{Binding IconUrl}" CornerRadius="5" Zoom="1.1" IsVisible="{Binding HasIconUrl}" />
-                      <Border CornerRadius="6" Background="{StaticResource Brush.SurfaceElevated}" IsVisible="{Binding HasIconKind}">
+                      <Border CornerRadius="6" Background="{DynamicResource Brush.SurfaceElevated}" IsVisible="{Binding HasIconKind}">
                         <c:LucideIcon Kind="{Binding IconKind}" Width="15" Height="15" />
                       </Border>
                     </Panel>

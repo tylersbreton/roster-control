@@ -8,10 +8,12 @@
   <!-- Name, cooldown / cost / range, numbers per rank, then the description -->
   <StackPanel Spacing="7">
     <StackPanel Orientation="Horizontal" Spacing="8">
-      <Border CornerRadius="3" Background="#E6060A11" BorderBrush="{Binding Accent}" BorderThickness="1" Padding="5,0" VerticalAlignment="Center">
+      <Border CornerRadius="3" Background="{DynamicResource Brush.Scrim}" BorderBrush="{Binding Accent}" BorderThickness="1" Padding="5,0" VerticalAlignment="Center">
         <TextBlock Text="{Binding KeyLabel}" FontSize="10" FontWeight="Bold" Foreground="{Binding Accent}" />
       </Border>
-      <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" Foreground="{StaticResource Brush.GoldLight}" VerticalAlignment="Center" />
+      <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource Brush.GoldLight}" VerticalAlignment="Center" />
+      <TextBlock Text="{Binding RankText}" IsVisible="{Binding HasRankText}" FontSize="11.5" VerticalAlignment="Center" Margin="4,0,0,0"
+                 Classes.secondary="{Binding !IsNotLearned}" Classes.muted="{Binding IsNotLearned}" />
     </StackPanel>
     <ItemsControl ItemsSource="{Binding Stats}" IsVisible="{Binding HasStats}">
       <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="12" LineSpacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
@@ -24,15 +26,16 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
-    <ItemsControl ItemsSource="{Binding Values}" IsVisible="{Binding HasValues}">
+    <ItemsControl ItemsSource="{Binding Rows}" IsVisible="{Binding HasValues}">
       <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate>
-        <DataTemplate x:DataType="gd:AbilityValue">
-          <TextBlock TextWrapping="Wrap" FontSize="12">
-            <Run Text="{Binding Label}" Foreground="{StaticResource Brush.TextSecondary}" />
-            <Run Text="  " />
-            <Run Text="{Binding Text}" Foreground="{StaticResource Brush.GoldLight}" FontWeight="SemiBold" />
-          </TextBlock>
+        <DataTemplate x:DataType="vm:AbilityValueRow">
+          <Grid ColumnDefinitions="Auto,Auto,*">
+            <TextBlock Text="{Binding Label}" Classes="secondary" FontSize="12" Margin="0,0,8,0" VerticalAlignment="Top" />
+            <TextBlock Grid.Column="1" Text="{Binding Result}" IsVisible="{Binding HasResult}" Foreground="{DynamicResource Brush.Teal}" FontWeight="Bold" FontSize="13" Margin="0,-1,8,0" VerticalAlignment="Top" />
+            <TextBlock Grid.Column="2" Text="{Binding Text}" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Top"
+                       Classes.gold="{Binding !HasResult}" Classes.muted="{Binding HasResult}" />
+          </Grid>
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>

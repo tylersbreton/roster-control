@@ -16,7 +16,11 @@ public sealed class App : Application
 {
     public static IHost? Host { get; set; }
 
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+        AppTheme.Apply(this, ThemeMode.Dark, AppTheme.DefaultAccent); // replaced by the saved choice once preferences load
+    }
 
     public override void OnFrameworkInitializationCompleted()
     {
@@ -42,7 +46,10 @@ public sealed class App : Application
     /// <summary>Shared initialisation (also used by the headless UI tests).</summary>
     public static void InitializeServices(IServiceProvider services)
     {
-        services.GetRequiredService<PreferencesStore>().Load();
+        var preferences = services.GetRequiredService<PreferencesStore>();
+        preferences.Load();
         AssetImage.Images = services.GetRequiredService<AssetImageService>();
+        if (Current is { } app)
+            AppTheme.Apply(app, preferences.Get(MainWindowViewModel.ThemeKey, ThemeMode.Dark), preferences.Get(MainWindowViewModel.AccentKey, AppTheme.DefaultAccent));
     }
 }

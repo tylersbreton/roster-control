@@ -26,7 +26,7 @@
                 <Border CornerRadius="999" Background="{Binding AccentSoft}" BorderBrush="{Binding Accent}" BorderThickness="1" Padding="3,3,10,3" Margin="0,2,6,2" ToolTip.Tip="{Binding Tooltip}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <c:AssetImage Source="{Binding EnemyIconUrl}" Width="20" Height="20" CornerRadius="10" Zoom="1.1" />
-                    <TextBlock Text="{Binding Text}" FontSize="11.5" VerticalAlignment="Center" Foreground="{StaticResource Brush.TextPrimary}" />
+                    <TextBlock Text="{Binding Text}" FontSize="11.5" VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextPrimary}" />
                     <c:LucideIcon Kind="notebook-pen" Width="11" Height="11" IsVisible="{Binding HasNote}" VerticalAlignment="Center" />
                   </StackPanel>
                 </Border>
@@ -53,8 +53,8 @@
         <Grid RowDefinitions="Auto,Auto">
           <Grid ColumnDefinitions="Auto,*">
             <StackPanel Orientation="Horizontal" Spacing="7">
-              <c:LucideIcon Kind="circle-x" Width="14" Height="14" Foreground="{StaticResource Brush.Warning}" />
-              <TextBlock Text="SUGGESTED BANS" Classes="overline" Foreground="{StaticResource Brush.Warning}" VerticalAlignment="Center" />
+              <c:LucideIcon Kind="circle-x" Width="14" Height="14" Foreground="{DynamicResource Brush.Warning}" />
+              <TextBlock Text="SUGGESTED BANS" Classes="overline" Foreground="{DynamicResource Brush.Warning}" VerticalAlignment="Center" />
             </StackPanel>
             <TextBlock Grid.Column="1" Classes="caption" Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                        Text="Champions that counter the most of your champions in this scope — Mains count most. Hover for details." />
@@ -67,14 +67,14 @@
                         c:Dnd.ClickCommand="{Binding $parent[v:CounterPicksView].((vm:CounterPicksViewModel)DataContext).OpenBanCommand}">
                   <ToolTip.Tip>
                     <StackPanel Spacing="6" MaxWidth="360">
-                      <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{StaticResource Brush.GoldLight}" />
+                      <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{DynamicResource Brush.GoldLight}" />
                       <TextBlock Text="{Binding CountText}" Classes="caption" />
                       <ItemsControl ItemsSource="{Binding Threats}">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="vm:BanThreatViewModel">
                             <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
                               <Ellipse Width="7" Height="7" Fill="{Binding PriorityBrush}" VerticalAlignment="Top" Margin="0,5,0,0" />
-                              <TextBlock Text="{Binding Line}" TextWrapping="Wrap" MaxWidth="330" FontSize="12" Foreground="{StaticResource Brush.TextSecondary}" />
+                              <TextBlock Text="{Binding Line}" TextWrapping="Wrap" MaxWidth="330" FontSize="12" Foreground="{DynamicResource Brush.TextSecondary}" />
                             </StackPanel>
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -84,9 +84,9 @@
                   </ToolTip.Tip>
                   <Grid ColumnDefinitions="Auto,*">
                     <Panel Width="40" Height="40">
-                      <c:AssetImage Source="{Binding IconUrl}" CornerRadius="6" Zoom="1.1" Ring="{StaticResource Brush.Warning}" RingThickness="1.5" />
-                      <Border CornerRadius="6" Background="#99060A11" IsVisible="{Binding AlreadyPicked}" ToolTip.Tip="Already in the enemy team">
-                        <c:LucideIcon Kind="check" Width="16" Height="16" Foreground="{StaticResource Brush.TextSecondary}" />
+                      <c:AssetImage Source="{Binding IconUrl}" CornerRadius="6" Zoom="1.1" Ring="{DynamicResource Brush.Warning}" RingThickness="1.5" />
+                      <Border CornerRadius="6" Background="{DynamicResource Brush.ScrimSoft}" IsVisible="{Binding AlreadyPicked}" ToolTip.Tip="Already in the enemy team">
+                        <c:LucideIcon Kind="check" Width="16" Height="16" Foreground="{DynamicResource Brush.TextSecondary}" />
                       </Border>
                     </Panel>
                     <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="4">
@@ -121,19 +121,19 @@
       <!-- Enemy team (drop zone) -->
       <Border Grid.Row="2" Classes="card dropzone" c:Dnd.Target="{Binding}" c:Dnd.Orientation="Horizontal" Padding="16,12" Margin="0,0,0,12">
         <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-          <TextBlock Text="ENEMY TEAM" Classes="overline" Foreground="{StaticResource Brush.Bad}" Margin="0,0,0,10" />
+          <TextBlock Text="ENEMY TEAM" Classes="overline" Foreground="{DynamicResource Brush.Bad}" Margin="0,0,0,10" />
           <ItemsControl Grid.Row="1" ItemsSource="{Binding Enemies}">
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="12" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:EnemySlotViewModel">
                 <StackPanel Spacing="5" Width="70" c:Dnd.Item="{Binding}">
                   <Panel Width="64" Height="64">
-                    <Border CornerRadius="8" BorderBrush="#4DEE5A6F" BorderThickness="1" Background="#0A0F17" IsVisible="{Binding !HasChampion}">
-                      <c:LucideIcon Kind="plus" Width="18" Height="18" Foreground="{StaticResource Brush.TextMuted}" />
+                    <Border CornerRadius="8" BorderBrush="#4DEE5A6F" BorderThickness="1" Background="{DynamicResource Brush.SurfaceDeep}" IsVisible="{Binding !HasChampion}">
+                      <c:LucideIcon Kind="plus" Width="18" Height="18" Foreground="{DynamicResource Brush.TextMuted}" />
                     </Border>
-                    <c:AssetImage Source="{Binding IconUrl}" CornerRadius="8" Zoom="1.08" Ring="{StaticResource Brush.Bad}" RingThickness="1.5" IsVisible="{Binding HasChampion}" />
+                    <c:AssetImage Source="{Binding IconUrl}" CornerRadius="8" Zoom="1.08" Ring="{DynamicResource Brush.Bad}" RingThickness="1.5" IsVisible="{Binding HasChampion}" />
                     <Button Classes="icon" Width="20" Height="20" CornerRadius="10" Padding="0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-6,0"
-                            IsVisible="{Binding HasChampion}" Command="{Binding ClearCommand}" ToolTip.Tip="Remove" Background="#121C2A">
+                            IsVisible="{Binding HasChampion}" Command="{Binding ClearCommand}" ToolTip.Tip="Remove" Background="{DynamicResource Brush.SurfaceElevated}">
                       <c:LucideIcon Kind="x" Width="11" Height="11" />
                     </Button>
                   </Panel>
@@ -171,15 +171,15 @@
             <TextBlock Text="{Binding ResultSummary}" Classes="caption" Margin="2,0,0,2" />
             <StackPanel Spacing="6" IsVisible="{Binding HasStrong}">
               <StackPanel Orientation="Horizontal" Spacing="7" Margin="2,4,0,2">
-                <c:LucideIcon Kind="thumbs-up" Width="14" Height="14" Foreground="{StaticResource Brush.Good}" />
-                <TextBlock Text="STRONG PICKS" Classes="overline" Foreground="{StaticResource Brush.Good}" />
+                <c:LucideIcon Kind="thumbs-up" Width="14" Height="14" Foreground="{DynamicResource Brush.Good}" />
+                <TextBlock Text="STRONG PICKS" Classes="overline" Foreground="{DynamicResource Brush.Good}" />
               </StackPanel>
               <ItemsControl ItemsSource="{Binding Strong}" />
             </StackPanel>
             <StackPanel Spacing="6" IsVisible="{Binding HasRisky}">
               <StackPanel Orientation="Horizontal" Spacing="7" Margin="2,8,0,2">
-                <c:LucideIcon Kind="thumbs-down" Width="14" Height="14" Foreground="{StaticResource Brush.Bad}" />
-                <TextBlock Text="RISKY PICKS" Classes="overline" Foreground="{StaticResource Brush.Bad}" />
+                <c:LucideIcon Kind="thumbs-down" Width="14" Height="14" Foreground="{DynamicResource Brush.Bad}" />
+                <TextBlock Text="RISKY PICKS" Classes="overline" Foreground="{DynamicResource Brush.Bad}" />
               </StackPanel>
               <ItemsControl ItemsSource="{Binding Risky}" />
             </StackPanel>
@@ -197,11 +197,11 @@
 
         <Border Classes="card" IsVisible="{Binding !HasEnemies}" VerticalAlignment="Top" Padding="24,28">
           <StackPanel Spacing="10" HorizontalAlignment="Center" MaxWidth="460">
-            <c:LucideIcon Kind="crosshair" Width="36" Height="36" Foreground="{StaticResource Brush.GoldDark}" HorizontalAlignment="Center" />
+            <c:LucideIcon Kind="crosshair" Width="36" Height="36" Foreground="{DynamicResource Brush.GoldDark}" HorizontalAlignment="Center" />
             <TextBlock Text="WHO ARE YOU PLAYING AGAINST?" Classes="heading" HorizontalAlignment="Center" />
             <TextBlock Text="Click or drag enemy champions from the list on the right. Your roster is ranked using the Good against / Weak against matchups recorded on each champion's page — including ones you noted from the enemy's side." Classes="secondary" TextWrapping="Wrap" TextAlignment="Center" />
             <StackPanel Spacing="8" IsVisible="{Binding !HasMatchupData}">
-              <TextBlock Text="Tip: you haven't recorded any matchups yet. Open a champion and use the Matchups tab." Classes="caption" Foreground="{StaticResource Brush.Warning}" TextWrapping="Wrap" TextAlignment="Center" />
+              <TextBlock Text="Tip: you haven't recorded any matchups yet. Open a champion and use the Matchups tab." Classes="caption" Foreground="{DynamicResource Brush.Warning}" TextWrapping="Wrap" TextAlignment="Center" />
               <Button Classes="small" HorizontalAlignment="Center" Command="{Binding GoToChampionsCommand}">
                 <TextBlock Text="Open Champions" FontSize="12" />
               </Button>
@@ -215,7 +215,7 @@
     <Border Grid.Column="2" Classes="card" Padding="0">
       <Grid RowDefinitions="Auto,Auto,Auto,*">
         <StackPanel Margin="14,12,14,8" Spacing="2">
-          <TextBlock Text="ADD ENEMY" Classes="overline" Foreground="{StaticResource Brush.Bad}" />
+          <TextBlock Text="ADD ENEMY" Classes="overline" Foreground="{DynamicResource Brush.Bad}" />
           <TextBlock Text="Click to add, or drag onto a slot" Classes="caption" />
         </StackPanel>
         <TextBox Grid.Row="1" Classes="search" Margin="12,0,12,8" PlaceholderText="Search… (Enter adds)" Text="{Binding Picker.Search}" c:InputHelpers.EnterCommand="{Binding AddFirstEnemyCommand}" />

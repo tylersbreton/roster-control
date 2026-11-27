@@ -1,84 +1,202 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <!--
-    Design tokens: a modern dark UI with the League client's hextech palette (deep navy, warm gold, teal magic).
-    Every colour, size and radius used by views comes from here.
+    Design tokens. Dark: a modern UI with the League client's hextech palette (deep navy, warm gold, teal magic). Light:
+    warm parchment surfaces with the same accents, darkened for contrast. Views use DynamicResource so the theme and the
+    accent can change while the app runs. The accent family (Brush.Gold, GoldLight, GoldDark, GoldDeep, GoldSoft,
+    GoldSelected, GoldFrame, GoldLine, Shadow.GoldGlow and Fluent's accent keys) is generated per theme by
+    Services/AppTheme.cs from the chosen accent colour.
   -->
 
-  <!-- Surfaces -->
-  <Color x:Key="Color.AppBackground">#060A11</Color>
-  <Color x:Key="Color.Surface">#0C131D</Color>
-  <Color x:Key="Color.SurfaceElevated">#121C2A</Color>
-  <Color x:Key="Color.SurfaceSunken">#080D15</Color>
-  <Color x:Key="Color.SurfaceHover">#192638</Color>
-  <Color x:Key="Color.Border">#22303F</Color>
-  <Color x:Key="Color.BorderSubtle">#17212D</Color>
+  <ResourceDictionary.ThemeDictionaries>
+    <!-- ── Dark ──────────────────────────────────────────────────────────────────────────────── -->
+    <ResourceDictionary x:Key="Dark">
+      <Color x:Key="Color.AppBackground">#060A11</Color>
+      <Color x:Key="Color.Surface">#0C131D</Color>
+      <Color x:Key="Color.SurfaceElevated">#121C2A</Color>
+      <Color x:Key="Color.TextPrimary">#ECE5D3</Color>
+      <Color x:Key="Color.Teal">#0AC8B9</Color>
 
-  <!-- Text (warm, like the client) -->
-  <Color x:Key="Color.TextPrimary">#ECE5D3</Color>
-  <Color x:Key="Color.TextSecondary">#A09B8C</Color>
-  <Color x:Key="Color.TextMuted">#6C6A62</Color>
+      <SolidColorBrush x:Key="Brush.AppBackground" Color="#060A11" />
+      <SolidColorBrush x:Key="Brush.Surface" Color="#0C131D" />
+      <SolidColorBrush x:Key="Brush.SurfaceElevated" Color="#121C2A" />
+      <SolidColorBrush x:Key="Brush.SurfaceSunken" Color="#080D15" />
+      <SolidColorBrush x:Key="Brush.SurfaceDeep" Color="#070B12" />
+      <SolidColorBrush x:Key="Brush.SurfaceHover" Color="#192638" />
+      <SolidColorBrush x:Key="Brush.Border" Color="#22303F" />
+      <SolidColorBrush x:Key="Brush.BorderSubtle" Color="#17212D" />
+      <SolidColorBrush x:Key="Brush.BorderStrong" Color="#33465C" />
+      <SolidColorBrush x:Key="Brush.TextPrimary" Color="#ECE5D3" />
+      <SolidColorBrush x:Key="Brush.TextSecondary" Color="#A09B8C" />
+      <SolidColorBrush x:Key="Brush.TextMuted" Color="#6C6A62" />
+      <SolidColorBrush x:Key="Brush.Teal" Color="#0AC8B9" />
+      <SolidColorBrush x:Key="Brush.TealText" Color="#CDFAFA" />
+      <SolidColorBrush x:Key="Brush.TealButton" Color="#0F2A33" />
+      <SolidColorBrush x:Key="Brush.TealButtonHover" Color="#143846" />
+      <SolidColorBrush x:Key="Brush.Good" Color="#4CD98A" />
+      <SolidColorBrush x:Key="Brush.Bad" Color="#EE5A6F" />
+      <SolidColorBrush x:Key="Brush.Warning" Color="#E6B85C" />
+      <SolidColorBrush x:Key="Brush.WarningText" Color="#F2DDB0" />
+      <SolidColorBrush x:Key="Brush.WarningBorder" Color="#66E6B85C" />
+      <SolidColorBrush x:Key="Brush.TealSoft" Color="#0AC8B9" Opacity="0.12" />
+      <SolidColorBrush x:Key="Brush.GoodSoft" Color="#4CD98A" Opacity="0.12" />
+      <SolidColorBrush x:Key="Brush.BadSoft" Color="#EE5A6F" Opacity="0.12" />
+      <SolidColorBrush x:Key="Brush.WarningSoft" Color="#E6B85C" Opacity="0.12" />
+      <SolidColorBrush x:Key="Brush.DangerBg" Color="#2A121A" />
+      <SolidColorBrush x:Key="Brush.DangerBgHover" Color="#3A1622" />
+      <SolidColorBrush x:Key="Brush.DangerBorder" Color="#8C2F3E" />
+      <SolidColorBrush x:Key="Brush.DangerText" Color="#FFD5DA" />
+      <SolidColorBrush x:Key="Brush.Overlay" Color="#03060A" Opacity="0.72" />
+      <!-- Translucent backgrounds over art and icons -->
+      <SolidColorBrush x:Key="Brush.Scrim" Color="#E6060A11" />
+      <SolidColorBrush x:Key="Brush.ScrimSoft" Color="#99060A11" />
+      <SolidColorBrush x:Key="Brush.Glass" Color="#D90C131D" />
+      <SolidColorBrush x:Key="Brush.Toast" Color="#F2121C2A" />
+      <SolidColorBrush x:Key="Brush.Placeholder" Color="#152031" />
+      <SolidColorBrush x:Key="Brush.PrimaryButtonHover" Color="#262C33" />
+      <SolidColorBrush x:Key="Brush.Glow" Color="#1A0AC8B9" />
 
-  <!-- Hextech accents -->
-  <Color x:Key="Color.Gold">#C8AA6E</Color>
-  <Color x:Key="Color.GoldLight">#F0E6D2</Color>
-  <Color x:Key="Color.GoldDark">#785A28</Color>
-  <Color x:Key="Color.GoldDeep">#463714</Color>
-  <Color x:Key="Color.Teal">#0AC8B9</Color>
-  <Color x:Key="Color.TealDark">#005A82</Color>
-  <Color x:Key="Color.Good">#4CD98A</Color>
-  <Color x:Key="Color.Bad">#EE5A6F</Color>
-  <Color x:Key="Color.Warning">#E6B85C</Color>
+      <LinearGradientBrush x:Key="Brush.PrimaryButton" StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#1E2328" Offset="0" />
+        <GradientStop Color="#141A22" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="Brush.HeroFade" StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#00060A11" Offset="0" />
+        <GradientStop Color="#99060A11" Offset="0.55" />
+        <GradientStop Color="#FF060A11" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="Brush.HeroSideFade" StartPoint="0%,0%" EndPoint="100%,0%">
+        <GradientStop Color="#F2060A11" Offset="0" />
+        <GradientStop Color="#80060A11" Offset="0.45" />
+        <GradientStop Color="#00060A11" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="Brush.RuneFade" StartPoint="0%,0%" EndPoint="100%,0%">
+        <GradientStop Color="#E6060A11" Offset="0" />
+        <GradientStop Color="#B3060A11" Offset="0.5" />
+        <GradientStop Color="#D9060A11" Offset="1" />
+      </LinearGradientBrush>
 
-  <SolidColorBrush x:Key="Brush.AppBackground" Color="{StaticResource Color.AppBackground}" />
-  <SolidColorBrush x:Key="Brush.Surface" Color="{StaticResource Color.Surface}" />
-  <SolidColorBrush x:Key="Brush.SurfaceElevated" Color="{StaticResource Color.SurfaceElevated}" />
-  <SolidColorBrush x:Key="Brush.SurfaceSunken" Color="{StaticResource Color.SurfaceSunken}" />
-  <SolidColorBrush x:Key="Brush.SurfaceHover" Color="{StaticResource Color.SurfaceHover}" />
-  <SolidColorBrush x:Key="Brush.Border" Color="{StaticResource Color.Border}" />
-  <SolidColorBrush x:Key="Brush.BorderSubtle" Color="{StaticResource Color.BorderSubtle}" />
-  <SolidColorBrush x:Key="Brush.TextPrimary" Color="{StaticResource Color.TextPrimary}" />
-  <SolidColorBrush x:Key="Brush.TextSecondary" Color="{StaticResource Color.TextSecondary}" />
-  <SolidColorBrush x:Key="Brush.TextMuted" Color="{StaticResource Color.TextMuted}" />
-  <SolidColorBrush x:Key="Brush.Gold" Color="{StaticResource Color.Gold}" />
-  <SolidColorBrush x:Key="Brush.GoldLight" Color="{StaticResource Color.GoldLight}" />
-  <SolidColorBrush x:Key="Brush.GoldDark" Color="{StaticResource Color.GoldDark}" />
-  <SolidColorBrush x:Key="Brush.GoldDeep" Color="{StaticResource Color.GoldDeep}" />
-  <SolidColorBrush x:Key="Brush.Teal" Color="{StaticResource Color.Teal}" />
-  <SolidColorBrush x:Key="Brush.Good" Color="{StaticResource Color.Good}" />
-  <SolidColorBrush x:Key="Brush.Bad" Color="{StaticResource Color.Bad}" />
-  <SolidColorBrush x:Key="Brush.Warning" Color="{StaticResource Color.Warning}" />
-  <SolidColorBrush x:Key="Brush.GoldSoft" Color="#C8AA6E" Opacity="0.12" />
-  <SolidColorBrush x:Key="Brush.TealSoft" Color="#0AC8B9" Opacity="0.12" />
-  <SolidColorBrush x:Key="Brush.GoodSoft" Color="#4CD98A" Opacity="0.12" />
-  <SolidColorBrush x:Key="Brush.BadSoft" Color="#EE5A6F" Opacity="0.12" />
-  <SolidColorBrush x:Key="Brush.WarningSoft" Color="#E6B85C" Opacity="0.12" />
-  <SolidColorBrush x:Key="Brush.Overlay" Color="#03060A" Opacity="0.72" />
+      <BoxShadows x:Key="Shadow.Card">0 1 2 0 #50000000, 0 10 28 -14 #80000000</BoxShadows>
+      <BoxShadows x:Key="Shadow.Popup">0 16 40 -8 #C0000000</BoxShadows>
 
-  <!-- Gold frame gradient used on hero elements, like the client's hextech borders -->
-  <LinearGradientBrush x:Key="Brush.GoldFrame" StartPoint="0%,0%" EndPoint="0%,100%">
-    <GradientStop Color="#C8AA6E" Offset="0" />
-    <GradientStop Color="#785A28" Offset="1" />
-  </LinearGradientBrush>
-  <LinearGradientBrush x:Key="Brush.PrimaryButton" StartPoint="0%,0%" EndPoint="0%,100%">
-    <GradientStop Color="#1E2328" Offset="0" />
-    <GradientStop Color="#141A22" Offset="1" />
-  </LinearGradientBrush>
-  <LinearGradientBrush x:Key="Brush.HeroFade" StartPoint="0%,0%" EndPoint="0%,100%">
-    <GradientStop Color="#00060A11" Offset="0" />
-    <GradientStop Color="#99060A11" Offset="0.55" />
-    <GradientStop Color="#FF060A11" Offset="1" />
-  </LinearGradientBrush>
-  <LinearGradientBrush x:Key="Brush.HeroSideFade" StartPoint="0%,0%" EndPoint="100%,0%">
-    <GradientStop Color="#F2060A11" Offset="0" />
-    <GradientStop Color="#80060A11" Offset="0.45" />
-    <GradientStop Color="#00060A11" Offset="1" />
-  </LinearGradientBrush>
-  <LinearGradientBrush x:Key="Brush.RuneFade" StartPoint="0%,0%" EndPoint="100%,0%">
-    <GradientStop Color="#E6060A11" Offset="0" />
-    <GradientStop Color="#B3060A11" Offset="0.5" />
-    <GradientStop Color="#D9060A11" Offset="1" />
-  </LinearGradientBrush>
+      <!-- Fluent overrides so built-in controls inherit the design system -->
+      <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="#0C131D" />
+      <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#121C2A" />
+      <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#22303F" />
+      <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="#121C2A" />
+      <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#22303F" />
+      <SolidColorBrush x:Key="FlyoutPresenterBackground" Color="#121C2A" />
+      <SolidColorBrush x:Key="FlyoutBorderThemeBrush" Color="#22303F" />
+      <SolidColorBrush x:Key="ToolTipBackground" Color="#F0101823" />
+      <SolidColorBrush x:Key="ToolTipForeground" Color="#ECE5D3" />
+      <SolidColorBrush x:Key="TextControlBackground" Color="#080D15" />
+      <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#080D15" />
+      <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#080D15" />
+      <SolidColorBrush x:Key="TextControlBorderBrush" Color="#22303F" />
+      <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#38506A" />
+      <SolidColorBrush x:Key="TextControlForeground" Color="#ECE5D3" />
+      <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#ECE5D3" />
+      <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#ECE5D3" />
+      <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#6C6A62" />
+      <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#6C6A62" />
+      <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#6C6A62" />
+      <SolidColorBrush x:Key="SliderTrackFill" Color="#22303F" />
+      <SolidColorBrush x:Key="SliderTrackFillPointerOver" Color="#38506A" />
+    </ResourceDictionary>
+
+    <!-- ── Light ─────────────────────────────────────────────────────────────────────────────── -->
+    <ResourceDictionary x:Key="Light">
+      <Color x:Key="Color.AppBackground">#EFEBE2</Color>
+      <Color x:Key="Color.Surface">#FAF8F3</Color>
+      <Color x:Key="Color.SurfaceElevated">#FFFFFF</Color>
+      <Color x:Key="Color.TextPrimary">#1E2328</Color>
+      <Color x:Key="Color.Teal">#0A857C</Color>
+
+      <SolidColorBrush x:Key="Brush.AppBackground" Color="#EFEBE2" />
+      <SolidColorBrush x:Key="Brush.Surface" Color="#FAF8F3" />
+      <SolidColorBrush x:Key="Brush.SurfaceElevated" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Brush.SurfaceSunken" Color="#F1EDE4" />
+      <SolidColorBrush x:Key="Brush.SurfaceDeep" Color="#E9E4D9" />
+      <SolidColorBrush x:Key="Brush.SurfaceHover" Color="#EAE4D7" />
+      <SolidColorBrush x:Key="Brush.Border" Color="#D6CFBF" />
+      <SolidColorBrush x:Key="Brush.BorderSubtle" Color="#E4DED1" />
+      <SolidColorBrush x:Key="Brush.BorderStrong" Color="#BDB3A0" />
+      <SolidColorBrush x:Key="Brush.TextPrimary" Color="#1E2328" />
+      <SolidColorBrush x:Key="Brush.TextSecondary" Color="#55534D" />
+      <SolidColorBrush x:Key="Brush.TextMuted" Color="#8A867C" />
+      <SolidColorBrush x:Key="Brush.Teal" Color="#0A857C" />
+      <SolidColorBrush x:Key="Brush.TealText" Color="#05514B" />
+      <SolidColorBrush x:Key="Brush.TealButton" Color="#DDF2EF" />
+      <SolidColorBrush x:Key="Brush.TealButtonHover" Color="#CBEBE7" />
+      <SolidColorBrush x:Key="Brush.Good" Color="#1E9254" />
+      <SolidColorBrush x:Key="Brush.Bad" Color="#C9384E" />
+      <SolidColorBrush x:Key="Brush.Warning" Color="#A7791F" />
+      <SolidColorBrush x:Key="Brush.WarningText" Color="#5E4310" />
+      <SolidColorBrush x:Key="Brush.WarningBorder" Color="#80D9A945" />
+      <SolidColorBrush x:Key="Brush.TealSoft" Color="#0A857C" Opacity="0.1" />
+      <SolidColorBrush x:Key="Brush.GoodSoft" Color="#1E9254" Opacity="0.1" />
+      <SolidColorBrush x:Key="Brush.BadSoft" Color="#C9384E" Opacity="0.1" />
+      <SolidColorBrush x:Key="Brush.WarningSoft" Color="#D9A945" Opacity="0.16" />
+      <SolidColorBrush x:Key="Brush.DangerBg" Color="#FBE6E9" />
+      <SolidColorBrush x:Key="Brush.DangerBgHover" Color="#F7D5DB" />
+      <SolidColorBrush x:Key="Brush.DangerBorder" Color="#E39AA6" />
+      <SolidColorBrush x:Key="Brush.DangerText" Color="#8E1F33" />
+      <SolidColorBrush x:Key="Brush.Overlay" Color="#2A2418" Opacity="0.38" />
+      <SolidColorBrush x:Key="Brush.Scrim" Color="#EBFFFFFF" />
+      <SolidColorBrush x:Key="Brush.ScrimSoft" Color="#A6FFFFFF" />
+      <SolidColorBrush x:Key="Brush.Glass" Color="#E6FFFFFF" />
+      <SolidColorBrush x:Key="Brush.Toast" Color="#FAFFFFFF" />
+      <SolidColorBrush x:Key="Brush.Placeholder" Color="#E2DCCF" />
+      <SolidColorBrush x:Key="Brush.PrimaryButtonHover" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Brush.Glow" Color="#140A857C" />
+
+      <LinearGradientBrush x:Key="Brush.PrimaryButton" StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#FFFFFF" Offset="0" />
+        <GradientStop Color="#F3EFE6" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="Brush.HeroFade" StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#00EFEBE2" Offset="0" />
+        <GradientStop Color="#99EFEBE2" Offset="0.55" />
+        <GradientStop Color="#FFEFEBE2" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="Brush.HeroSideFade" StartPoint="0%,0%" EndPoint="100%,0%">
+        <GradientStop Color="#F2EFEBE2" Offset="0" />
+        <GradientStop Color="#80EFEBE2" Offset="0.45" />
+        <GradientStop Color="#00EFEBE2" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="Brush.RuneFade" StartPoint="0%,0%" EndPoint="100%,0%">
+        <GradientStop Color="#E6060A11" Offset="0" />
+        <GradientStop Color="#B3060A11" Offset="0.5" />
+        <GradientStop Color="#D9060A11" Offset="1" />
+      </LinearGradientBrush>
+
+      <BoxShadows x:Key="Shadow.Card">0 1 2 0 #14000000, 0 8 22 -14 #33000000</BoxShadows>
+      <BoxShadows x:Key="Shadow.Popup">0 14 36 -8 #47000000</BoxShadows>
+
+      <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="#FAF8F3" />
+      <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#D6CFBF" />
+      <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#D6CFBF" />
+      <SolidColorBrush x:Key="FlyoutPresenterBackground" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="FlyoutBorderThemeBrush" Color="#D6CFBF" />
+      <SolidColorBrush x:Key="ToolTipBackground" Color="#FAFFFFFF" />
+      <SolidColorBrush x:Key="ToolTipForeground" Color="#1E2328" />
+      <SolidColorBrush x:Key="TextControlBackground" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="TextControlBorderBrush" Color="#D6CFBF" />
+      <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#BDB3A0" />
+      <SolidColorBrush x:Key="TextControlForeground" Color="#1E2328" />
+      <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#1E2328" />
+      <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#1E2328" />
+      <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#8A867C" />
+      <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#8A867C" />
+      <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#8A867C" />
+      <SolidColorBrush x:Key="SliderTrackFill" Color="#D6CFBF" />
+      <SolidColorBrush x:Key="SliderTrackFillPointerOver" Color="#BDB3A0" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
 
   <!-- Typography -->
   <FontFamily x:Key="Font.UI">fonts:Inter#Inter, $Default</FontFamily>
@@ -95,41 +213,4 @@
   <CornerRadius x:Key="Radius.Card">10</CornerRadius>
   <CornerRadius x:Key="Radius.Control">6</CornerRadius>
   <CornerRadius x:Key="Radius.Pill">999</CornerRadius>
-  <BoxShadows x:Key="Shadow.Card">0 1 2 0 #50000000, 0 10 28 -14 #80000000</BoxShadows>
-  <BoxShadows x:Key="Shadow.Popup">0 16 40 -8 #C0000000</BoxShadows>
-  <BoxShadows x:Key="Shadow.GoldGlow">0 0 18 0 #40C8AA6E</BoxShadows>
-
-  <!-- Fluent overrides so built-in controls inherit the design system -->
-  <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="{StaticResource Color.Surface}" />
-  <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="{StaticResource Color.SurfaceElevated}" />
-  <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="{StaticResource Color.Border}" />
-  <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="{StaticResource Color.SurfaceElevated}" />
-  <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="{StaticResource Color.Border}" />
-  <SolidColorBrush x:Key="FlyoutPresenterBackground" Color="{StaticResource Color.SurfaceElevated}" />
-  <SolidColorBrush x:Key="FlyoutBorderThemeBrush" Color="{StaticResource Color.Border}" />
-  <SolidColorBrush x:Key="ToolTipBackground" Color="#F0101823" />
-  <SolidColorBrush x:Key="ToolTipForeground" Color="{StaticResource Color.TextPrimary}" />
-  <SolidColorBrush x:Key="ToolTipBorderBrush" Color="{StaticResource Color.GoldDark}" />
-  <SolidColorBrush x:Key="TextControlBackground" Color="{StaticResource Color.SurfaceSunken}" />
-  <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="{StaticResource Color.SurfaceSunken}" />
-  <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="{StaticResource Color.SurfaceSunken}" />
-  <SolidColorBrush x:Key="TextControlBorderBrush" Color="{StaticResource Color.Border}" />
-  <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#38506A" />
-  <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="{StaticResource Color.Gold}" />
-  <SolidColorBrush x:Key="TextControlForeground" Color="{StaticResource Color.TextPrimary}" />
-  <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="{StaticResource Color.TextPrimary}" />
-  <SolidColorBrush x:Key="TextControlForegroundFocused" Color="{StaticResource Color.TextPrimary}" />
-  <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="{StaticResource Color.TextMuted}" />
-  <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="{StaticResource Color.TextMuted}" />
-  <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="{StaticResource Color.TextMuted}" />
-  <SolidColorBrush x:Key="TextControlSelectionHighlightColor" Color="#665A4A28" />
-  <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="{StaticResource Color.Gold}" />
-  <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="#D8BC82" />
-  <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeChecked" Color="{StaticResource Color.Gold}" />
-  <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundChecked" Color="#0C131D" />
-  <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundCheckedPointerOver" Color="#0C131D" />
-  <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="{StaticResource Color.Gold}" />
-  <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#D8BC82" />
-  <SolidColorBrush x:Key="ToggleSwitchKnobFillOn" Color="#0C131D" />
-  <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPointerOver" Color="#0C131D" />
 </ResourceDictionary>
