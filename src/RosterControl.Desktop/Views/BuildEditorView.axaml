@@ -6,7 +6,7 @@
              x:Class="RosterControl.Desktop.Views.BuildEditorView"
              x:DataType="vm:BuildViewModel">
   <Border Classes="card" Padding="0">
-    <Grid RowDefinitions="Auto,Auto,*">
+    <Grid RowDefinitions="Auto,Auto,Auto,*">
       <!-- Header -->
       <Grid ColumnDefinitions="*,Auto" Margin="12,10,12,0">
         <StackPanel Orientation="Horizontal" Spacing="10">
@@ -67,8 +67,48 @@
         </StackPanel>
       </Grid>
 
+      <!-- Warnings: likely mistakes, each can be ignored for this build -->
+      <StackPanel Grid.Row="1" Margin="12,8,12,0" Spacing="4" IsVisible="{Binding ShowWarningStrip}" Name="BuildWarnings">
+        <ItemsControl ItemsSource="{Binding Warnings}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:BuildWarningViewModel">
+              <Border Background="{DynamicResource Brush.WarningSoft}" BorderBrush="{DynamicResource Brush.WarningBorder}" BorderThickness="1" CornerRadius="6" Padding="10,6">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                  <c:LucideIcon Kind="triangle-alert" Width="14" Height="14" Foreground="{DynamicResource Brush.Warning}" VerticalAlignment="Top" Margin="0,2,9,0" />
+                  <StackPanel Grid.Column="1" Spacing="1">
+                    <TextBlock Text="{Binding Text}" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource Brush.WarningText}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Detail}" Classes="caption" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <Button Grid.Column="2" Classes="ghost small" Content="Ignore" VerticalAlignment="Center" Margin="8,0,0,0"
+                          ToolTip.Tip="Hide this warning for this build (it's on purpose)"
+                          Command="{Binding $parent[v:BuildEditorView].((vm:BuildViewModel)DataContext).IgnoreWarningCommand}" CommandParameter="{Binding}" />
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <ItemsControl ItemsSource="{Binding IgnoredWarnings}" IsVisible="{Binding ShowIgnored}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:BuildWarningViewModel">
+              <Border Background="{DynamicResource Brush.SurfaceSunken}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1" CornerRadius="6" Padding="10,6">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                  <c:LucideIcon Kind="eye-off" Width="14" Height="14" Foreground="{DynamicResource Brush.TextMuted}" VerticalAlignment="Top" Margin="0,2,9,0" />
+                  <TextBlock Grid.Column="1" Text="{Binding Text}" FontSize="12.5" Classes="secondary" TextWrapping="Wrap" />
+                  <Button Grid.Column="2" Classes="ghost small" Content="Show again" VerticalAlignment="Center" Margin="8,0,0,0"
+                          Command="{Binding $parent[v:BuildEditorView].((vm:BuildViewModel)DataContext).RestoreWarningCommand}" CommandParameter="{Binding}" />
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Button Classes="ghost small" Content="{Binding IgnoredText}" Command="{Binding ToggleIgnoredCommand}" HorizontalAlignment="Right"
+                IsVisible="{Binding HasIgnored}" Name="IgnoredWarningsToggle" Margin="0,-2,0,-6" />
+      </StackPanel>
+
       <!-- Editor tabs -->
-      <Grid Grid.Row="1" RowDefinitions="Auto,Auto" Margin="16,4,16,0">
+      <Grid Grid.Row="2" RowDefinitions="Auto,Auto" Margin="16,4,16,0">
         <StackPanel Orientation="Horizontal" Spacing="24">
           <RadioButton Classes="tab" GroupName="editorTabs" IsChecked="{Binding IsRunesTab}">
             <TextBlock Text="RUNES" LetterSpacing="1.2" FontWeight="Bold" FontSize="12" Foreground="{Binding $parent[RadioButton].Foreground}" />
@@ -87,7 +127,7 @@
       </Grid>
 
       <!-- Editors (created on demand for the selected build) -->
-      <Panel Grid.Row="2" Margin="14,12,14,14">
+      <Panel Grid.Row="3" Margin="14,12,14,14">
         <v:RunePageView DataContext="{Binding Runes}" IsVisible="{Binding $parent[v:BuildEditorView].((vm:BuildViewModel)DataContext).IsRunesTab}" />
         <v:ItemSetView DataContext="{Binding Items}" IsVisible="{Binding $parent[v:BuildEditorView].((vm:BuildViewModel)DataContext).IsItemsTab}" />
         <v:SpellsSkillsView DataContext="{Binding SpellsSkills}" IsVisible="{Binding $parent[v:BuildEditorView].((vm:BuildViewModel)DataContext).IsSpellsTab}" />

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:core="using:RosterControl.Core.Rules"
              xmlns:c="using:RosterControl.Desktop.Controls"
              xmlns:v="using:RosterControl.Desktop.Views"
              xmlns:m="using:RosterControl.Core.Model"
@@ -317,12 +318,19 @@
                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="6" LineSpacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:CalculatorItem">
-                        <ToggleButton Classes="calcitem" IsChecked="{Binding IsOn}" ToolTip.Tip="{Binding Tip}" Padding="0">
-                          <Panel Width="38" Height="38">
-                            <c:AssetImage Source="{Binding IconUrl}" CornerRadius="4" />
-                            <Border CornerRadius="4" Background="{DynamicResource Brush.Overlay}" IsVisible="{Binding !IsOn}" />
-                          </Panel>
-                        </ToggleButton>
+                        <StackPanel Spacing="3">
+                          <ToggleButton Classes="calcitem" IsChecked="{Binding IsOn}" ToolTip.Tip="{Binding Tip}" Padding="0">
+                            <Panel Width="38" Height="38">
+                              <c:AssetImage Source="{Binding IconUrl}" CornerRadius="4" />
+                              <Border CornerRadius="4" Background="{DynamicResource Brush.Overlay}" IsVisible="{Binding !IsOn}" />
+                            </Panel>
+                          </ToggleButton>
+                          <ToggleButton Classes="chip" IsChecked="{Binding IsSwapSource, Mode=OneWay}" IsEnabled="{Binding IsOn}" Height="20" Padding="0" HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center" ToolTip.Tip="{Binding Name, StringFormat='Compare {0} with other items'}"
+                                        Command="{Binding $parent[ItemsControl].((vm:AbilityCalculatorViewModel)DataContext).SwapCommand}" CommandParameter="{Binding}">
+                            <c:LucideIcon Kind="arrow-left-right" Width="11" Height="11" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+                          </ToggleButton>
+                        </StackPanel>
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
@@ -350,6 +358,138 @@
               </StackPanel>
               <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Text="{Binding Footnote}" Classes="caption" TextWrapping="Wrap" Margin="0,12,0,0" />
             </Grid>
+          </Border>
+        </Panel>
+        <!-- Item choices: the best next item for a number, or what swapping a counted item changes -->
+        <Panel IsVisible="{Binding HasCalculator}">
+          <Border Classes="card" Padding="16,14" DataContext="{Binding Calculator}" x:DataType="vm:AbilityCalculatorViewModel" Name="CalculatorChoices">
+            <Grid ColumnDefinitions="*,24,360">
+              <StackPanel Spacing="10">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="{Binding ChoicesTitle}" Classes="overline" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  <Button Grid.Column="1" Classes="ghost small" Command="{Binding EndSwapCommand}" IsVisible="{Binding IsSwapping}" Content="Back to best next item" />
+                </Grid>
+                <Grid ColumnDefinitions="Auto,*">
+                  <TextBlock Text="Rank by" Classes="secondary" VerticalAlignment="Center" Width="62" />
+                  <ComboBox Grid.Column="1" ItemsSource="{Binding Metrics}" SelectedItem="{Binding FocusMetric}" MinWidth="260" MaxDropDownHeight="420" HorizontalAlignment="Left" Name="CalculatorFocus"
+                            ToolTip.Tip="The number items are ranked by">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="core:CalcMetric">
+                        <TextBlock Text="{Binding Label}" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                </Grid>
+                <TextBlock Text="{Binding ChoicesHint}" Classes="caption" TextWrapping="Wrap" />
+                <TextBlock Text="Use the ⇄ button under an item above to compare it with other items." Classes="caption" IsVisible="{Binding !IsSwapping}" TextWrapping="Wrap" />
+                <ItemsControl ItemsSource="{Binding Choices}" IsVisible="{Binding HasChoices}" Name="CalculatorChoiceList">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ItemChoiceViewModel">
+                      <Button Classes="listrow" Classes.selected="{Binding IsSelected}"
+                              Command="{Binding $parent[ItemsControl].((vm:AbilityCalculatorViewModel)DataContext).PreviewItemCommand}" CommandParameter="{Binding}"
+                              ToolTip.Tip="Show everything this item changes">
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                          <Border Classes="itemframe">
+                            <c:AssetImage Source="{Binding IconUrl}" Width="28" Height="28" CornerRadius="2" />
+                          </Border>
+                          <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center" Spacing="1">
+                            <TextBlock Text="{Binding Name}" FontSize="12.5" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding ValueText}" Classes="caption" IsVisible="{Binding HasValueText}" />
+                          </StackPanel>
+                          <TextBlock Grid.Column="2" Text="{Binding GainText}" Foreground="{Binding GainBrush}" FontWeight="Bold" FontSize="13" Classes="num" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="3" Text="{Binding PercentText}" Classes="caption num" IsVisible="{Binding HasPercent}" VerticalAlignment="Center" Margin="6,0,0,0" Width="40" TextAlignment="Right" />
+                          <TextBlock Grid.Column="4" Text="{Binding GoldText}" Foreground="{DynamicResource Brush.Gold}" FontSize="12" Classes="num" VerticalAlignment="Center" Margin="10,0,0,0" Width="72" TextAlignment="Right" />
+                        </Grid>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{Binding ChoicesEmptyText}" Classes="secondary" FontSize="12.5" IsVisible="{Binding !HasChoices}" TextWrapping="Wrap" />
+              </StackPanel>
+              <Border Grid.Column="2" Background="{DynamicResource Brush.SurfaceSunken}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1" CornerRadius="6" Padding="12,10" VerticalAlignment="Top" Name="CalculatorPreview">
+                <Panel>
+                  <StackPanel IsVisible="{Binding !HasPreview}" Spacing="6" Margin="0,6">
+                    <c:LucideIcon Kind="arrow-left-right" Width="22" Height="22" Foreground="{DynamicResource Brush.TextMuted}" HorizontalAlignment="Center" />
+                    <TextBlock Text="Pick an item on the left to see every stat and ability number it changes at this level." Classes="caption" TextWrapping="Wrap" TextAlignment="Center" />
+                  </StackPanel>
+                  <StackPanel IsVisible="{Binding HasPreview}" Spacing="6">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="{Binding PreviewTitle}" FontWeight="SemiBold" FontSize="12.5" TextWrapping="Wrap" />
+                      <Button Grid.Column="1" Classes="ghost icon" Command="{Binding ClosePreviewCommand}" ToolTip.Tip="Close" VerticalAlignment="Top">
+                        <c:LucideIcon Kind="x" Width="13" Height="13" />
+                      </Button>
+                    </Grid>
+                    <TextBlock Text="{Binding PreviewGold}" Foreground="{DynamicResource Brush.Gold}" FontSize="12" Classes="num" />
+                    <ItemsControl ItemsSource="{Binding PreviewRows}">
+                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:MetricChangeRow">
+                          <Grid ColumnDefinitions="*,Auto,Auto">
+                            <TextBlock Text="{Binding Label}" Classes="secondary" FontSize="12" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Grid.Column="1" Text="{Binding DeltaText}" Foreground="{Binding Brush}" FontWeight="Bold" FontSize="12" Classes="num" Margin="8,0" />
+                            <TextBlock Grid.Column="2" Text="{Binding Text}" Classes="caption num" VerticalAlignment="Center" />
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="Nothing the calculator counts changes (the item's value is in its passive or active)." Classes="caption" TextWrapping="Wrap" IsVisible="{Binding !HasPreviewRows}" />
+                    <TextBlock Text="Listed stats only: passives and actives aren't counted." Classes="caption" TextWrapping="Wrap" IsVisible="{Binding HasPreviewRows}" />
+                  </StackPanel>
+                </Panel>
+              </Border>
+            </Grid>
+          </Border>
+        </Panel>
+        <!-- Power curve: one number from level 1 to 18 as the build's items are finished -->
+        <Panel IsVisible="{Binding HasCalculator}">
+          <Border Classes="card" Padding="16,14" DataContext="{Binding Calculator}" x:DataType="vm:AbilityCalculatorViewModel" Name="CalculatorCurve">
+            <StackPanel Spacing="10">
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Spacing="2" VerticalAlignment="Center">
+                  <TextBlock Text="POWER CURVE" Classes="overline" />
+                  <TextBlock Text="{Binding CurveSummary}" Classes="caption num" />
+                </StackPanel>
+                <ComboBox Grid.Column="2" ItemsSource="{Binding Metrics}" SelectedItem="{Binding CurveMetric}" MinWidth="260" MaxDropDownHeight="420" Name="CurveMetricPicker"
+                          ToolTip.Tip="The number the curve shows">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="core:CalcMetric">
+                      <TextBlock Text="{Binding Label}" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </Grid>
+              <c:LevelChart Series="{Binding CurveSeries}" Markers="{Binding CurveMarkers}" HighlightLevel="{Binding Level}" Height="220" Name="CurveChart" />
+              <StackPanel Spacing="6" IsVisible="{Binding HasTimeline}">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                  <TextBlock Text="FINISHED AT LEVEL" Classes="overline" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="Set when you usually finish each item; starter items count from level 1." Classes="caption" VerticalAlignment="Center" Margin="10,0,0,0" TextTrimming="CharacterEllipsis" />
+                  <Button Grid.Column="2" Classes="ghost small" Content="Reset to the default spread" Command="{Binding ResetTimelineCommand}" IsVisible="{Binding TimelineIsCustom}" />
+                </Grid>
+                <ItemsControl ItemsSource="{Binding Timeline}" Name="CurveTimeline">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="8" LineSpacing="8" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:TimelineItemViewModel">
+                      <StackPanel Spacing="3" ToolTip.Tip="{Binding Tip}">
+                        <Border Classes="itemframe" HorizontalAlignment="Center">
+                          <c:AssetImage Source="{Binding IconUrl}" Width="34" Height="34" CornerRadius="2" />
+                        </Border>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                          <Button Classes="ghost icon" Padding="2" Command="{Binding EarlierCommand}" ToolTip.Tip="One level earlier">
+                            <c:LucideIcon Kind="chevron-left" Width="11" Height="11" />
+                          </Button>
+                          <TextBlock Text="{Binding Level}" Classes="num" FontWeight="SemiBold" FontSize="12" MinWidth="18" TextAlignment="Center" VerticalAlignment="Center" />
+                          <Button Classes="ghost icon" Padding="2" Command="{Binding LaterCommand}" ToolTip.Tip="One level later">
+                            <c:LucideIcon Kind="chevron-right" Width="11" Height="11" />
+                          </Button>
+                        </StackPanel>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+              <TextBlock Text="Tick items in the calculator to add them to the curve." Classes="caption" IsVisible="{Binding !HasTimeline}" />
+            </StackPanel>
           </Border>
         </Panel>
         <ItemsControl ItemsSource="{Binding Abilities}">

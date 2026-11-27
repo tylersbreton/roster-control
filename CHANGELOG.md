@@ -2,6 +2,16 @@
 
 What's new in each version of Roster Control. The app shows this after an update (also under Settings → About).
 
+## 1.6.0
+
+- **Best next item** — under the calculator, pick any number (Q damage, an ability's cooldown, Electrocute's damage, health, effective health…) and see the finished items that add the most to it at your level, with the gain per 1,000 gold. Click one to see every stat and ability number it changes.
+- **Swap an item** — the ⇄ button under a counted item lists the items that could replace it, ranked the same way, with what you gain and lose.
+- **Power curve** — a chart of any number from level 1 to 18 as your build's items are finished. Set the level you usually finish each item; the curve and its item markers follow. Compare shows both sides' curves on one chart.
+- **Build warnings** — the build editor flags likely mistakes: two pairs of boots, items whose unique passives don't stack (e.g. two Lifeline items), more than six core items, no boots, items from another map, Smite or a jungle or support item in the wrong role, an unfinished rune page and gaps in the skill order. Ignore any of them per build.
+- **Runes page** — every rune and stat shard by path and slot, with its formulas from the game files and the builds of yours that use it. Ctrl+6, the sidebar, or search a rune with Ctrl+K.
+- **Champion stats page** — every champion's base stats at any level, sortable by any column (range, health, attack speed…), with the top tenth highlighted and your roster marked. Ctrl+7.
+- **Fix:** attack damage now grows with level in the calculator. Data Dragon has reported 0 AD per level for every champion since patch 16.22, so the growth now comes from the game files (or Meraki for the stats page).
+
 ## 1.5.0
 
 - **Ability calculator** on the Abilities tab: pick a build and a level (1–18), tick the items to count, and see your stats (health, AD, AP, armor, attack speed, ability haste…) and every ability's actual numbers, e.g. Q: 317 damage at rank 5. Ranks follow the build's skill order, cooldowns include your ability haste, and the build's stat shards are counted.

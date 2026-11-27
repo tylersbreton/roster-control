@@ -170,6 +170,12 @@ public sealed class GameDataService : IGameDataService
 
         progress?.Report("Loading champion positions…");
         var positions = await _client.GetPositionsAsync(forceRefresh, championIds, ct, preferCache).ConfigureAwait(false);
+        if (preferCache && positions.Count > 0 && !_client.HasAttackDamageGrowth)
+        {
+            // Opened from a 1.5 cache, which has no AD growth: fetch it in the background (used from the next start) rather
+            // than delay startup with the 13 MB download.
+            _ = Task.Run(() => _client.GetPositionsAsync(false, championIds, CancellationToken.None));
+        }
         if (positions.Count == 0) warnings.Add("Champion positions unavailable; role filters are disabled.");
 
         var newChampions = await NewChampionsAsync(version, versions, championIds, ct, preferCache).ConfigureAwait(false);
@@ -179,7 +185,7 @@ public sealed class GameDataService : IGameDataService
             var (itemList, shopIds) = GameDataParser.ParseItems(items.RootElement);
             return new GameDataSnapshot(
                 version,
-                GameDataParser.ParseChampions(champions.RootElement, positions),
+                GameDataParser.ParseChampions(champions.RootElement, positions, _client.ReadAttackDamageGrowth()),
                 itemList,
                 shopIds,
                 GameDataParser.ParseRuneTrees(runes.RootElement, perkStyles?.RootElement),
@@ -306,7 +312,7 @@ public sealed class GameDataService : IGameDataService
                 var (doc, patch) = await _client.GetCharacterDataAsync(id, version, CancellationToken.None).ConfigureAwait(false);
                 using (doc)
                 {
-                    return (AbilityNumbers?)new AbilityNumbers(id, patch, AbilityCalculations.Parse(doc.RootElement, ranks));
+                    return (AbilityNumbers?)new AbilityNumbers(id, patch, AbilityCalculations.Parse(doc.RootElement, ranks), AbilityCalculations.AttackDamagePerLevel(doc.RootElement));
                 }
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or IOException or InvalidOperationException)

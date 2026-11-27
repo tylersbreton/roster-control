@@ -11,7 +11,7 @@ ICONS = """plus minus x trash-2 search star swords shield crosshair notebook-pen
 chevron-left chevron-up pencil copy ellipsis layers users user target sparkles check settings panel-left arrow-left grip-vertical layout-grid list
 info triangle-alert circle-check gem coins book-open thumbs-up thumbs-down flame zap database archive sliders-horizontal funnel eye eye-off
 circle-x arrow-up-down arrow-down-wide-narrow map scroll-text heart crown move external-link save rotate-ccw circle-help square-pen list-ordered
-shopping-bag wand-sparkles skull trophy book-marked hand-metal shield-half sword clipboard-list library-big minimize-2 maximize-2 monitor keyboard hard-drive bold list-checks share-2 clipboard-paste image columns-2 life-buoy check-check arrow-left-right
+shopping-bag wand-sparkles skull trophy book-marked hand-metal shield-half sword clipboard-list library-big minimize-2 maximize-2 monitor keyboard hard-drive bold list-checks share-2 clipboard-paste image columns-2 life-buoy check-check arrow-left-right table chart-line
 """.split()
 
 NS = "{http://www.w3.org/2000/svg}"

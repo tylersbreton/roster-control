@@ -143,6 +143,9 @@ public sealed partial class AbilitiesViewModel : ObservableObject
 
     internal RuneNumbers? RuneNumbers { get; private set; }
 
+    /// <summary>AD per level from the champion's game file, used when Data Dragon's is 0 (it is for every champion since 16.22).</summary>
+    internal double? AttackDamageGrowth { get; private set; }
+
     public Task EnsureLoadedAsync() => _loading ??= LoadAsync();
 
     /// <summary>The tab is shown again: builds may have been edited meanwhile.</summary>
@@ -163,6 +166,7 @@ public sealed partial class AbilitiesViewModel : ObservableObject
             IsLoading = false;
             Calculator?.RefreshBuilds();
             var numbers = await _shell.GameData.GetAbilityNumbersAsync(_championId, CancellationToken.None);
+            AttackDamageGrowth = numbers?.AttackDamagePerLevel;
             Apply(Abilities, numbers);
             Note = numbers is null
                 ? "Damage numbers couldn't be downloaded from the game files; cooldowns, costs and ranges are from Data Dragon."
@@ -204,6 +208,10 @@ public sealed partial class CalculatorItem(string itemId, string name, string ic
     [ObservableProperty]
     private bool _isOn;
 
+    /// <summary>This item is the one being swapped in the calculator's item choices.</summary>
+    [ObservableProperty]
+    private bool _isSwapSource;
+
     partial void OnIsOnChanged(bool value) => changed();
 }
 
@@ -227,7 +235,7 @@ public sealed record CalculatorRune(string Name, string IconUrl, bool IsKeystone
 /// </summary>
 public sealed partial class AbilityCalculatorViewModel : ObservableObject
 {
-    private const string PrefsKey = "abilities.calc";
+    internal const string PrefsKey = "abilities.calc";
 
     private readonly IShell _shell;
     private readonly ChampionInfo _champion;
@@ -255,6 +263,33 @@ public sealed partial class AbilityCalculatorViewModel : ObservableObject
         public bool Shards { get; set; } = true;
         /// <summary>Ticked items per build id (absent = the core block).</summary>
         public Dictionary<int, List<string>> Items { get; set; } = [];
+        /// <summary>Level each item is finished, per build id and item id (absent = <see cref="ItemTimeline.DefaultLevels"/>).</summary>
+        public Dictionary<int, Dictionary<string, int>> Timeline { get; set; } = [];
+        /// <summary>The number best-next and swap rank items by (a <see cref="CalcMetric.Key"/>).</summary>
+        public string? Focus { get; set; }
+        /// <summary>The number the power curve shows.</summary>
+        public string? Curve { get; set; }
+    }
+
+    /// <summary>The items of a build the calculator can count: every block's items except consumables and trinkets, once each.</summary>
+    internal static IEnumerable<ItemInfo> CountableItems(Build build, GameDataSnapshot game) =>
+        build.Items.Blocks.SelectMany(b => b.Items).Distinct().Select(game.Item).OfType<ItemInfo>()
+            .Where(i => i.Tier is not (ItemTier.Consumable or ItemTier.Trinket));
+
+    /// <summary>The items counted for a build: the ones ticked in the calculator, or the core block when never changed.</summary>
+    internal static List<ItemInfo> CountedItems(Build build, GameDataSnapshot game, CalculatorPrefs prefs)
+    {
+        var saved = prefs.Items.TryGetValue(build.Id, out var list) ? list.ToHashSet() : null;
+        var core = BuildSelection.CoreBlock(build)?.Items.ToHashSet() ?? [];
+        return CountableItems(build, game).Where(i => saved?.Contains(i.Id) ?? core.Contains(i.Id)).ToList();
+    }
+
+    /// <summary>When each counted item is finished: saved levels, otherwise the default spread.</summary>
+    internal static List<(ItemInfo Item, int Level)> TimelineFor(Build? build, IReadOnlyList<ItemInfo> items, CalculatorPrefs prefs)
+    {
+        var defaults = ItemTimeline.DefaultLevels(items);
+        var saved = build is not null && prefs.Timeline.TryGetValue(build.Id, out var t) ? t : null;
+        return items.Select((item, i) => (item, saved is not null && saved.TryGetValue(item.Id, out var level) ? Math.Clamp(level, 1, ChampionMath.MaxLevel) : defaults[i])).ToList();
     }
 
     [ObservableProperty]
@@ -380,16 +415,16 @@ public sealed partial class AbilityCalculatorViewModel : ObservableObject
             var game = _shell.Game;
             var saved = _prefs.Items.TryGetValue(build.Id, out var list) ? list.ToHashSet() : null;
             var core = BuildSelection.CoreBlock(build)?.Items.ToHashSet() ?? [];
-            foreach (var id in build.Items.Blocks.SelectMany(b => b.Items).Distinct())
+            foreach (var item in CountableItems(build, game))
             {
-                if (game.Item(id) is not { } item || item.Tier is ItemTier.Consumable or ItemTier.Trinket) continue;
-                Items.Add(new CalculatorItem(id, item.Name, AssetUrls.Item(game.Version, id), item.TotalGold, ItemsChanged)
+                Items.Add(new CalculatorItem(item.Id, item.Name, AssetUrls.Item(game.Version, item.Id), item.TotalGold, ItemsChanged)
                 {
-                    IsOn = saved?.Contains(id) ?? core.Contains(id),
+                    IsOn = saved?.Contains(item.Id) ?? core.Contains(item.Id),
                 });
             }
         }
         ItemCount = Items.Count;
+        SwapFrom = null;
         _suspend = false;
     }
 
@@ -410,6 +445,8 @@ public sealed partial class AbilityCalculatorViewModel : ObservableObject
     public void Recalculate()
     {
         if (_champion.Stats is not { } baseStats) return;
+        // The champion's game file is the most accurate source (Data Dragon reports 0 for everyone since 16.22).
+        if (_owner.AttackDamageGrowth is { } growth && Math.Abs(growth - baseStats.AttackDamagePerLevel) > 1e-9) baseStats = baseStats with { AttackDamagePerLevel = growth, AttackDamageGrowthUnknown = false };
         var game = _shell.Game;
         var build = SelectedChoice?.Build?.Model;
         var ticked = Items.Where(i => i.IsOn).ToList();
@@ -442,6 +479,7 @@ public sealed partial class AbilityCalculatorViewModel : ObservableObject
 
         Stats = StatRows(stats);
         Runes = RuneRows(build, stats);
+        UpdatePlanning(baseStats, stats, ranks, maxRanks, shards, ticked.Select(i => game.Item(i.ItemId)).OfType<ItemInfo>().ToList());
         var notCounted = stats.NotCounted.Count > 0 ? $" Not counted: {string.Join(", ", stats.NotCounted)}." : "";
         Footnote = "Counts the stats listed on the ticked items and the stat shards. Item passives and buffs aren't included, and damage is before the target's armor or magic resist." + notCounted;
     }

@@ -188,6 +188,35 @@
     <Setter Property="Background" Value="Transparent" />
   </Style>
 
+  <!-- A clickable list row (item choices, rune and stat lists): hover and selected backgrounds. -->
+  <Style Selector="Button.listrow">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Padding" Value="6,4" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                          BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Content="{TemplateBinding Content}"
+                          ContentTemplate="{TemplateBinding ContentTemplate}" Padding="{TemplateBinding Padding}"
+                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Button.listrow:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Brush.SurfaceHover}" />
+  </Style>
+  <Style Selector="Button.listrow.selected">
+    <Setter Property="Background" Value="{DynamicResource Brush.GoldSelected}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.GoldDark}" />
+  </Style>
+  <Style Selector="Button.listrow.selected:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Brush.GoldSelectedHover}" />
+  </Style>
+
   <!-- ── Navigation rail ─────────────────────────────────────────────────── -->
   <Style Selector="RadioButton.nav">
     <Setter Property="Template">

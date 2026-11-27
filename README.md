@@ -25,6 +25,18 @@ It never restarts on its own, and your data is untouched by updates.
 |---|---|
 | ![](docs/images/37-ability-calculator.png) | ![](docs/images/38-items.png) |
 
+| Best next item and swaps | Power curve |
+|---|---|
+| ![](docs/images/41-item-choices.png) | ![](docs/images/42-power-curve.png) |
+
+| Runes | Champion stats |
+|---|---|
+| ![](docs/images/45-runes.png) | ![](docs/images/46-champion-stats.png) |
+
+| Build warnings | Compare with power curves |
+|---|---|
+| ![](docs/images/44-build-warnings.png) | ![](docs/images/43-compare-curve.png) |
+
 | Rune page | Item set |
 |---|---|
 | ![](docs/images/03-champion-runes.png) | ![](docs/images/04-champion-items.png) |
@@ -33,9 +45,9 @@ It never restarts on its own, and your data is untouched by updates.
 |---|---|
 | ![](docs/images/05-champion-spells-skills.png) | ![](docs/images/08-counter-picks.png) |
 
-| Compare | Notes with checklists |
+| Notes with checklists | Quick look (always on top) |
 |---|---|
-| ![](docs/images/15-compare.png) | ![](docs/images/07b-notes-formatted.png) |
+| ![](docs/images/07b-notes-formatted.png) | ![](docs/images/35-quick-look.png) |
 
 | Matchups per role | Item build path |
 |---|---|
@@ -45,9 +57,9 @@ It never restarts on its own, and your data is untouched by updates.
 |---|---|
 | ![](docs/images/40-light-rosters.png) | ![](docs/images/40-light-champion.png) |
 
-| Quick look (always on top) | Adding a shared roster |
+| Compare | Adding a shared roster |
 |---|---|
-| ![](docs/images/35-quick-look.png) | ![](docs/images/39-import-roster.png) |
+| ![](docs/images/15-compare.png) | ![](docs/images/39-import-roster.png) |
 
 ## Features
 
@@ -84,6 +96,18 @@ It never restarts on its own, and your data is untouched by updates.
   ability haste. The build's keystone and runes with formulas in the game files (Electrocute, Comet, Aery, Grasp,
   Fleet Footwork…) are calculated too; ones without (e.g. Conqueror) say so. Item passives aren't counted, and damage
   is before the target's resistances.
+- **Best next item and swaps** — under the calculator, pick a number to rank by (an ability's damage or cooldown, a
+  keystone's damage, health, effective health against physical or magic damage, auto-attack DPS…) and see the finished
+  items that add the most to it at your level, with the gain per 1,000 gold. The ⇄ button under a counted item ranks
+  the items that could replace it instead. Click any item to see every stat and ability number it changes.
+- **Power curve** — any of those numbers from level 1 to 18 as a chart: base stats grow, ranks follow the skill order
+  and each item counts from the level you finish it (a starting guess spreads the core items over levels 6–17; adjust
+  each with ‹ ›, saved per build). On **Compare**, both builds' curves share one chart (stats for two champions, ability
+  numbers too for two builds of one champion).
+- **Build warnings** — the build editor flags likely mistakes: two pairs of boots, items whose unique passives don't
+  stack (two Lifeline or Spellblade items), duplicate legendaries, more than six core items, no boots, items from
+  another map, Smite / jungle companion / support item in the wrong role, an unfinished rune page and gaps in the skill
+  order. Each can be ignored for that build (and shown again).
 - **Items** — every shop item with **gold efficiency** (stats valued by the cheapest basic item that gives only that
   stat, from the current patch), filters by stat, tier and map, sorting, and the **builds of yours that use each
   item** (click one to open it). Search item names with Ctrl+K too.
@@ -116,6 +140,11 @@ It never restarts on its own, and your data is untouched by updates.
 - **Suggested bans** — the champions that counter the most of your champions in scope (Mains weigh most; champions you
   have answers to rank lower), with the reasons and notes on hover.
 - **Champions library** — every champion with roster/build/matchup badges; filter by role, class, your tags.
+- **Runes** — every rune and stat shard by path and slot, with its description, its formulas from the game files
+  (e.g. *70–240 by level (+5% AP) (+10% bonus AD)*) and the builds of yours that use it (Ctrl+6, or search a rune in Ctrl+K).
+- **Champion stats** — every champion's base stats at a level you pick (1–18): health, mana, AD, attack speed, armor,
+  magic resist, move speed, range and growth per level. Sort by any column; the top tenth of each column is green and
+  your roster's champions are marked; filter by role, class, melee/ranged or your roster (Ctrl+7).
 - **Patch review** — builds whose items changed or were removed (or whose runes no longer exist) since they were saved
   are listed after a patch, with a banner on Rosters; open each one or mark it reviewed (with Undo).
 - **Compare** — two champions (or two builds of one) side by side: runes, items, spells, skill order, roster
@@ -149,7 +178,7 @@ It never restarts on its own, and your data is untouched by updates.
 | Keys | Action |
 |---|---|
 | Ctrl+K / Ctrl+P | Quick search |
-| Ctrl+1 … Ctrl+5 | Rosters · Champions · Counter Picks · Settings · Items |
+| Ctrl+1 … Ctrl+7 | Rosters · Champions · Counter Picks · Settings · Items · Runes · Champion stats |
 | Alt+← | Back |
 | Ctrl+Z | Undo the last removal |
 | Ctrl+= / Ctrl+- / Ctrl+0 | Zoom in / out / reset |
@@ -200,7 +229,7 @@ Everything that can be cached is, but champions are occasionally added and items
 | Portraits, item and spell icons | URLs include the patch → cached per patch, pruned with it. |
 | Splash art, rune/shard/role icons (unversioned) | Re-validated after 7 days with ETag / If-Modified-Since (304 = keep); the cached copy is shown meanwhile. |
 | Stat shards (Community Dragon) | Re-downloaded whenever the patch changes, otherwise daily. |
-| Champion positions (Meraki) | Weekly, or sooner when a champion is missing (a new release; retried every 12 h until Meraki has it). |
+| Champion positions and AD growth (Meraki) | Weekly, or sooner when a champion is missing (a new release; retried every 12 h until Meraki has it). AD per level is used where Data Dragon reports 0 (every champion since 16.22); the calculator uses the champion's game file instead. |
 | Ability numbers (Community Dragon game files) | Downloaded per champion when first shown, cached per patch; Community Dragon's patch is re-checked every 6 hours, so numbers update once it has the new patch. |
 | Rune numbers (Community Dragon `perks.cdtb.bin.json`) | Downloaded once per patch when the calculator first needs them, cached like ability numbers. |
 

@@ -453,6 +453,7 @@ public sealed partial class BuildViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedRole));
         OnPropertyChanged(nameof(RoleIconUrl));
         OnPropertyChanged(nameof(HasRole));
+        RefreshWarnings();
         Changed();
     }
 
@@ -476,8 +477,89 @@ public sealed partial class BuildViewModel : ObservableObject
         if (Model.Id == 0 && id != 0) Model.Id = id;
     }
 
+    // ── Warnings ───────────────────────────────────────────────────────────────────────────────────
+
+    internal const string IgnoredWarningsKey = "builds.ignoredWarnings";
+    private readonly HashSet<string> _pendingIgnored = [];
+
+    /// <summary>Likely mistakes in the build that haven't been ignored.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasWarnings), nameof(ShowWarningStrip))]
+    private IReadOnlyList<BuildWarningViewModel> _warnings = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasIgnored), nameof(IgnoredText), nameof(ShowWarningStrip))]
+    private IReadOnlyList<BuildWarningViewModel> _ignoredWarnings = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IgnoredText), nameof(ShowWarningStrip))]
+    private bool _showIgnored;
+
+    public bool HasWarnings => Warnings.Count > 0;
+    public bool HasIgnored => IgnoredWarnings.Count > 0;
+    public bool ShowWarningStrip => HasWarnings || HasIgnored;
+    public string IgnoredText => IgnoredWarnings.Count == 0 ? ""
+        : ShowIgnored ? "Hide ignored"
+        : $"{IgnoredWarnings.Count} ignored warning{(IgnoredWarnings.Count == 1 ? "" : "s")} · show";
+
+    [RelayCommand]
+    private void IgnoreWarning(BuildWarningViewModel warning)
+    {
+        var ignored = LoadIgnored();
+        ignored.Add(warning.Code);
+        SaveIgnored(ignored);
+        RefreshWarnings();
+    }
+
+    [RelayCommand]
+    private void RestoreWarning(BuildWarningViewModel warning)
+    {
+        var ignored = LoadIgnored();
+        ignored.Remove(warning.Code);
+        SaveIgnored(ignored);
+        RefreshWarnings();
+    }
+
+    [RelayCommand]
+    private void ToggleIgnored() => ShowIgnored = !ShowIgnored;
+
+    private HashSet<string> LoadIgnored()
+    {
+        var all = _shell.Preferences.Get(IgnoredWarningsKey, new Dictionary<int, List<string>>());
+        var set = Model.Id != 0 && all.TryGetValue(Model.Id, out var list) ? list.ToHashSet(StringComparer.Ordinal) : new HashSet<string>(StringComparer.Ordinal);
+        set.UnionWith(_pendingIgnored);
+        return set;
+    }
+
+    private void SaveIgnored(HashSet<string> ignored)
+    {
+        if (Model.Id == 0)
+        {
+            // Not saved yet: keep it until the build has an id.
+            _pendingIgnored.Clear();
+            _pendingIgnored.UnionWith(ignored);
+            return;
+        }
+        var all = _shell.Preferences.Get(IgnoredWarningsKey, new Dictionary<int, List<string>>());
+        if (ignored.Count == 0) all.Remove(Model.Id);
+        else all[Model.Id] = ignored.Order(StringComparer.Ordinal).ToList();
+        _shell.Preferences.Set(IgnoredWarningsKey, all);
+        _pendingIgnored.Clear();
+    }
+
+    private void RefreshWarnings()
+    {
+        var ignored = LoadIgnored();
+        if (_pendingIgnored.Count > 0 && Model.Id != 0) SaveIgnored(ignored);
+        var all = BuildWarnings.Check(Model, Game).Select(w => new BuildWarningViewModel(w, ignored.Contains(w.Code))).ToList();
+        Warnings = all.Where(w => !w.IsIgnored).ToList();
+        IgnoredWarnings = all.Where(w => w.IsIgnored).ToList();
+        if (!HasIgnored) ShowIgnored = false;
+    }
+
     private void RefreshSummary()
     {
+        RefreshWarnings();
         var page = Model.Runes;
         var keystone = Game.Rune(page.PrimaryPerks.ElementAtOrDefault(0));
         KeystoneIconUrl = keystone is not null ? AssetUrls.Rune(keystone.IconPath) : Game.Tree(page.PrimaryStyleId) is { } pt ? AssetUrls.Rune(pt.IconPath) : null;
@@ -498,6 +580,14 @@ public sealed class BuildDragData(BuildViewModel build) : Controls.IDragPayload
     public BuildViewModel Build { get; } = build;
     public string? ImageUrl => Build.KeystoneIconUrl;
     public string Label => Build.Name;
+}
+
+/// <summary>A warning shown on the build editor.</summary>
+public sealed record BuildWarningViewModel(BuildWarning Warning, bool IsIgnored)
+{
+    public string Code => Warning.Code;
+    public string Text => Warning.Text;
+    public string Detail => Warning.Detail;
 }
 
 public sealed record RoleChoice(Position? Role, string Label)

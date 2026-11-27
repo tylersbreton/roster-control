@@ -198,7 +198,8 @@ public sealed class GameDataClient
         var exists = File.Exists(cachePath);
         var cached = exists ? await TryReadPositionsAsync(cachePath, ct).ConfigureAwait(false) : null;
         if (cached is not null && preferCache && !forceRefresh) return cached;
-        if (cached is not null && !forceRefresh)
+        // Caches from before 1.6 have no growth file: download once to add it.
+        if (cached is not null && !forceRefresh && File.Exists(GrowthPath))
         {
             var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(cachePath);
             var missing = championIds.Where(id => !cached.ContainsKey(id)).ToList();
@@ -212,11 +213,20 @@ public sealed class GameDataClient
             await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
             using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct).ConfigureAwait(false);
             var map = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+            var growth = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
             foreach (var champ in doc.RootElement.EnumerateObject())
             {
+                if (champ.Value.ValueKind != JsonValueKind.Object) continue;
+                if (champ.Value.TryGetProperty("stats", out var stats) && stats.ValueKind == JsonValueKind.Object
+                    && stats.TryGetProperty("attackDamage", out var ad) && ad.ValueKind == JsonValueKind.Object
+                    && ad.TryGetProperty("perLevel", out var perLevel) && perLevel.TryGetDouble(out var value))
+                    growth[champ.Name] = value;
                 if (!champ.Value.TryGetProperty("positions", out var positions) || positions.ValueKind != JsonValueKind.Array) continue;
                 map[champ.Name] = positions.EnumerateArray().Select(p => p.GetString() ?? "").Where(p => p.Length > 0).ToList();
             }
+            var growthTmp = GrowthPath + ".tmp";
+            await File.WriteAllTextAsync(growthTmp, JsonSerializer.Serialize(growth), ct).ConfigureAwait(false);
+            File.Move(growthTmp, GrowthPath, overwrite: true);
             var tmp = cachePath + ".tmp";
             await File.WriteAllTextAsync(tmp, JsonSerializer.Serialize(map), ct).ConfigureAwait(false);
             File.Move(tmp, cachePath, overwrite: true); // also restarts the retry clock when Meraki hasn't caught up yet
@@ -226,6 +236,29 @@ public sealed class GameDataClient
         {
             _logger.LogWarning("Champion positions unavailable ({Message}); using cached copy if present", ex.Message);
             return cached ?? new Dictionary<string, IReadOnlyList<string>>();
+        }
+    }
+
+    private string GrowthPath => Path.Combine(_cacheRoot, "champion-growth.json");
+
+    /// <summary>Whether AD growth per champion has been saved (caches from before 1.6 don't have it).</summary>
+    public bool HasAttackDamageGrowth => File.Exists(GrowthPath);
+
+    /// <summary>
+    /// Attack damage gained per level by champion, from Meraki Analytics (saved with the positions). Data Dragon reports 0
+    /// for every champion since patch 16.22, so this fills the gap; empty when unavailable.
+    /// </summary>
+    public IReadOnlyDictionary<string, double> ReadAttackDamageGrowth()
+    {
+        try
+        {
+            if (!File.Exists(GrowthPath)) return new Dictionary<string, double>();
+            var map = JsonSerializer.Deserialize<Dictionary<string, double>>(File.ReadAllText(GrowthPath));
+            return map is null ? new Dictionary<string, double>() : new Dictionary<string, double>(map, StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is JsonException or IOException)
+        {
+            return new Dictionary<string, double>();
         }
     }
 

@@ -20,6 +20,26 @@ public static class AbilityCalculations
     private static readonly char[] Slots = ['Q', 'W', 'E', 'R'];
 
     /// <param name="maxRanks">Ranks per slot (from Data Dragon); Q/W/E default to 5 and R to 3.</param>
+    /// <summary>
+    /// Attack damage per level from the champion's character record ("damagePerLevelModifiable", or the older
+    /// "damagePerLevel"); null when the file has neither.
+    /// </summary>
+    public static double? AttackDamagePerLevel(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Object) return null;
+        foreach (var prop in root.EnumerateObject())
+        {
+            if (!prop.Name.EndsWith("/CharacterRecords/Root", StringComparison.OrdinalIgnoreCase) || prop.Value.ValueKind != JsonValueKind.Object) continue;
+            var record = prop.Value;
+            if (record.TryGetProperty("damagePerLevelModifiable", out var modifiable) && modifiable.ValueKind == JsonValueKind.Object
+                && modifiable.TryGetProperty("baseValue", out var baseValue) && baseValue.TryGetDouble(out var v1))
+                return v1;
+            if (record.TryGetProperty("damagePerLevel", out var plain) && plain.TryGetDouble(out var v2)) return v2;
+            return null;
+        }
+        return null;
+    }
+
     public static IReadOnlyDictionary<char, IReadOnlyList<AbilityValue>> Parse(JsonElement root, IReadOnlyDictionary<char, int>? maxRanks = null)
     {
         var result = new Dictionary<char, IReadOnlyList<AbilityValue>>();

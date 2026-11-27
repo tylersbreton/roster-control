@@ -157,7 +157,8 @@ public class AppScreenTests
         for (var i = 0; i < Game.ShardRows.Count; i++)
             RunePageRules.SelectShard(runes, Game, i, Game.ShardRows[i].Options[i == 0 ? 0 : i == 1 ? 0 : 0].Id);
 
-        string Item(string name) => Game.ShopItems.FirstOrDefault(i => i.Name == name)?.Id ?? Game.ShopItems[0].Id;
+        // Names change between patches (Luden's Companion became Luden's Echo): the first one that exists.
+        string Item(params string[] names) => names.Select(n => Game.ShopItems.FirstOrDefault(i => i.Name == n)?.Id).FirstOrDefault(id => id is not null) ?? Game.ShopItems[0].Id;
         var build = new Build
         {
             ChampionId = "Ahri",
@@ -170,7 +171,7 @@ public class AppScreenTests
                 Blocks =
                 [
                     new ItemBlockData { Name = "Starting Items", Items = [Item("Doran's Ring"), Item("Health Potion"), Item("Health Potion")] },
-                    new ItemBlockData { Name = "Core Build", Items = [Item("Luden's Companion"), Item("Sorcerer's Shoes"), Item("Shadowflame"), Item("Rabadon's Deathcap"), Item("Zhonya's Hourglass")] },
+                    new ItemBlockData { Name = "Core Build", Items = [Item("Luden's Echo", "Luden's Companion"), Item("Sorcerer's Shoes"), Item("Shadowflame"), Item("Rabadon's Deathcap"), Item("Zhonya's Hourglass")] },
                     new ItemBlockData { Name = "Situational", Items = [Item("Banshee's Veil"), Item("Void Staff"), Item("Morellonomicon")] },
                 ],
             },
@@ -189,7 +190,7 @@ public class AppScreenTests
                 Blocks =
                 [
                     new ItemBlockData { Name = "Starting Items", Items = [Item("Doran's Ring"), Item("Health Potion")] },
-                    new ItemBlockData { Name = "Core Build", Items = [Item("Luden's Companion"), Item("Zhonya's Hourglass"), Item("Rabadon's Deathcap"), Item("Shadowflame"), Item("Banshee's Veil")] },
+                    new ItemBlockData { Name = "Core Build", Items = [Item("Luden's Echo", "Luden's Companion"), Item("Zhonya's Hourglass"), Item("Rabadon's Deathcap"), Item("Shadowflame"), Item("Banshee's Veil")] },
                 ],
             },
         });
@@ -1296,5 +1297,269 @@ public class AppScreenTests
         }
         Assert.That(window.TryFindResource("Brush.GoldLight", window.ActualThemeVariant, out var light) && light is ISolidColorBrush { Color: var c } && c == Avalonia.Media.Color.Parse("#F0E6D2"),
             Is.True, "the default dark gold is exactly the original palette");
+    }
+
+    private static T Named<T>(Window window, string name) where T : Control =>
+        window.GetVisualDescendants().OfType<T>().First(c => c.Name == name && c.IsEffectivelyVisible);
+
+    private static (ChampionDetailViewModel Page, AbilityCalculatorViewModel Calc) OpenCalculator()
+    {
+        Vm.OpenChampion("Ahri", ChampionTab.Abilities);
+        UiTestHost.Settle(5);
+        var page = (ChampionDetailViewModel)Vm.CurrentPage!;
+        var calc = page.Abilities.Calculator!;
+        for (var i = 0; i < 300 && (page.Abilities.RuneNumbers is null || !page.Abilities.Abilities.Any(a => a.HasValues)); i++)
+        {
+            Thread.Sleep(30);
+            UiTestHost.Settle(1);
+        }
+        calc.SelectedChoice = calc.BuildChoices.First(c => c.Name == "Standard");
+        calc.Level = 11;
+        // Earlier tests may have ticked other items: count just the core block.
+        string[] core = ["Luden", "Sorcerer's Shoes", "Shadowflame", "Rabadon's Deathcap", "Zhonya's Hourglass"];
+        calc.NoItemsCommand.Execute(null);
+        foreach (var item in calc.Items.Where(i => core.Any(c => i.Name.StartsWith(c, StringComparison.Ordinal)))) item.IsOn = true;
+        UiTestHost.Settle(3);
+        return (page, calc);
+    }
+
+    [AvaloniaTest, Order(41)]
+    public void Calculator_ranks_the_next_item_and_previews_a_swap()
+    {
+        var window = Window(1600, 1000);
+        var (_, calc) = OpenCalculator();
+        Assert.That(calc.Metrics.Any(m => m.Group == CalcMetric.AbilitiesGroup), Is.True, "ability numbers can be ranked by");
+        Assert.That(calc.Metrics.Any(m => m.Group == CalcMetric.RunesGroup && m.Label.StartsWith("Electrocute")), Is.True, "and the keystone's");
+        Assert.That(calc.FocusMetric!.Group, Is.EqualTo(CalcMetric.AbilitiesGroup), "an ability's damage by default");
+
+        calc.FocusMetric = calc.Metrics.First(m => m.Key == "stat:ap");
+        UiTestHost.Settle(2);
+        Assert.That(calc.IsSwapping, Is.False);
+        Assert.That(calc.ChoicesTitle, Is.EqualTo("BEST NEXT ITEM"));
+        Assert.That(calc.Choices, Is.Not.Empty);
+        Assert.That(calc.Choices.All(c => c.IsBetter), Is.True, "only items that add AP");
+        Assert.That(calc.Choices.Select(c => c.Name), Has.None.EqualTo("Rabadon's Deathcap"), "items already counted aren't offered");
+        Assert.That(Vm.Preferences.Get(AbilityCalculatorPrefsKey, new AbilityCalculatorViewModel.CalculatorPrefs()).Focus, Is.EqualTo("stat:ap"), "the choice is remembered");
+
+        calc.PreviewItemCommand.Execute(calc.Choices[0]);
+        UiTestHost.Settle(2);
+        Assert.That(calc.HasPreview, Is.True);
+        Assert.That(calc.PreviewTitle, Does.StartWith("Adding "));
+        Assert.That(calc.PreviewRows.Select(r => r.Label), Has.Some.EqualTo("Ability power"));
+        Assert.That(calc.PreviewRows.Select(r => r.Label), Has.Some.StartsWith("Q · "), "and what it does to Q");
+
+        // Swap Luden's for something else: only legendary items, ranked; the preview names both.
+        var ludens = calc.Items.First(i => i.Name.StartsWith("Luden", StringComparison.Ordinal));
+        calc.SwapCommand.Execute(ludens);
+        UiTestHost.Settle(2);
+        Assert.That(calc.IsSwapping, Is.True);
+        Assert.That(ludens.IsSwapSource, Is.True);
+        Assert.That(calc.ChoicesTitle, Is.EqualTo("INSTEAD OF " + ludens.Name.ToUpperInvariant()));
+        Assert.That(calc.Choices.All(c => c.Item.Tier == ItemTier.Legendary), Is.True);
+        Assert.That(calc.Choices.Select(c => c.Name), Has.None.EqualTo(ludens.Name));
+        calc.PreviewItemCommand.Execute(calc.Choices[0]);
+        UiTestHost.Settle(2);
+        Assert.That(calc.PreviewTitle, Does.StartWith(ludens.Name + " → "));
+        Named<Control>(window, "CalculatorChoices").BringIntoView();
+        UiTestHost.Settle(5);
+        Capture("41-item-choices");
+        calc.EndSwapCommand.Execute(null);
+        Assert.That(ludens.IsSwapSource, Is.False);
+    }
+
+    [AvaloniaTest, Order(42)]
+    public void Power_curve_follows_the_item_timeline()
+    {
+        var window = Window(1600, 1000);
+        var (_, calc) = OpenCalculator();
+        calc.CurveMetric = calc.Metrics.First(m => m.Key == "stat:ap");
+        UiTestHost.Settle(2);
+        Assert.That(calc.CurveSeries.Single().Values, Has.Count.EqualTo(18));
+        Assert.That(calc.Timeline.Select(t => t.Level), Is.EqualTo(new[] { 6, 9, 11, 13, 15 }), "the five core items spread from level 6");
+        var values = calc.CurveSeries[0].Values;
+        Assert.That(values[5], Is.GreaterThan(values[4]), "Luden's counts from level 6");
+
+        // Finish Luden's later: the curve moves and the timeline is saved for this build.
+        var ludens = calc.Timeline[0];
+        ludens.LaterCommand.Execute(null);
+        ludens.LaterCommand.Execute(null);
+        UiTestHost.Settle(2);
+        Assert.That(ludens.Level, Is.EqualTo(8));
+        Assert.That(calc.CurveSeries[0].Values[5], Is.LessThan(values[5]));
+        Assert.That(calc.TimelineIsCustom, Is.True);
+        var buildId = calc.SelectedChoice!.BuildId!.Value;
+        Assert.That(Vm.Preferences.Get(AbilityCalculatorPrefsKey, new AbilityCalculatorViewModel.CalculatorPrefs()).Timeline[buildId][ludens.ItemId], Is.EqualTo(8));
+        Assert.That(calc.CurveMarkers.Select(m => m.Level), Does.Contain(8));
+
+        calc.CurveMetric = calc.Metrics.First(m => m.Group == CalcMetric.AbilitiesGroup && m.Label.StartsWith("Q · "));
+        UiTestHost.Settle(2);
+        Named<Control>(window, "CalculatorCurve").BringIntoView();
+        UiTestHost.Settle(5);
+        Assert.That(Named<LevelChart>(window, "CurveChart").Series, Is.SameAs(calc.CurveSeries));
+        Capture("42-power-curve");
+
+        calc.ResetTimelineCommand.Execute(null);
+        UiTestHost.Settle(2);
+        Assert.That(calc.Timeline[0].Level, Is.EqualTo(6));
+        Assert.That(calc.TimelineIsCustom, Is.False);
+    }
+
+    [AvaloniaTest, Order(43)]
+    public void Compare_draws_both_builds_power_curves()
+    {
+        var window = Window(1600, 1000);
+        Vm.OpenCompare("Ahri", "Veigar");
+        UiTestHost.Settle(40);
+        var page = (CompareViewModel)Vm.CurrentPage!;
+        for (var i = 0; i < 100 && !page.HasCurve; i++)
+        {
+            Thread.Sleep(30);
+            UiTestHost.Settle(1);
+        }
+        Assert.That(page.HasCurve, Is.True);
+        Assert.That(page.CurveSeries, Has.Count.EqualTo(2));
+        Assert.That(page.CurveMetrics.All(m => m.IsStat), Is.True, "two champions compare stats");
+        Assert.That(page.LeftCurveName, Does.StartWith("Ahri"));
+        page.CurveMetric = page.CurveMetrics.First(m => m.Key == "stat:ap");
+        UiTestHost.Settle(3);
+        Assert.That(page.CurveSeries[0].Values[^1], Is.GreaterThan(page.CurveSeries[0].Values[0]), "Ahri's build adds AP as items are finished");
+        Named<Control>(window, "CompareCurve").BringIntoView();
+        UiTestHost.Settle(5);
+        Capture("43-compare-curve");
+
+        // Two builds of one champion: ability numbers too.
+        Vm.OpenCompare("Ahri", "Ahri");
+        UiTestHost.Settle(40);
+        var same = (CompareViewModel)Vm.CurrentPage!;
+        for (var i = 0; i < 200 && !same.CurveMetrics.Any(m => !m.IsStat); i++)
+        {
+            Thread.Sleep(30);
+            UiTestHost.Settle(1);
+        }
+        Assert.That(same.CurveMetrics.Any(m => m.Group == CalcMetric.AbilitiesGroup), Is.True);
+    }
+
+    [AvaloniaTest, Order(44)]
+    public void Build_warnings_show_on_the_build_and_can_be_ignored()
+    {
+        var window = Window();
+        Vm.OpenChampion("Ahri", ChampionTab.Builds);
+        UiTestHost.Settle(10);
+        var page = (ChampionDetailViewModel)Vm.CurrentPage!;
+        page.SelectedBuild = page.Builds.First(b => b.Name == "Standard");
+        UiTestHost.Settle(3);
+        var build = page.SelectedBuild!;
+        Assert.That(build.HasWarnings, Is.False, string.Join("; ", build.Warnings.Select(w => w.Text)));
+
+        try
+        {
+            build.SelectedRole = build.RoleChoices.First(r => r.Role == Position.Jungle);
+            UiTestHost.Settle(3);
+            Assert.That(build.Warnings.Select(w => w.Code), Does.Contain("jungle-no-smite").And.Contain("jungle-no-pet"));
+            Assert.That(Named<Control>(window, "BuildWarnings").IsVisible, Is.True);
+            Capture("44-build-warnings");
+
+            var pet = build.Warnings.First(w => w.Code == "jungle-no-pet");
+            build.IgnoreWarningCommand.Execute(pet);
+            UiTestHost.Settle(2);
+            Assert.That(build.Warnings.Select(w => w.Code), Does.Not.Contain("jungle-no-pet"));
+            Assert.That(build.IgnoredWarnings.Select(w => w.Code), Is.EqualTo(new[] { "jungle-no-pet" }));
+            Assert.That(build.IgnoredText, Is.EqualTo("1 ignored warning · show"));
+            var saved = Vm.Preferences.Get(BuildViewModel.IgnoredWarningsKey, new Dictionary<int, List<string>>());
+            Assert.That(saved[build.Model.Id], Is.EqualTo(new[] { "jungle-no-pet" }), "ignored per build, remembered");
+
+            build.ToggleIgnoredCommand.Execute(null);
+            Assert.That(build.ShowIgnored, Is.True);
+            build.RestoreWarningCommand.Execute(build.IgnoredWarnings[0]);
+            UiTestHost.Settle(2);
+            Assert.That(build.Warnings.Select(w => w.Code), Does.Contain("jungle-no-pet"));
+            Assert.That(build.HasIgnored, Is.False);
+        }
+        finally
+        {
+            build.SelectedRole = build.RoleChoices.First(r => r.Role == Position.Middle);
+            UiTestHost.Settle(3);
+        }
+        Assert.That(build.HasWarnings, Is.False);
+    }
+
+    [AvaloniaTest, Order(45)]
+    public void Runes_page_shows_formulas_and_the_builds_using_a_rune()
+    {
+        var window = Window();
+        Vm.Palette.Open();
+        Vm.Palette.Query = "electro";
+        UiTestHost.Settle(3);
+        var result = Vm.Palette.Results.First(r => r.Subtitle.StartsWith("Rune"));
+        Assert.That(result.Title, Is.EqualTo("Electrocute"));
+        Vm.Palette.ExecuteCommand.Execute(result);
+        UiTestHost.Settle(10);
+        Assert.That(Vm.CurrentSection, Is.EqualTo(Section.Runes));
+        var runes = Vm.Runes!;
+        for (var i = 0; i < 300 && !runes.HasFormulas; i++)
+        {
+            Thread.Sleep(30);
+            UiTestHost.Settle(1);
+        }
+        Assert.That(runes.Selected!.Name, Is.EqualTo("Electrocute"));
+        Assert.That(runes.Formulas, Is.Not.Empty, "formulas from the game files, as text");
+        Assert.That(runes.UsageRows.Select(u => u.Text), Has.Some.EqualTo("Ahri · Standard"));
+        Assert.That(runes.UsageRows.First().Where, Is.EqualTo("Primary"));
+        Assert.That(runes.Sections.Select(s => s.Name), Does.Contain("Domination").And.Contain(RunesViewModel.StatShards));
+        Capture("45-runes");
+
+        runes.SelectedPath = "Precision";
+        runes.SelectedSlot = RunesViewModel.Keystones;
+        Assert.That(runes.Sections.Single().Name, Is.EqualTo("Precision"));
+        Assert.That(runes.Sections.Single().Rows.Single().Tiles.All(t => t.IsKeystone), Is.True);
+        runes.ClearFiltersCommand.Execute(null);
+        runes.OnlyInBuilds = true;
+        Assert.That(runes.Sections.SelectMany(s => s.Rows).SelectMany(r => r.Tiles).All(t => t.BuildCount > 0), Is.True);
+        runes.OnlyInBuilds = false;
+
+        window.KeyPressQwerty(PhysicalKey.Digit7, RawInputModifiers.Control);
+        UiTestHost.Settle(5);
+        Assert.That(Vm.CurrentSection, Is.EqualTo(Section.Stats), "Ctrl+7 opens champion stats");
+        window.KeyPressQwerty(PhysicalKey.Digit6, RawInputModifiers.Control);
+        UiTestHost.Settle(5);
+        Assert.That(Vm.CurrentSection, Is.EqualTo(Section.Runes), "Ctrl+6 opens runes");
+    }
+
+    [AvaloniaTest, Order(46)]
+    public void Champion_stats_sort_by_any_column_at_a_level()
+    {
+        Window();
+        UiTestHost.Run(() => Vm.NavigateAsync(Section.Stats));
+        UiTestHost.Settle(10);
+        var stats = Vm.Stats!;
+        stats.ClearFiltersCommand.Execute(null);
+        stats.Level = 1;
+        Assert.That(stats.Rows.Count, Is.GreaterThan(150));
+        var range = stats.Columns.First(c => c.Column.Key == "range");
+        range.SortCommand.Execute(null);
+        Assert.That(range.IsSorted, Is.True);
+        Assert.That(range.Text, Does.EndWith("▼"), "largest first");
+        var index = StatColumn.All.ToList().FindIndex(c => c.Key == "range");
+        var values = stats.Rows.Select(r => r.Cells[index].Value!.Value).ToList();
+        Assert.That(values, Is.Ordered.Descending);
+        Assert.That(stats.Rows[0].Cells[index].IsHigh, Is.True, "the top tenth is highlighted");
+
+        var health = StatColumn.All.ToList().FindIndex(c => c.Key == "health");
+        var at1 = stats.Rows.First(r => r.Champion.Id == "Ahri").Cells[health].Value!.Value;
+        stats.Level = 18;
+        Assert.That(stats.Rows.First(r => r.Champion.Id == "Ahri").Cells[health].Value, Is.GreaterThan(at1));
+        Assert.That(stats.Rows.First(r => r.Champion.Id == "Ahri").IsInRoster, Is.True);
+
+        var mana = StatColumn.All.ToList().FindIndex(c => c.Key == "mana");
+        Assert.That(stats.Rows.First(r => r.Champion.Id == "Garen").Cells[mana].Value, Is.Null, "Garen has no mana");
+        stats.SelectedRange = ChampionStatsViewModel.Melee;
+        Assert.That(stats.Rows.All(r => !r.Champion.Stats!.IsRanged), Is.True);
+        stats.SelectedRange = ChampionStatsViewModel.AnyRange;
+        stats.OnlyRoster = true;
+        Assert.That(stats.Rows.All(r => r.IsInRoster), Is.True);
+        stats.OnlyRoster = false;
+        stats.Level = 11;
+        Capture("46-champion-stats");
+        Assert.That(Vm.Preferences.Get("stats.table", new ChampionStatsViewModel.StatsPrefs()).Sort, Is.EqualTo("range"));
     }
 }

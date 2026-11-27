@@ -23,7 +23,9 @@ public static class GameDataParser
         _ => "#C8AA6E",
     };
 
-    public static IReadOnlyList<ChampionInfo> ParseChampions(JsonElement root, IReadOnlyDictionary<string, IReadOnlyList<string>> positions)
+    /// <param name="attackDamageGrowth">AD per level by champion, used where Data Dragon reports 0 (see <see cref="ParseStats"/>).</param>
+    public static IReadOnlyList<ChampionInfo> ParseChampions(JsonElement root, IReadOnlyDictionary<string, IReadOnlyList<string>> positions,
+        IReadOnlyDictionary<string, double>? attackDamageGrowth = null)
     {
         var list = new List<ChampionInfo>();
         if (!root.TryGetProperty("data", out var data)) return list;
@@ -42,13 +44,17 @@ public static class GameDataParser
                 StrArray(c, "tags"),
                 c.TryGetProperty("image", out var img) ? Str(img, "full") ?? id + ".png" : id + ".png",
                 pos,
-                ParseStats(c)));
+                ParseStats(c, attackDamageGrowth is not null && attackDamageGrowth.TryGetValue(id, out var growth) ? growth : null)));
         }
         return list;
     }
 
     /// <summary>Base stats and growth (Data Dragon <c>stats</c>); null when missing.</summary>
-    internal static ChampionStats? ParseStats(JsonElement champion)
+    /// <param name="attackDamageGrowthFallback">
+    /// AD per level from another source. Data Dragon's attackdamageperlevel is 0 for every champion since patch 16.22 (the
+    /// game files still have it), so a 0 there is replaced by this value.
+    /// </param>
+    internal static ChampionStats? ParseStats(JsonElement champion, double? attackDamageGrowthFallback = null)
     {
         if (!champion.TryGetProperty("stats", out var st) || st.ValueKind != JsonValueKind.Object) return null;
         double N(string name) => st.TryGetProperty(name, out var v) && v.TryGetDouble(out var d) ? d : 0;
@@ -62,10 +68,11 @@ public static class GameDataParser
             N("armor"), N("armorperlevel"),
             N("spellblock"), N("spellblockperlevel"),
             N("attackrange"),
-            N("attackdamage"), N("attackdamageperlevel"),
+            N("attackdamage"), N("attackdamageperlevel") is var adGrowth && adGrowth == 0 && attackDamageGrowthFallback is { } fallback ? fallback : adGrowth,
             N("attackspeed"), N("attackspeedperlevel"),
             AdaptiveAp: I("magic") > I("attack"),
-            Resource: resource == "None" ? "" : resource);
+            Resource: resource == "None" ? "" : resource,
+            AttackDamageGrowthUnknown: N("attackdamageperlevel") == 0 && attackDamageGrowthFallback is null);
     }
 
     /// <summary>All items, plus the ids shown in the shop (purchasable on Summoner's Rift or ARAM, de-duplicated by name).</summary>

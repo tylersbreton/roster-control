@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:core="using:RosterControl.Core.Rules"
              xmlns:c="using:RosterControl.Desktop.Controls"
              xmlns:m="using:RosterControl.Core.Model"
              x:Class="RosterControl.Desktop.Views.CompareView"
@@ -261,10 +262,42 @@
     </Border>
 
     <ScrollViewer Grid.Row="2">
-      <Grid ColumnDefinitions="*,14,*" VerticalAlignment="Top">
-        <ContentControl Content="{Binding Left}" />
-        <ContentControl Grid.Column="2" Content="{Binding Right}" />
-      </Grid>
+      <StackPanel Spacing="12">
+        <Grid ColumnDefinitions="*,14,*" VerticalAlignment="Top">
+          <ContentControl Content="{Binding Left}" />
+          <ContentControl Grid.Column="2" Content="{Binding Right}" />
+        </Grid>
+        <!-- Power curve: both builds from level 1 to 18 -->
+        <Border Classes="card" Padding="16,14" IsVisible="{Binding HasCurve}" Name="CompareCurve">
+          <StackPanel Spacing="10">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Spacing="2" VerticalAlignment="Center">
+                <TextBlock Text="POWER CURVE" Classes="overline" />
+                <StackPanel Orientation="Horizontal" Spacing="16">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Width="14" Height="3" CornerRadius="1.5" VerticalAlignment="Center" Background="{DynamicResource Brush.Gold}" />
+                    <TextBlock Text="{Binding LeftCurveName}" FontSize="12" Classes="secondary" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Width="14" Height="3" CornerRadius="1.5" VerticalAlignment="Center" Background="{DynamicResource Brush.Teal}" />
+                    <TextBlock Text="{Binding RightCurveName}" FontSize="12" Classes="secondary" />
+                  </StackPanel>
+                </StackPanel>
+              </StackPanel>
+              <ComboBox Grid.Column="1" ItemsSource="{Binding CurveMetrics}" SelectedItem="{Binding CurveMetric}" MinWidth="260" MaxDropDownHeight="420" VerticalAlignment="Center"
+                        ToolTip.Tip="The number the curve shows (ability numbers when both sides are the same champion)" Name="CompareCurveMetric">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="core:CalcMetric">
+                    <TextBlock Text="{Binding Label}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </Grid>
+            <c:LevelChart Series="{Binding CurveSeries}" Markers="{Binding CurveMarkers}" Height="240" />
+            <TextBlock Text="{Binding CurveNote}" Classes="caption" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
     </ScrollViewer>
   </Grid>
 </UserControl>

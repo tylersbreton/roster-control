@@ -57,6 +57,10 @@ public sealed record ItemInfo(
 
 /// <summary>A champion's base stats and growth per level (Data Dragon <c>stats</c>).</summary>
 /// <param name="AdaptiveAp">Adaptive force goes to AP when bonus AD and AP are equal (a magic-leaning champion).</param>
+/// <param name="AttackDamageGrowthUnknown">
+/// Data Dragon reported 0 AD per level (as it does for every champion since 16.22) and no other source had a value, so
+/// the 0 may be wrong. Senna's real 0 comes with this false.
+/// </param>
 public sealed record ChampionStats(
     double Health, double HealthPerLevel,
     double Mana, double ManaPerLevel,
@@ -67,7 +71,8 @@ public sealed record ChampionStats(
     double AttackDamage, double AttackDamagePerLevel,
     double AttackSpeed, double AttackSpeedPerLevel,
     bool AdaptiveAp = false,
-    string Resource = "")
+    string Resource = "",
+    bool AttackDamageGrowthUnknown = false)
 {
     /// <summary>Ranged champions get smaller numbers from some runes (e.g. Grasp, Fleet Footwork).</summary>
     public bool IsRanged => AttackRange > 350;
@@ -150,7 +155,8 @@ public sealed record RuneNumbers(string Patch, IReadOnlyDictionary<int, IReadOnl
 }
 
 /// <summary>Ability numbers per slot (P, Q, W, E, R) from the game files, for the game patch <paramref name="Patch"/>.</summary>
-public sealed record AbilityNumbers(string ChampionId, string Patch, IReadOnlyDictionary<char, IReadOnlyList<AbilityValue>> Values)
+/// <param name="AttackDamagePerLevel">The champion's AD growth from its game file (Data Dragon reports 0 since 16.22); null when not found.</param>
+public sealed record AbilityNumbers(string ChampionId, string Patch, IReadOnlyDictionary<char, IReadOnlyList<AbilityValue>> Values, double? AttackDamagePerLevel = null)
 {
     public IReadOnlyList<AbilityValue> this[char slot] => Values.TryGetValue(slot, out var v) ? v : [];
 }

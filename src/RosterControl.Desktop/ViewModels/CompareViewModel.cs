@@ -60,6 +60,7 @@ public sealed partial class CompareViewModel : ObservableObject, IPage
     internal void Refresh()
     {
         OnPropertyChanged(nameof(BothChosen));
+        _ = UpdateCurveAsync();
         if (Left.Champion is not { } a || Right.Champion is not { } b || a.Id == b.Id)
         {
             HeadToHead = [];
@@ -183,7 +184,11 @@ public sealed partial class CompareSideViewModel : ObservableObject
     partial void OnGoodChanged(IReadOnlyList<CompareIcon> value) => OnPropertyChanged(nameof(HasGood));
     partial void OnWeakChanged(IReadOnlyList<CompareIcon> value) => OnPropertyChanged(nameof(HasWeak));
     partial void OnSkillOrderChanged(string value) => OnPropertyChanged(nameof(HasSkillOrder));
-    partial void OnSelectedBuildChanged(Build? value) => ShowBuild(value);
+    partial void OnSelectedBuildChanged(Build? value)
+    {
+        ShowBuild(value);
+        _owner.DrawCurveForBuildChange();
+    }
 
     internal async Task SetChampionAsync(string? championId, int? buildId = null)
     {

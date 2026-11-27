@@ -18,6 +18,8 @@
     <DataTemplate DataType="vm:RostersViewModel"><v:RostersView /></DataTemplate>
     <DataTemplate DataType="vm:LibraryViewModel"><v:LibraryView /></DataTemplate>
     <DataTemplate DataType="vm:ItemsViewModel"><v:ItemsView /></DataTemplate>
+    <DataTemplate DataType="vm:RunesViewModel"><v:RunesView /></DataTemplate>
+    <DataTemplate DataType="vm:ChampionStatsViewModel"><v:ChampionStatsView /></DataTemplate>
     <DataTemplate DataType="vm:CounterPicksViewModel"><v:CounterPicksView /></DataTemplate>
     <DataTemplate DataType="vm:SettingsViewModel"><v:SettingsView /></DataTemplate>
     <DataTemplate DataType="vm:ChampionDetailViewModel"><v:ChampionView /></DataTemplate>
@@ -140,6 +142,18 @@
                 <StackPanel Orientation="Horizontal" Spacing="12">
                   <c:LucideIcon Kind="shopping-bag" Width="18" Height="18" Foreground="{Binding $parent[RadioButton].Foreground}" />
                   <TextBlock Text="Items" IsVisible="{Binding !SidebarCollapsed}" Foreground="{Binding $parent[RadioButton].Foreground}" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton Classes="nav" GroupName="nav" IsChecked="{Binding IsRunesSection, Mode=OneWay}" Command="{Binding NavigateCommand}" CommandParameter="{x:Static vm:Section.Runes}" ToolTip.Tip="Runes — formulas and the builds that use each rune">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <c:LucideIcon Kind="sparkles" Width="18" Height="18" Foreground="{Binding $parent[RadioButton].Foreground}" />
+                  <TextBlock Text="Runes" IsVisible="{Binding !SidebarCollapsed}" Foreground="{Binding $parent[RadioButton].Foreground}" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton Classes="nav" GroupName="nav" IsChecked="{Binding IsStatsSection, Mode=OneWay}" Command="{Binding NavigateCommand}" CommandParameter="{x:Static vm:Section.Stats}" ToolTip.Tip="Champion stats — every champion's base stats at a level, sortable">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <c:LucideIcon Kind="table" Width="18" Height="18" Foreground="{Binding $parent[RadioButton].Foreground}" />
+                  <TextBlock Text="Champion stats" IsVisible="{Binding !SidebarCollapsed}" Foreground="{Binding $parent[RadioButton].Foreground}" />
                 </StackPanel>
               </RadioButton>
               <RadioButton Classes="nav" GroupName="nav" IsChecked="{Binding IsCountersSection, Mode=OneWay}" Command="{Binding NavigateCommand}" CommandParameter="{x:Static vm:Section.Counters}" ToolTip.Tip="Counter picks — what should I play into this?">

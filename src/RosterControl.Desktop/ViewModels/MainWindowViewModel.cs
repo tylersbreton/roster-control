@@ -27,6 +27,8 @@ public enum Section
     Review,
     // New sections go last: the section is saved by number.
     Items,
+    Runes,
+    Stats,
 }
 
 /// <summary>Application shell: loading, navigation, keyboard shortcuts, search palette, dialogs and toasts.</summary>
@@ -117,7 +119,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
     private object? _currentPage;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsRostersSection), nameof(IsChampionsSection), nameof(IsItemsSection), nameof(IsCountersSection), nameof(IsSettingsSection))]
+    [NotifyPropertyChangedFor(nameof(IsRostersSection), nameof(IsChampionsSection), nameof(IsItemsSection), nameof(IsRunesSection), nameof(IsStatsSection), nameof(IsCountersSection), nameof(IsSettingsSection))]
     private Section _currentSection;
 
     [ObservableProperty]
@@ -151,6 +153,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
     public bool IsRostersSection => CurrentSection == Section.Rosters;
     public bool IsChampionsSection => CurrentSection is Section.Champions;
     public bool IsItemsSection => CurrentSection == Section.Items;
+    public bool IsRunesSection => CurrentSection == Section.Runes;
+    public bool IsStatsSection => CurrentSection == Section.Stats;
     public bool IsCountersSection => CurrentSection == Section.Counters;
     public bool IsSettingsSection => CurrentSection == Section.Settings;
     public string PatchText => _game is null ? "" : $"Patch data {_game.Version}";
@@ -204,6 +208,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
     public RostersViewModel? Rosters { get; private set; }
     public LibraryViewModel? Library { get; private set; }
     public ItemsViewModel? Items { get; private set; }
+    public RunesViewModel? Runes { get; private set; }
+    public ChampionStatsViewModel? Stats { get; private set; }
     public CounterPicksViewModel? Counters { get; private set; }
     public SettingsViewModel? Settings { get; private set; }
 
@@ -417,6 +423,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
         Rosters = new RostersViewModel(this);
         Library = new LibraryViewModel(this);
         Items = new ItemsViewModel(this);
+        Runes = new RunesViewModel(this);
+        Stats = new ChampionStatsViewModel(this);
         Counters = new CounterPicksViewModel(this);
         Settings = new SettingsViewModel(this, _paths, _backups);
         _history.Clear();
@@ -474,6 +482,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
             Section.Rosters => Rosters,
             Section.Champions => Library,
             Section.Items => Items,
+            Section.Runes => Runes,
+            Section.Stats => Stats,
             Section.Counters => Counters,
             Section.Settings => Settings,
             _ => CurrentPage,
@@ -524,6 +534,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
         if (_recentChampions.Count > 6) _recentChampions.RemoveRange(6, _recentChampions.Count - 6);
         _preferences.Set("ui.recentChampions", _recentChampions);
         await page.OnNavigatedToAsync();
+    }
+
+    /// <summary>Opens the Runes page with <paramref name="runeId"/> selected (from search).</summary>
+    public async Task OpenRuneAsync(int runeId)
+    {
+        await NavigateAsync(Section.Runes);
+        Runes?.Show(runeId);
     }
 
     /// <summary>Opens the Items page with <paramref name="itemId"/> selected (from search).</summary>
@@ -587,6 +604,12 @@ public sealed partial class MainWindowViewModel : ObservableObject, IShell
                     return true;
                 case Key.D5 or Key.NumPad5:
                     _ = NavigateAsync(Section.Items);
+                    return true;
+                case Key.D6 or Key.NumPad6:
+                    _ = NavigateAsync(Section.Runes);
+                    return true;
+                case Key.D7 or Key.NumPad7:
+                    _ = NavigateAsync(Section.Stats);
                     return true;
                 case Key.OemPlus or Key.Add:
                     ZoomIn();

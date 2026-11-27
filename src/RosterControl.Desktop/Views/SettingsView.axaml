@@ -243,8 +243,8 @@
             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
               <TextBlock Grid.Row="0" Text="Ctrl+K" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
               <TextBlock Grid.Row="0" Grid.Column="1" Text="Search champions, pages and actions" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
-              <TextBlock Grid.Row="1" Text="Ctrl+1 … 5" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
-              <TextBlock Grid.Row="1" Grid.Column="1" Text="Rosters · Champions · Counter picks · Settings · Items" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="1" Text="Ctrl+1 … 7" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="Rosters · Champions · Counter picks · Settings · Items · Runes · Champion stats" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
               <TextBlock Grid.Row="2" Text="Alt+←" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />
               <TextBlock Grid.Row="2" Grid.Column="1" Text="Back" Classes="secondary" FontSize="12.5" TextWrapping="Wrap" />
               <TextBlock Grid.Row="3" Text="Ctrl+Z" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="12" Foreground="{DynamicResource Brush.GoldLight}" Margin="0,0,18,0" />

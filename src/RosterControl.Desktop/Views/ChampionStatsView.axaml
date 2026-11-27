@@ -1,0 +1,128 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:c="using:RosterControl.Desktop.Controls"
+             x:Class="RosterControl.Desktop.Views.ChampionStatsView"
+             x:DataType="vm:ChampionStatsViewModel">
+  <UserControl.Styles>
+    <Style Selector="TextBlock.statcell">
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="TextAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="FontFeatures" Value="+tnum" />
+      <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+    </Style>
+    <Style Selector="TextBlock.statcell.high">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.Good}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.statcell.low">
+      <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}" />
+    </Style>
+    <Style Selector="Button.colhead">
+      <Setter Property="Padding" Value="4,4" />
+      <Setter Property="HorizontalContentAlignment" Value="Right" />
+    </Style>
+  </UserControl.Styles>
+  <Grid RowDefinitions="Auto,Auto,*">
+    <Grid ColumnDefinitions="*,Auto" Margin="2,2,0,12">
+      <StackPanel Spacing="3">
+        <TextBlock Text="CHAMPION STATS" Classes="heading" />
+        <TextBlock Text="Every champion's base stats at a level, without items. Click a column to sort; the top tenth of each column is green. Click a champion to open its abilities." Classes="caption" />
+      </StackPanel>
+      <Border Grid.Column="1" Classes="pill" VerticalAlignment="Center">
+        <TextBlock Text="{Binding CountText}" FontSize="11" Classes="secondary num" />
+      </Border>
+    </Grid>
+
+    <Border Grid.Row="1" Classes="card" Padding="12,10" Margin="0,0,0,12">
+      <WrapPanel ItemSpacing="10" LineSpacing="8">
+        <TextBox Classes="search" Width="220" PlaceholderText="Search champions…" Text="{Binding Search}" Name="StatsSearch" />
+        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+          <TextBlock Text="{Binding LevelText}" Classes="title num" VerticalAlignment="Center" Width="64" />
+          <Button Classes="ghost icon" Command="{Binding LevelDownCommand}" ToolTip.Tip="One level down" VerticalAlignment="Center">
+            <c:LucideIcon Kind="minus" Width="14" Height="14" />
+          </Button>
+          <Slider Minimum="1" Maximum="18" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="3" Value="{Binding Level}" Width="180" VerticalAlignment="Center" Name="StatsLevel" />
+          <Button Classes="ghost icon" Command="{Binding LevelUpCommand}" ToolTip.Tip="One level up" VerticalAlignment="Center">
+            <c:LucideIcon Kind="plus" Width="14" Height="14" />
+          </Button>
+        </StackPanel>
+        <ComboBox ItemsSource="{Binding RoleOptions}" SelectedItem="{Binding SelectedRole}" MinWidth="120" VerticalAlignment="Center" ToolTip.Tip="Role" />
+        <ComboBox ItemsSource="{Binding ClassOptions}" SelectedItem="{Binding SelectedClass}" MinWidth="120" VerticalAlignment="Center" ToolTip.Tip="Class" />
+        <ComboBox ItemsSource="{Binding RangeOptions}" SelectedItem="{Binding SelectedRange}" MinWidth="150" VerticalAlignment="Center" ToolTip.Tip="Melee or ranged" />
+        <ToggleButton Classes="chip" IsChecked="{Binding OnlyRoster}" VerticalAlignment="Center" Height="30" ToolTip.Tip="Only champions in the active roster">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <c:LucideIcon Kind="layout-grid" Width="13" Height="13" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+            <TextBlock Text="In my roster" FontSize="12" Foreground="{Binding $parent[ToggleButton].Foreground}" />
+          </StackPanel>
+        </ToggleButton>
+        <Button Classes="ghost small" Content="Clear filters" Command="{Binding ClearFiltersCommand}" IsVisible="{Binding HasActiveFilters}" VerticalAlignment="Center" />
+      </WrapPanel>
+    </Border>
+
+    <Border Grid.Row="2" Classes="card" Padding="8,6,8,8">
+      <Grid RowDefinitions="Auto,Auto,*">
+        <!-- Column headers -->
+        <Grid ColumnDefinitions="230,*" Margin="6,0,18,0">
+          <Button Classes="ghost small colhead" HorizontalAlignment="Left" HorizontalContentAlignment="Left" Command="{Binding SortByNameCommand}" ToolTip.Tip="Sort by name">
+            <TextBlock Text="{Binding NameSortGlyph, StringFormat='CHAMPION{0}'}" Classes="overline" />
+          </Button>
+          <ItemsControl Grid.Column="1" ItemsSource="{Binding Columns}" Name="StatsHeaders">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:StatColumnHeader">
+                <Button Classes="ghost small colhead" Width="84" Command="{Binding SortCommand}" ToolTip.Tip="{Binding Tip}">
+                  <TextBlock Text="{Binding Text}" Classes="overline" Classes.muted="{Binding !IsSorted}" FontSize="10" TextAlignment="Right" TextTrimming="CharacterEllipsis" />
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Grid>
+        <Border Grid.Row="1" Classes="divider" Margin="0,4,0,2" />
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
+          <Panel>
+            <ItemsControl ItemsSource="{Binding Rows}" Name="StatsRows">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ChampionStatRow">
+                  <Button Classes="listrow" Padding="6,3" ToolTip.Tip="{Binding Tip}"
+                          Command="{Binding $parent[UserControl].((vm:ChampionStatsViewModel)DataContext).OpenCommand}" CommandParameter="{Binding}">
+                    <Grid ColumnDefinitions="230,*">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <c:AssetImage Source="{Binding IconUrl}" Width="28" Height="28" CornerRadius="5" Zoom="1.08" />
+                        <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center" Spacing="0">
+                          <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                     Foreground="{DynamicResource Brush.TextPrimary}" />
+                          <TextBlock Classes="caption" TextTrimming="CharacterEllipsis">
+                            <Run Text="{Binding RangeText}" /><Run Text=" · " /><Run Text="{Binding ClassText}" />
+                          </TextBlock>
+                        </StackPanel>
+                        <Border Grid.Column="2" Classes="pill" Padding="5,0" VerticalAlignment="Center" IsVisible="{Binding IsInRoster}" ToolTip.Tip="In your active roster" Margin="0,0,6,0">
+                          <c:LucideIcon Kind="layout-grid" Width="10" Height="10" Foreground="{DynamicResource Brush.Gold}" />
+                        </Border>
+                      </Grid>
+                      <ItemsControl Grid.Column="1" ItemsSource="{Binding Cells}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:StatCell">
+                            <TextBlock Text="{Binding Text}" Classes="statcell" Classes.high="{Binding IsHigh}" Classes.low="{Binding IsLow}" Width="84" Padding="0,0,4,0"
+                                       ToolTip.Tip="{Binding ToolTipText}" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </Grid>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <StackPanel IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,60,0,0" Spacing="10">
+              <TextBlock Text="No champions match these filters." Classes="secondary" HorizontalAlignment="Center" />
+              <Button Classes="small" Content="Clear filters" Command="{Binding ClearFiltersCommand}" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Panel>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

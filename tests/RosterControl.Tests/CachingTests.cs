@@ -209,6 +209,27 @@ public class CachingTests
         Assert.That(map["Ambessa"], Is.EqualTo(new[] { "TOP" }));
     }
 
+    [Test]
+    public async Task Attack_damage_growth_is_saved_with_positions_and_old_caches_fetch_it_once()
+    {
+        _http.Json(GameDataClient.MerakiChampions.ToString(),
+            """{"Ahri":{"positions":["MIDDLE"],"stats":{"attackDamage":{"flat":53,"perLevel":3}}},"Garen":{"positions":["TOP"],"stats":{"attackDamage":{"flat":69,"perLevel":4.5}}}}""");
+        var client = Client();
+        Assert.That(client.ReadAttackDamageGrowth(), Is.Empty, "nothing cached yet");
+        await client.GetPositionsAsync(false, ["Ahri", "Garen"], CancellationToken.None);
+        var growth = client.ReadAttackDamageGrowth();
+        Assert.That(growth["ahri"], Is.EqualTo(3), "case-insensitive by champion id");
+        Assert.That(growth["Garen"], Is.EqualTo(4.5));
+
+        // A cache from 1.5 has positions but no growth file: one download adds it, then the cache is used again.
+        File.Delete(Path.Combine(client.CacheRoot, "champion-growth.json"));
+        await client.GetPositionsAsync(false, ["Ahri", "Garen"], CancellationToken.None);
+        Assert.That(_http.Count("merakianalytics"), Is.EqualTo(2));
+        Assert.That(client.ReadAttackDamageGrowth()["Ahri"], Is.EqualTo(3));
+        await client.GetPositionsAsync(false, ["Ahri", "Garen"], CancellationToken.None);
+        Assert.That(_http.Count("merakianalytics"), Is.EqualTo(2));
+    }
+
     // ── Patches ────────────────────────────────────────────────────────────────────────────────────
 
     [Test]
