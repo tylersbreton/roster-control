@@ -44,7 +44,7 @@
     {
       "@type": "Question",
       "name": "Is Roster Control free?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Roster Control is free and open source under the MIT licence. There are no ads, accounts or paid features." }
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Roster Control is free and open source under the MIT licence. There are no ads, accounts or paid features. You can support development through GitHub Sponsors." }
     },
     {
       "@type": "Question",
@@ -118,6 +118,13 @@
   }
   .btn.primary { background: linear-gradient(180deg, #c8aa6e, #a5874f); color: #10161f; border-color: #c8aa6e; }
   .btn:hover { filter: brightness(1.08); }
+  .sponsor {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 13px; border-radius: 999px; font-size: 13px; font-weight: 600; text-decoration: none;
+    color: var(--text); background: rgba(219, 97, 162, 0.12); border: 1px solid rgba(219, 97, 162, 0.55);
+  }
+  .sponsor:hover { background: rgba(219, 97, 162, 0.22); }
+  .sponsor svg { width: 14px; height: 14px; fill: #db61a2; flex: none; }
   .note { color: var(--muted); font-size: 14px; margin: 14px 0 0; }
   .shot {
     margin-top: 44px; border-radius: var(--radius); overflow: hidden;
@@ -158,6 +165,7 @@
   @media (max-width: 820px) {
     .split { grid-template-columns: 1fr; }
     nav { display: none; }
+    header.top .sponsor { margin-left: auto; }
     .hero { padding-top: 48px; }
     .grid { grid-template-columns: 1fr; }
   }
@@ -174,6 +182,9 @@
       <a href="#faq">FAQ</a>
       <a href="https://github.com/tylersbreton/roster-control">GitHub</a>
     </nav>
+    <a class="sponsor" href="https://github.com/sponsors/tylersbreton" title="Support Roster Control on GitHub Sponsors">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 14.25.345 6.595a4.25 4.25 0 0 1 6.01-6.01L8 2.23l1.645-1.645a4.25 4.25 0 0 1 6.01 6.01Z"/></svg>Sponsor
+    </a>
   </div>
 </header>
 
@@ -303,9 +314,10 @@
   <section id="faq" class="alt">
     <div class="wrap">
       <h2>Questions</h2>
-      <details>
+      <details open>
         <summary>Is Roster Control free?</summary>
-        <p>Yes. It's free and open source under the MIT licence, with no ads, accounts or paid features.</p>
+        <p>Yes. It's free and open source under the MIT licence, with no ads, accounts or paid features, and it always will be. If it's useful to you, you can support development through <a href="https://github.com/sponsors/tylersbreton">GitHub Sponsors</a>.</p>
+        <p><a class="sponsor" href="https://github.com/sponsors/tylersbreton"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 14.25.345 6.595a4.25 4.25 0 0 1 6.01-6.01L8 2.23l1.645-1.645a4.25 4.25 0 0 1 6.01 6.01Z"/></svg>Sponsor on GitHub</a></p>
       </details>
       <details>
         <summary>How does the League of Legends randomizer work?</summary>
@@ -325,7 +337,7 @@
 
 <footer>
   <div class="wrap">
-    <p><a href="https://github.com/tylersbreton/roster-control">Source code and full feature list on GitHub</a> · <a href="https://github.com/tylersbreton/roster-control/blob/main/CHANGELOG.md">What's new</a> · <a href="https://github.com/tylersbreton/roster-control/blob/main/LICENSE">MIT licence</a></p>
+    <p><a href="https://github.com/tylersbreton/roster-control">Source code and full feature list on GitHub</a> · <a href="https://github.com/tylersbreton/roster-control/blob/main/CHANGELOG.md">What's new</a> · <a href="https://github.com/tylersbreton/roster-control/blob/main/LICENSE">MIT licence</a> · <a href="https://github.com/sponsors/tylersbreton">Sponsor on GitHub</a></p>
     <p>Roster Control isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.</p>
   </div>
 </footer>
