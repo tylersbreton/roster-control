@@ -1,5 +1,6 @@
 # Screenshots shown in README.md, copied from artifacts/screenshots (written by the UI tests) to docs/images by
 # tools/update-readme-screenshots.ps1. The UI tests clear toasts before capturing these. One name per line, no extension.
+# The website (docs/index.html) uses some of these too; a unit test checks that every image it shows is listed.
 01b-rosters-1920x1080
 37-ability-calculator
 38-items
@@ -9,6 +10,7 @@
 46-champion-stats
 44-build-warnings
 43-compare-curve
+47-random-pick
 03-champion-runes
 04-champion-items
 05-champion-spells-skills

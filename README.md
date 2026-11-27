@@ -1,8 +1,11 @@
-# Roster Control
+# Roster Control: League of Legends roster manager
 
-A native Windows app for managing your League of Legends champion pool: drag champions into roster groups, rate how
-good you are on each one, save rune pages, item sets, summoner spells and skill orders, record matchups, and get
-counter-pick suggestions from your own notes.
+A free, native Windows app for managing your League of Legends champion pool: drag champions into roster groups, rate
+how good you are on each one, save rune pages, item sets, summoner spells and skill orders, record matchups, and get
+counter-pick suggestions from your own notes. It also has a **League of Legends randomizer** that rolls a random
+champion from your roster groups or from every champion in the game.
+
+**Website:** [tylersbreton.github.io/roster-control](https://tylersbreton.github.io/roster-control/)
 
 **Uses only public, keyless data** (Riot's Data Dragon, Community Dragon and Meraki Analytics). It does **not** read
 or control the League client, so there's nothing to log into and nothing that touches the game.
@@ -37,6 +40,10 @@ It never restarts on its own, and your data is untouched by updates.
 |---|---|
 | ![](docs/images/44-build-warnings.png) | ![](docs/images/43-compare-curve.png) |
 
+| Random pick | Compare |
+|---|---|
+| ![](docs/images/47-random-pick.png) | ![](docs/images/15-compare.png) |
+
 | Rune page | Item set |
 |---|---|
 | ![](docs/images/03-champion-runes.png) | ![](docs/images/04-champion-items.png) |
@@ -57,9 +64,25 @@ It never restarts on its own, and your data is untouched by updates.
 |---|---|
 | ![](docs/images/40-light-rosters.png) | ![](docs/images/40-light-champion.png) |
 
-| Compare | Adding a shared roster |
+| Adding a shared roster | |
 |---|---|
-| ![](docs/images/15-compare.png) | ![](docs/images/39-import-roster.png) |
+| ![](docs/images/39-import-roster.png) | |
+
+## League of Legends randomizer
+
+Can't decide what to play, or want a challenge? **Random pick** (Ctrl+8) is a random champion picker built into the
+app:
+
+- **Roll from your own pool or from every champion.** Tick one or more roster groups (Top, Jungle, your ARAM roster…)
+  to roll only champions you've placed there, or switch to *All champions* to roll from the whole champion list.
+- **Equal chances or weighted.** Every champion is equally likely by default; tick *Favour my Mains and higher stars*
+  to make your best champions come up more often.
+- **A spinning reel** of portraits slows down and lands on the pick, shown with its splash art, the groups it's in
+  and its chance. Turn animations off with *Reduce motion*.
+- **Straight to the build.** Open the champion page or quick look from the result, with the default build for that
+  group's role. Press **R** to roll again; your last 12 picks stay below.
+
+![League of Legends randomizer: Random pick rolling a champion](docs/images/47-random-pick.png)
 
 ## Features
 
@@ -145,6 +168,9 @@ It never restarts on its own, and your data is untouched by updates.
 - **Champion stats** — every champion's base stats at a level you pick (1–18): health, mana, AD, attack speed, armor,
   magic resist, move speed, range and growth per level. Sort by any column; the top tenth of each column is green and
   your roster's champions are marked; filter by role, class, melee/ranged or your roster (Ctrl+7).
+- **Random pick** — tick one or more groups (from any roster) or pick from every champion, then roll: a reel of
+  portraits spins and lands on a champion, shown with its splash art, the groups it's in and its chance. Equal chances,
+  or favour your Mains and higher stars. Open the champion or its quick look from the result (Ctrl+8; R rolls again).
 - **Patch review** — builds whose items changed or were removed (or whose runes no longer exist) since they were saved
   are listed after a patch, with a banner on Rosters; open each one or mark it reviewed (with Undo).
 - **Compare** — two champions (or two builds of one) side by side: runes, items, spells, skill order, roster
@@ -178,7 +204,7 @@ It never restarts on its own, and your data is untouched by updates.
 | Keys | Action |
 |---|---|
 | Ctrl+K / Ctrl+P | Quick search |
-| Ctrl+1 … Ctrl+7 | Rosters · Champions · Counter Picks · Settings · Items · Runes · Champion stats |
+| Ctrl+1 … Ctrl+8 | Rosters · Champions · Counter Picks · Settings · Items · Runes · Champion stats · Random pick |
 | Alt+← | Back |
 | Ctrl+Z | Undo the last removal |
 | Ctrl+= / Ctrl+- / Ctrl+0 | Zoom in / out / reset |

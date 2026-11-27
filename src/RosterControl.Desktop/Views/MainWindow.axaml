@@ -20,6 +20,7 @@
     <DataTemplate DataType="vm:ItemsViewModel"><v:ItemsView /></DataTemplate>
     <DataTemplate DataType="vm:RunesViewModel"><v:RunesView /></DataTemplate>
     <DataTemplate DataType="vm:ChampionStatsViewModel"><v:ChampionStatsView /></DataTemplate>
+    <DataTemplate DataType="vm:RandomPickViewModel"><v:RandomPickView /></DataTemplate>
     <DataTemplate DataType="vm:CounterPicksViewModel"><v:CounterPicksView /></DataTemplate>
     <DataTemplate DataType="vm:SettingsViewModel"><v:SettingsView /></DataTemplate>
     <DataTemplate DataType="vm:ChampionDetailViewModel"><v:ChampionView /></DataTemplate>
@@ -154,6 +155,12 @@
                 <StackPanel Orientation="Horizontal" Spacing="12">
                   <c:LucideIcon Kind="table" Width="18" Height="18" Foreground="{Binding $parent[RadioButton].Foreground}" />
                   <TextBlock Text="Champion stats" IsVisible="{Binding !SidebarCollapsed}" Foreground="{Binding $parent[RadioButton].Foreground}" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton Classes="nav" GroupName="nav" IsChecked="{Binding IsRandomSection, Mode=OneWay}" Command="{Binding NavigateCommand}" CommandParameter="{x:Static vm:Section.Random}" ToolTip.Tip="Random pick — roll a champion from your groups or every champion">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <c:LucideIcon Kind="dices" Width="18" Height="18" Foreground="{Binding $parent[RadioButton].Foreground}" />
+                  <TextBlock Text="Random pick" IsVisible="{Binding !SidebarCollapsed}" Foreground="{Binding $parent[RadioButton].Foreground}" />
                 </StackPanel>
               </RadioButton>
               <RadioButton Classes="nav" GroupName="nav" IsChecked="{Binding IsCountersSection, Mode=OneWay}" Command="{Binding NavigateCommand}" CommandParameter="{x:Static vm:Section.Counters}" ToolTip.Tip="Counter picks — what should I play into this?">

@@ -2,6 +2,10 @@
 
 What's new in each version of Roster Control. The app shows this after an update (also under Settings → About).
 
+## 1.7.0
+
+- **Random pick** — can't decide? Tick one or more groups (from any of your rosters), or pick from every champion in the game, and roll. A reel of portraits spins and slows down before landing on the pick, shown with its splash art, the groups it's in and its chance. Optionally favour your Mains and higher stars. Open the champion or its quick look from there; your last 12 picks stay below. Ctrl+8, the sidebar, or Ctrl+K. Press R to roll again.
+
 ## 1.6.0
 
 - **Best next item** — under the calculator, pick any number (Q damage, an ability's cooldown, Electrocute's damage, health, effective health…) and see the finished items that add the most to it at your level, with the gain per 1,000 gold. Click one to see every stat and ability number it changes.

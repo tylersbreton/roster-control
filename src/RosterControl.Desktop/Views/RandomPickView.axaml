@@ -1,0 +1,229 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RosterControl.Desktop.ViewModels"
+             xmlns:c="using:RosterControl.Desktop.Controls"
+             x:Class="RosterControl.Desktop.Views.RandomPickView"
+             x:DataType="vm:RandomPickViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.reelslot">
+      <Setter Property="Width" Value="84" />
+      <Setter Property="Height" Value="84" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="ClipToBounds" Value="True" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+      <Setter Property="Background" Value="{DynamicResource Brush.SurfaceSunken}" />
+    </Style>
+    <Style Selector="CheckBox.pickgroup">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Padding" Value="8,0,0,0" />
+      <Setter Property="MinHeight" Value="30" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,*">
+    <Grid ColumnDefinitions="*,Auto" Margin="2,2,0,12">
+      <StackPanel Spacing="3">
+        <TextBlock Text="RANDOM PICK" Classes="heading" />
+        <TextBlock Text="Can't decide? Tick the groups to pick from (from any roster), or pick from every champion, then roll. Press R to roll again." Classes="caption" TextWrapping="Wrap" />
+      </StackPanel>
+      <Border Grid.Column="1" Classes="pill" VerticalAlignment="Center">
+        <TextBlock Text="{Binding CandidateText}" FontSize="11" Classes="secondary num" Name="PickCount" />
+      </Border>
+    </Grid>
+
+    <Grid Grid.Row="1" ColumnDefinitions="300,*">
+      <!-- ── Pick from ─────────────────────────────────────────────────────── -->
+      <Border Classes="card" Padding="14,12" Margin="0,0,12,0" VerticalAlignment="Stretch">
+        <Grid RowDefinitions="Auto,Auto,*,Auto">
+          <TextBlock Text="PICK FROM" Classes="overline" Margin="0,0,0,8" />
+          <Border Grid.Row="1" Classes="elevated" Padding="2" CornerRadius="7" HorizontalAlignment="Left" Margin="0,0,0,12">
+            <StackPanel Orientation="Horizontal">
+              <RadioButton Classes="segment" GroupName="pickFrom" IsChecked="{Binding IsGroupMode, Mode=OneWay}" Command="{Binding UseGroupsCommand}"
+                           Content="My groups" Name="PickGroupsMode" ToolTip.Tip="Champions in the groups you tick below" />
+              <RadioButton Classes="segment" GroupName="pickFrom" IsChecked="{Binding AllChampions, Mode=OneWay}" Command="{Binding UseAllChampionsCommand}"
+                           Content="All champions" Name="PickAllMode" ToolTip.Tip="Every champion in the game, equally likely" />
+            </StackPanel>
+          </Border>
+
+          <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="12">
+              <!-- Groups, by roster -->
+              <ItemsControl ItemsSource="{Binding Rosters}" IsVisible="{Binding IsGroupMode}" Name="PickRosters">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="14" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:RosterPickSection">
+                    <StackPanel Spacing="2">
+                      <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,2">
+                        <TextBlock Text="{Binding Name}" Classes="overline muted" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                   IsVisible="{Binding $parent[UserControl].((vm:RandomPickViewModel)DataContext).ShowRosterNames}" />
+                        <Button Grid.Column="1" Classes="ghost small" Content="All" Command="{Binding SelectAllCommand}" ToolTip.Tip="Tick every group of this roster" />
+                        <Button Grid.Column="2" Classes="ghost small" Content="None" Command="{Binding SelectNoneCommand}" ToolTip.Tip="Untick every group of this roster" />
+                      </Grid>
+                      <ItemsControl ItemsSource="{Binding Groups}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:PickGroupOption">
+                            <CheckBox Classes="pickgroup" IsChecked="{Binding IsChecked}" ToolTip.Tip="{Binding Tip}">
+                              <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                                <Border Width="3" Height="16" CornerRadius="2" Background="{Binding Accent}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <c:AssetImage Grid.Column="1" Source="{Binding RoleIconUrl}" Width="15" Height="15" CornerRadius="0" ShowPlaceholder="False"
+                                              IsVisible="{Binding HasRoleIcon}" VerticalAlignment="Center" Margin="0,0,7,0" />
+                                <TextBlock Grid.Column="2" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <Border Grid.Column="3" Classes="pill" Padding="6,0" VerticalAlignment="Center" Margin="6,0,0,0">
+                                  <TextBlock Text="{Binding CountText}" FontSize="10.5" Classes="secondary num" />
+                                </Border>
+                              </Grid>
+                            </CheckBox>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <TextBlock Classes="caption" TextWrapping="Wrap" IsVisible="{Binding AllChampions}"
+                         Text="Every champion in the game, each equally likely, whether or not it's in a roster." />
+              <TextBlock Classes="caption" TextWrapping="Wrap" Foreground="{DynamicResource Brush.Warning}" Text="{Binding EmptyText}"
+                         IsVisible="{Binding EmptyText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Name="PickEmpty" />
+            </StackPanel>
+          </ScrollViewer>
+
+          <StackPanel Grid.Row="3" Spacing="4" Margin="0,12,0,0" IsVisible="{Binding IsGroupMode}">
+            <Border Classes="divider" Margin="0,0,0,8" />
+            <CheckBox IsChecked="{Binding Weighted}" Content="Favour my Mains and higher stars" Name="PickWeighted" />
+            <TextBlock Classes="caption" TextWrapping="Wrap" Margin="28,0,0,0"
+                       Text="Off: every champion equally likely. On: Mains 3×, Secondaries 2×, Pockets 1.25×, Learning 1×, plus 10% per star." />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- ── Reel and result ───────────────────────────────────────────────── -->
+      <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
+        <Border Classes="card" Padding="12,14,12,14">
+          <StackPanel Spacing="12">
+            <Panel Height="104">
+              <!-- The strip of portraits slides left one portrait per step; the edges fade out. -->
+              <Border Name="ReelViewport" ClipToBounds="True">
+                <Border.OpacityMask>
+                  <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                    <GradientStop Offset="0" Color="#00000000" />
+                    <GradientStop Offset="0.2" Color="#FF000000" />
+                    <GradientStop Offset="0.8" Color="#FF000000" />
+                    <GradientStop Offset="1" Color="#00000000" />
+                  </LinearGradientBrush>
+                </Border.OpacityMask>
+                <Canvas Name="ReelCanvas">
+                  <ItemsControl ItemsSource="{Binding Reel}" Name="ReelStrip" Canvas.Top="10">
+                    <ItemsControl.RenderTransform><TranslateTransform /></ItemsControl.RenderTransform>
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="10" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ReelSlot">
+                        <Border Classes="reelslot" ToolTip.Tip="{Binding Name}">
+                          <c:AssetImage Source="{Binding IconUrl}" Width="84" Height="84" CornerRadius="10" Zoom="1.08" FallbackText="{Binding Name}" />
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </Canvas>
+              </Border>
+              <!-- The pick lands in this frame. -->
+              <Border Name="ReelFrame" Width="96" Height="96" CornerRadius="13" BorderThickness="2.5" BorderBrush="{DynamicResource Brush.Gold}"
+                      HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" RenderTransformOrigin="50%,50%"
+                      BoxShadow="0 0 18 0 #66C8AA6E">
+                <Border.RenderTransform><ScaleTransform /></Border.RenderTransform>
+              </Border>
+            </Panel>
+            <Grid ColumnDefinitions="*,Auto,*">
+              <Button Grid.Column="1" Classes="primary" Command="{Binding RollCommand}" Name="RollButton" MinWidth="170" Padding="18,9"
+                      ToolTip.Tip="Roll a random champion (R)">
+                <StackPanel Orientation="Horizontal" Spacing="9" HorizontalAlignment="Center">
+                  <c:LucideIcon Kind="dices" Width="17" Height="17" Foreground="{Binding $parent[Button].Foreground}" />
+                  <TextBlock Text="{Binding RollText}" FontSize="14" FontWeight="SemiBold" Foreground="{Binding $parent[Button].Foreground}" />
+                </StackPanel>
+              </Button>
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <!-- Result -->
+        <Panel Grid.Row="1" Margin="0,12,0,0">
+          <Border Classes="card" Padding="0" ClipToBounds="True" IsVisible="{Binding HasResult}" Name="ResultCard" MinHeight="250">
+            <Panel DataContext="{Binding Result}" x:DataType="vm:PickResultViewModel">
+              <c:AssetImage Source="{Binding SplashUrl}" FallbackSource="{Binding SplashFallbackUrl}" DecodeWidth="1600" CornerRadius="12" FocusY="0.3" />
+              <Border Background="{DynamicResource Brush.HeroSideFade}" CornerRadius="12" />
+              <Border Background="{DynamicResource Brush.HeroFade}" CornerRadius="12" />
+              <Grid ColumnDefinitions="*,Auto" Margin="22,0,18,18" VerticalAlignment="Bottom">
+                <StackPanel Spacing="4" VerticalAlignment="Bottom">
+                  <TextBlock Text="{Binding Name}" FontSize="32" FontWeight="Bold" Foreground="{DynamicResource Brush.TextPrimary}" Name="ResultName" />
+                  <TextBlock Text="{Binding ChampionTitle}" FontSize="14" Classes="secondary" />
+                  <TextBlock Text="{Binding ClassText}" Classes="caption" />
+                  <ItemsControl ItemsSource="{Binding Placements}" IsVisible="{Binding HasPlacements}" Margin="0,6,0,0">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="6" LineSpacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:PickPlacementView">
+                        <Border Background="{DynamicResource Brush.Glass}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="8" Padding="9,5">
+                          <StackPanel Orientation="Horizontal" Spacing="8">
+                            <c:AssetImage Source="{Binding RoleIconUrl}" Width="15" Height="15" CornerRadius="0" ShowPlaceholder="False" IsVisible="{Binding HasRoleIcon}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <c:StarRating Value="{Binding Proficiency, Mode=OneWay}" IsReadOnly="True" StarSize="12" VerticalAlignment="Center" />
+                            <Border CornerRadius="4" Background="{Binding PrioritySoftBrush}" Padding="6,2" VerticalAlignment="Center">
+                              <TextBlock Text="{Binding PriorityLabel}" FontSize="10" FontWeight="Bold" LetterSpacing="0.8" Foreground="{Binding PriorityBrush}" />
+                            </Border>
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="{Binding ChanceText}" Classes="caption" Margin="0,4,0,0" Name="ResultChance" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
+                  <Button Classes="ghost" Command="{Binding QuickLookCommand}" ToolTip.Tip="Open the default build in the always-on-top quick look">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                      <c:LucideIcon Kind="minimize-2" Width="14" Height="14" Foreground="{Binding $parent[Button].Foreground}" />
+                      <TextBlock Text="Quick look" Foreground="{Binding $parent[Button].Foreground}" />
+                    </StackPanel>
+                  </Button>
+                  <Button Classes="primary" Command="{Binding OpenCommand}" Name="ResultOpen" ToolTip.Tip="Open the champion page">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                      <c:LucideIcon Kind="external-link" Width="14" Height="14" Foreground="{Binding $parent[Button].Foreground}" />
+                      <TextBlock Text="Open champion" Foreground="{Binding $parent[Button].Foreground}" />
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
+              </Grid>
+            </Panel>
+          </Border>
+          <Border Classes="card" IsVisible="{Binding ShowPlaceholder}" MinHeight="250">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+              <c:LucideIcon Kind="dices" Width="40" Height="40" Foreground="{DynamicResource Brush.TextMuted}" HorizontalAlignment="Center" />
+              <TextBlock Text="Press Roll (or R) to pick a champion." Classes="secondary" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Border>
+          <Border Classes="card" IsVisible="{Binding IsRolling}" MinHeight="250">
+            <TextBlock Text="Rolling…" Classes="secondary" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Panel>
+
+        <!-- Earlier picks this session -->
+        <Border Grid.Row="2" Classes="card" Padding="12,8" Margin="0,12,0,0" IsVisible="{Binding HasHistory}">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <TextBlock Text="EARLIER PICKS" Classes="overline" VerticalAlignment="Center" Margin="0,0,12,0" />
+            <ItemsControl Grid.Column="1" ItemsSource="{Binding History}" Name="PickHistory" VerticalAlignment="Center">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PickHistoryItem">
+                  <Button Classes="plain" Padding="0" Command="{Binding OpenCommand}" ToolTip.Tip="{Binding Tip}">
+                    <c:AssetImage Source="{Binding IconUrl}" Width="34" Height="34" CornerRadius="6" Zoom="1.08" FallbackText="{Binding Name}" />
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Grid.Column="2" Classes="ghost small" Content="Clear" Command="{Binding ClearHistoryCommand}" VerticalAlignment="Center" />
+          </Grid>
+        </Border>
+      </Grid>
+    </Grid>
+  </Grid>
+</UserControl>

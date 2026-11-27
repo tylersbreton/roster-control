@@ -1562,4 +1562,80 @@ public class AppScreenTests
         Capture("46-champion-stats");
         Assert.That(Vm.Preferences.Get("stats.table", new ChampionStatsViewModel.StatsPrefs()).Sort, Is.EqualTo("range"));
     }
+
+    [AvaloniaTest, Order(47)]
+    public void Random_pick_rolls_from_ticked_groups_or_every_champion()
+    {
+        var window = Window();
+        window.KeyPressQwerty(PhysicalKey.Digit8, RawInputModifiers.Control);
+        UiTestHost.Settle(10);
+        Assert.That(Vm.CurrentSection, Is.EqualTo(Section.Random), "Ctrl+8 opens random pick");
+        var pick = Vm.RandomPick!;
+        pick.Random = new Random(7);
+        pick.SpeedScale = 0.05;
+        pick.UseGroupsCommand.Execute(null);
+        pick.Weighted = false;
+        Assert.That(pick.Rosters, Is.Not.Empty);
+        var active = pick.Rosters[0];
+        active.SelectAllCommand.Execute(null);
+        Assert.That(pick.CandidateCount, Is.GreaterThan(0));
+        Assert.That(pick.CanRoll, Is.True);
+        Assert.That(pick.ShowPlaceholder, Is.True);
+
+        UiTestHost.Run(() => pick.RollCommand.ExecuteAsync(null));
+        UiTestHost.Settle(5);
+        Assert.That(pick.IsRolling, Is.False);
+        Assert.That(pick.HasResult, Is.True);
+        var result = pick.Result!;
+        Assert.That(pick.Reel[RandomPickViewModel.ReelCenter].Name, Is.EqualTo(result.Name), "the reel stops on the pick");
+        Assert.That(pick.Reel.Zip(pick.Reel.Skip(1)).Count(p => p.First.Name == p.Second.Name), Is.Zero, "neighbouring portraits differ");
+        Assert.That(result.Placements, Is.Not.Empty, "shows the groups it's in");
+        Assert.That(result.ChanceText, Does.Contain("chance"));
+        Assert.That(pick.History.Select(h => h.Name), Is.EqualTo(new[] { result.Name }));
+        Assert.That(pick.RollText, Is.EqualTo("Roll again"));
+
+        // Only one group ticked: every pick comes from it.
+        active.SelectNoneCommand.Execute(null);
+        Assert.That(pick.CanRoll, Is.False);
+        Assert.That(pick.EmptyText, Does.StartWith("Tick"));
+        var group = active.Groups.First(g => g.Group.Entries.Count > 1);
+        group.IsChecked = true;
+        Assert.That(pick.CandidateCount, Is.EqualTo(group.Group.Entries.Select(e => e.ChampionId).Distinct().Count()));
+        pick.SpeedScale = 0;
+        for (var i = 0; i < 10; i++)
+        {
+            UiTestHost.Run(() => pick.RollCommand.ExecuteAsync(null));
+            Assert.That(group.Group.Entries.Select(e => e.ChampionId), Does.Contain(pick.Result!.Champion.Id));
+        }
+        pick.Weighted = true;
+        UiTestHost.Run(() => pick.RollCommand.ExecuteAsync(null));
+        Assert.That(pick.Result!.ChanceText, Does.Contain("weighted"));
+        pick.Weighted = false;
+
+        pick.UseAllChampionsCommand.Execute(null);
+        Assert.That(pick.CandidateCount, Is.EqualTo(Vm.Game.Champions.Count));
+        UiTestHost.Run(() => pick.RollCommand.ExecuteAsync(null));
+        Assert.That(pick.Result, Is.Not.Null);
+        var saved = Vm.Preferences.Get(RandomPickViewModel.PrefsKey, new RandomPickViewModel.RandomPickPrefs());
+        Assert.That(saved.AllChampions, Is.True);
+        Assert.That(saved.GroupIds, Is.EqualTo(new[] { group.Group.Id }), "the ticked groups are remembered");
+
+        // R rolls again.
+        Assert.That(pick.History, Has.Count.EqualTo(12), "earlier picks keep the last 12");
+        var before = pick.Result;
+        window.KeyPressQwerty(PhysicalKey.R, RawInputModifiers.None);
+        UiTestHost.Settle(5);
+        Assert.That(pick.Result, Is.Not.SameAs(before));
+
+        // Screenshot: the active roster's groups, landed on a pick, with the animation.
+        pick.UseGroupsCommand.Execute(null);
+        active.SelectAllCommand.Execute(null);
+        pick.ClearHistoryCommand.Execute(null);
+        pick.Random = new Random(3);
+        for (var i = 0; i < 4; i++) UiTestHost.Run(() => pick.RollCommand.ExecuteAsync(null));
+        pick.SpeedScale = 0.05;
+        UiTestHost.Run(() => pick.RollCommand.ExecuteAsync(null));
+        UiTestHost.Settle(40);
+        Capture("47-random-pick");
+    }
 }

@@ -68,6 +68,9 @@ public interface IShell
     /// <summary>The always-on-top quick-look window's content.</summary>
     QuickLookViewModel QuickLook { get; }
 
+    /// <summary>Settings → Display: no animations.</summary>
+    bool ReduceMotion { get; }
+
     /// <summary>Shows the quick-look window, with <paramref name="championId"/> (default build for <paramref name="role"/>) or the search box.</summary>
     void OpenQuickLook(string? championId = null, Position? role = null, int? buildId = null);
 

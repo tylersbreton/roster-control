@@ -190,6 +190,7 @@ public sealed partial class CommandPaletteViewModel : ObservableObject
         yield return new PaletteItem("Items", "Page · Ctrl+5 · gold efficiency and your builds per item", null, "shopping-bag", () => _ = _main.NavigateAsync(Section.Items));
         yield return new PaletteItem("Runes", "Page · Ctrl+6 · formulas and your builds per rune", null, "sparkles", () => _ = _main.NavigateAsync(Section.Runes));
         yield return new PaletteItem("Champion stats", "Page · Ctrl+7 · base stats of every champion at a level", null, "table", () => _ = _main.NavigateAsync(Section.Stats));
+        yield return new PaletteItem("Random pick", "Page · Ctrl+8 · roll a champion from your groups or every champion", null, "dices", () => _ = _main.NavigateAsync(Section.Random));
         yield return new PaletteItem("Settings", "Page · Ctrl+4", null, "settings", () => _ = _main.NavigateAsync(Section.Settings));
         yield return new PaletteItem("New roster group", "Action", null, "plus", async () =>
         {
